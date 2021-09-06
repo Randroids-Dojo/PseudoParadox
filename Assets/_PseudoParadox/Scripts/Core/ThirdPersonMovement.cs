@@ -1,6 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using Unity.Mathematics;
 using UnityEngine;
 
 public class ThirdPersonMovement : MonoBehaviour
@@ -14,12 +11,6 @@ public class ThirdPersonMovement : MonoBehaviour
 
     public float turnSmoothTime = 0.1f;
     float turnSmoothVelocity;
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
 
     // Update is called once per frame
     void Update()
@@ -37,6 +28,9 @@ public class ThirdPersonMovement : MonoBehaviour
             controller.Move(moveDir.normalized * speed * Time.deltaTime);
 
             animator.SetFloat("Forward", (moveDir.magnitude));
+        } else
+        {
+            animator.SetFloat("Forward", 0.0f);
         }
     }
 }
