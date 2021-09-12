@@ -5,7 +5,7 @@ using UnityEngine;
 public class Clock : MonoBehaviour
 {
     public TMP_Text clockText;
-    public TimeContainer startingTime;
+    TimeContainer startingTime = new TimeContainer(7, 28, 0);
 
     DateTime currentDateTime;
 
