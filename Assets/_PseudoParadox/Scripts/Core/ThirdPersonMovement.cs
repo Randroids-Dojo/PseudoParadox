@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class ThirdPersonMovement : MonoBehaviour
@@ -17,7 +16,7 @@ public class ThirdPersonMovement : MonoBehaviour
 
     void Update()
     {
-        playerPositionManager.storePosition(transform.position, clock.clockText.text);
+        playerPositionManager.StorePosition(transform.position, clock.clockText.text);
         MoveCharacter();
     }
 

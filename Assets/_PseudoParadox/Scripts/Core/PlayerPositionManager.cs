@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class PlayerPositionManager : MonoBehaviour
 {
-    public Vector3 startingPosition = new Vector3(2, 0, 0);
+    public Vector3 startingPosition = new Vector3(0, 0, 0);
 
     [HideInInspector]
     public Dictionary<string, Vector3> timeToPositionDict = new Dictionary<string, Vector3>();
@@ -14,17 +14,12 @@ public class PlayerPositionManager : MonoBehaviour
     [HideInInspector]
     public bool shouldResetPosition = false;
 
-    public void start()
-    {
-    }
-
-    public void storePosition(Vector3 position, string currentTime)
+    public void StorePosition(Vector3 position, string currentTime)
     {
         timeToPositionDict[currentTime] = position;
     }
 
-
-    internal void SaveTimeTravel()
+    public void SaveTimeTravel()
     {
         Dictionary<string, Vector3> timeMachineCopy = new Dictionary<string, Vector3>(timeToPositionDict);
         timeMachine.Add(timeMachineCopy);
