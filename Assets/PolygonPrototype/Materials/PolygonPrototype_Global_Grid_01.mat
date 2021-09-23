@@ -20,7 +20,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _Grid:
-        m_Texture: {fileID: 2800000, guid: 2a09470ada0c47849ad79d26363f8e4a, type: 3}
+        m_Texture: {fileID: 2800000, guid: fadc90d69dc2497498413bdd5879f885, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
@@ -42,5 +42,5 @@ Material:
     - _OverlayAmount: 0.5
     - __dirty: 0
     m_Colors:
-    - _BaseColor: {r: 0.77265036, g: 0.8582058, b: 0.9150943, a: 0}
+    - _BaseColor: {r: 1, g: 0.78919977, b: 0, a: 0}
   m_BuildTextureStacks: []
