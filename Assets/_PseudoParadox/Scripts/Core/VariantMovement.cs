@@ -10,23 +10,65 @@ public class VariantMovement : MonoBehaviour
     public Clock clock;
     public PlayerPositionManager playerPositionManager;
     public int instanceNumber;
+    public GameObject targetPrefab;
+
+    private Transform target;
+
+    private Dictionary<string, Vector3> previousTimeToPositionDict;
+
+    void Start()
+    {
+        previousTimeToPositionDict = playerPositionManager.timeMachine[instanceNumber - 1];
+        transform.position = GetNewPosition();
+        CreateAndPositionTargetToFollow();
+    }
 
     void Update()
     {
-        /*        float targetAngle = 90;
-                Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-                controller.Move(moveDir.normalized * speed * Time.deltaTime);
+        // ToDo: Animate and have the variant look in the direction they are walking
+        StepTowardsNewPosition();
+    }
 
-                animator.SetFloat("Forward", (moveDir.magnitude));*/
+    private void CreateAndPositionTargetToFollow()
+    {
+        target = Instantiate(targetPrefab).transform;
+        target.transform.localScale = new Vector3(0.15f, 1.0f, 0.15f);
+        target.transform.position = transform.position;
+    }
 
-        Dictionary<string, Vector3> previousTimeToPositionDict = playerPositionManager.timeMachine[instanceNumber - 1];
+    private Vector3 GetNewPosition()
+    {
         string key = clock.clockText.text;
         if (previousTimeToPositionDict.ContainsKey(key))
         {
-            transform.position = previousTimeToPositionDict[key];
-        } else
+            return previousTimeToPositionDict[key];
+        }
+        else
         {
-            Destroy(gameObject);
+            DestroyImmediate(target.gameObject);
+            DestroyPlayerClones();
+        }
+
+        return new Vector3(0, 0, 0);
+    }
+
+    private void StepTowardsNewPosition()
+    {
+        Vector3 newPosition = GetNewPosition();
+
+        if (target != null) {
+            target.position = newPosition;
+            float step = speed * Time.deltaTime;
+            transform.position = Vector3.MoveTowards(transform.position, target.position, step);
+        }
+    }
+
+    private void DestroyPlayerClones()
+    {
+        GameObject[] playerClones = GameObject.FindGameObjectsWithTag("PlayerClone");
+        foreach (GameObject playerClone in playerClones)
+        {
+            Destroy(playerClone.gameObject);
         }
     }
 }
