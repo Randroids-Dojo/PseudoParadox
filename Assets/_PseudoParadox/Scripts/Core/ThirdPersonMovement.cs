@@ -20,7 +20,7 @@ namespace _PseudoParadox.Scripts.Core
         float turnSmoothVelocity;
         private Vector3 _velocity;
         private bool _isGrounded;
-        private static readonly int Forward = Animator.StringToHash("Forward");
+        private readonly int Forward = Animator.StringToHash("Forward");
 
         void Update()
         {

@@ -5,7 +5,6 @@ namespace _PseudoParadox.Scripts.Core
 {
     public class VariantMovement : MonoBehaviour
     {
-
         public CharacterController controller;
         public Animator animator;
         public float speed = 6f;
@@ -14,21 +13,24 @@ namespace _PseudoParadox.Scripts.Core
         public int instanceNumber;
         public GameObject targetPrefab;
 
-        private Transform target;
-
         private Dictionary<string, Vector3> previousTimeToPositionDict;
 
-        void Start()
+        private Transform target;
+        
+        private readonly int Forward = Animator.StringToHash("Forward");
+
+        private void Start()
         {
             previousTimeToPositionDict = playerPositionManager.timeMachine[instanceNumber - 1];
             transform.position = GetNewPosition();
             CreateAndPositionTargetToFollow();
         }
 
-        void Update()
+        private void Update()
         {
             // ToDo: Animate and have the variant look in the direction they are walking
             StepTowardsNewPosition();
+            RotateTowardsNewPosition();
         }
 
         private void CreateAndPositionTargetToFollow()
@@ -41,38 +43,40 @@ namespace _PseudoParadox.Scripts.Core
 
         private Vector3 GetNewPosition()
         {
-            string key = clock.clockText.text;
+            var key = clock.clockText.text;
             if (previousTimeToPositionDict.ContainsKey(key))
             {
                 return previousTimeToPositionDict[key];
             }
-            else
-            {
-                DestroyImmediate(target.gameObject);
-                DestroyPlayerClones();
-            }
+
+            DestroyImmediate(target.gameObject);
+            DestroyPlayerClones();
 
             return new Vector3(0, 0, 0);
         }
 
         private void StepTowardsNewPosition()
         {
-            Vector3 newPosition = GetNewPosition();
+            var newPosition = GetNewPosition();
 
-            if (target != null) {
-                target.position = newPosition;
-                float step = speed * Time.deltaTime;
-                transform.position = Vector3.MoveTowards(transform.position, target.position, step);
-            }
+            if (target == null) return;
+            target.position = newPosition;
+            var step = speed * Time.deltaTime;
+            transform.position = Vector3.MoveTowards(transform.position, target.position, step);
         }
 
-        private void DestroyPlayerClones()
+        private void RotateTowardsNewPosition()
         {
-            GameObject[] playerClones = GameObject.FindGameObjectsWithTag("PlayerClone");
-            foreach (GameObject playerClone in playerClones)
-            {
-                Destroy(playerClone.gameObject);
-            }
+            var direction = target.position - transform.position;
+            transform.rotation = Quaternion.LookRotation(direction);
+            animator.SetFloat(Forward, (direction.magnitude));
+        }
+
+
+        private static void DestroyPlayerClones()
+        {
+            var playerClones = GameObject.FindGameObjectsWithTag("PlayerClone");
+            foreach (var playerClone in playerClones) Destroy(playerClone.gameObject);
         }
     }
 }

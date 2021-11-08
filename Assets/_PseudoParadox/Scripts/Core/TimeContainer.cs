@@ -2,9 +2,9 @@ namespace _PseudoParadox.Scripts.Core
 {
     public class TimeContainer
     {
-        public int hour;
-        public int min;
-        public int sec;
+        internal readonly int hour;
+        internal readonly int min;
+        internal readonly int sec;
 
         public TimeContainer(int hour, int min, int sec)
         {
