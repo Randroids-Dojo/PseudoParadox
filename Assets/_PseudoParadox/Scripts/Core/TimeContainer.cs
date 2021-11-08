@@ -1,13 +1,16 @@
-public class TimeContainer
+namespace _PseudoParadox.Scripts.Core
 {
-    public int hour = 0;
-    public int min = 0;
-    public int sec = 0;
-
-    public TimeContainer(int hour, int min, int sec)
+    public class TimeContainer
     {
-        this.hour = hour;
-        this.min = min;
-        this.sec = sec;
+        public int hour;
+        public int min;
+        public int sec;
+
+        public TimeContainer(int hour, int min, int sec)
+        {
+            this.hour = hour;
+            this.min = min;
+            this.sec = sec;
+        }
     }
 }

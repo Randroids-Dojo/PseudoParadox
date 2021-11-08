@@ -1,63 +1,62 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class DoorTrigger : MonoBehaviour
+namespace _PseudoParadox.Scripts.Core
 {
-    public Clock clock;
-    public GameObject playerPrefab;
-    public PlayerPositionManager playerPositionManager;
-
-    private GameObject playerClone;
-
-    TimeContainer time = new TimeContainer(7, 28, 0);
-
-    private void OnTriggerEnter(Collider other)
+    public class DoorTrigger : MonoBehaviour
     {
-        if (other.tag == "Player")
+        public Clock clock;
+        public GameObject playerPrefab;
+        public PlayerPositionManager playerPositionManager;
+
+        private GameObject playerClone;
+
+        readonly TimeContainer time = new TimeContainer(7, 28, 0);
+
+        private void OnTriggerEnter(Collider other)
         {
-            Vector3 startingPosition = new Vector3(0, 0, 0);
+            if (!other.CompareTag("Player")) return;
+            var startingPosition = new Vector3(0, 0, 0);
             TravelToTime(time, other, startingPosition);
             DestroyPlayerClones();
             StartCoroutine(WaitForClockThenCreateNewClones(0.1f, startingPosition));
         }
-    }
 
-    private IEnumerator WaitForClockThenCreateNewClones(float waitTime, Vector3 startingPosition)
-    {
-        yield return new WaitForSeconds(waitTime);
-
-        CreateNewPlayerClone(startingPosition);
-    }
-
-    private void TravelToTime(TimeContainer time, Collider other, Vector3 startingPosition)
-    {
-        other.transform.position = startingPosition;
-        playerPositionManager.SaveTimeTravel();
-        clock.ChangeTime(time);
-    }
-
-    private void CreateNewPlayerClone(Vector3 startingPosition)
-    {
-        playerClone = Instantiate(playerPrefab, startingPosition, new Quaternion(0, 0, 0, 0));
-        playerClone.GetComponent<VariantMovement>().instanceNumber = playerPositionManager.currentInstance;
-        playerClone.GetComponent<VariantMovement>().clock = clock;
-        playerClone.GetComponent<VariantMovement>().playerPositionManager = playerPositionManager;
-    }
-
-    private void DestroyPlayerClones()
-    {
-        GameObject[] playerClones = GameObject.FindGameObjectsWithTag("PlayerClone");
-        foreach (GameObject playerClone in playerClones)
+        private IEnumerator WaitForClockThenCreateNewClones(float waitTime, Vector3 startingPosition)
         {
-            Destroy(playerClone.gameObject);
+            yield return new WaitForSeconds(waitTime);
+
+            CreateNewPlayerClone(startingPosition);
         }
 
-        GameObject[] playerCloneTargets = GameObject.FindGameObjectsWithTag("PlayerCloneTarget");
-        foreach (GameObject playerCloneTarget in playerCloneTargets)
+        private void TravelToTime(TimeContainer newTime, Collider other, Vector3 startingPosition)
         {
-            Destroy(playerCloneTarget.gameObject);
+            other.transform.position = startingPosition;
+            playerPositionManager.SaveTimeTravel();
+            clock.ChangeTime(newTime);
+        }
+
+        private void CreateNewPlayerClone(Vector3 startingPosition)
+        {
+            playerClone = Instantiate(playerPrefab, startingPosition, new Quaternion(0, 0, 0, 0));
+            playerClone.GetComponent<VariantMovement>().instanceNumber = playerPositionManager.currentInstance;
+            playerClone.GetComponent<VariantMovement>().clock = clock;
+            playerClone.GetComponent<VariantMovement>().playerPositionManager = playerPositionManager;
+        }
+
+        private static void DestroyPlayerClones()
+        {
+            var playerClones = GameObject.FindGameObjectsWithTag("PlayerClone");
+            foreach (var clone in playerClones)
+            {
+                Destroy(clone.gameObject);
+            }
+
+            var playerCloneTargets = GameObject.FindGameObjectsWithTag("PlayerCloneTarget");
+            foreach (var playerCloneTarget in playerCloneTargets)
+            {
+                Destroy(playerCloneTarget.gameObject);
+            }
         }
     }
 }
