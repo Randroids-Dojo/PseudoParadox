@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createFourDoors } from "./door.ts";
 
 /**
  * Canonical room dimensions for the prototype.
@@ -16,11 +17,10 @@ export const ROOM_DIMENSIONS = {
 } as const;
 
 /**
- * Builds the placeholder room: a floor plus four walls, no doors yet.
- *
- * Doors are intentionally not added here. REQ-027 (four doors render) will
- * land in its own slice and add door cutouts plus the door meshes against
- * these wall positions.
+ * Builds the placeholder room: a floor, four walls, and four doors (one
+ * per wall). REQ-027 lands the door meshes; REQ-028 will drive their
+ * lit/dark visual state and REQ-001/REQ-005 will wire them to portal
+ * traversal.
  */
 export function buildRoom(): THREE.Group {
   const group = new THREE.Group();
@@ -75,6 +75,12 @@ export function buildRoom(): THREE.Group {
   );
   wallWest.position.set(-width / 2, height / 2, 0);
   group.add(wallWest);
+
+  // Doors: one per wall, placed at the wall midpoint. Visual-only for now;
+  // collisions and portal traversal land in later slices (REQ-001/REQ-005).
+  for (const door of createFourDoors(width, depth)) {
+    group.add(door.mesh);
+  }
 
   return group;
 }

@@ -22,3 +22,12 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# Local agent state
+# `.dots/archive/` holds dots that the dot CLI moved out of the active list
+# when a slice closed. The archived files are local-only state, like a
+# scratch pad: they should not be tracked in git.
+.dots/archive/
+# `.claude/scheduled_tasks.lock` is a per-machine lock file written by the
+# Claude Code scheduler. Local-only.
+.claude/scheduled_tasks.lock

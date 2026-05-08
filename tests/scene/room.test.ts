@@ -12,9 +12,9 @@ describe("room", () => {
     expect(ROOM_DIMENSIONS.width).toEqual(ROOM_DIMENSIONS.depth);
   });
 
-  it("builds a group containing a floor and four walls", () => {
+  it("builds a group containing a floor, four walls, and four doors", () => {
     const room = buildRoom();
-    // 1 floor + 4 walls.
-    expect(room.children.length).toBe(5);
+    // 1 floor + 4 walls + 4 doors.
+    expect(room.children.length).toBe(9);
   });
 });

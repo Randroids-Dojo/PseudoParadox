@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-08, Four Doors Render at Wall Midpoints (REQ-027 partial)
+
+- Branch: `feature/req-027-four-doors-20260508-013623`
+- PR: #5
+- Changed: added `src/scene/door.ts` exposing `DOOR_DIMENSIONS`, `createDoor(direction, roomWidth, roomDepth)`, and `createFourDoors(roomWidth, roomDepth)`. Each door is a thin BoxGeometry slab (1.2 wide x 2.2 tall x 0.12 deep) in a warm placeholder color, positioned at the midpoint of its wall, base on the floor, inset by half the door depth so it sits flush with the inner face of the wall and does not z-fight. East and west doors rotate 90 degrees about Y so their wide face runs along the wall. Wired the doors into `src/scene/room.ts` so `buildRoom()` adds all four to the room group. Added `tests/scene/door.test.ts` covering dimensions, per-direction placement, rotation, scaling against non-square room dimensions, and the four-door factory order. Updated `tests/scene/room.test.ts` child-count assertion to 9 (1 floor + 4 walls + 4 doors). Bundled housekeeping: added `.dots/archive/` and `.claude/scheduled_tasks.lock` to `.gitignore` and removed the stale `.dots/PseudoParadox-implement-keyboard-6ada13d3.md` from the index since archived dots are local-only state.
+- Verification: em-dash and en-dash grep returned nothing across the working tree. `git diff --check` clean. `npm test` 13/13 across `tests/scene/room.test.ts`, `tests/input/keyboard.test.ts`, `tests/scene/door.test.ts`. `npm run build` succeeded (chunk-size warning carried over). `npm run dev` smoke booted Vite at `http://localhost:5173` and served the HTML shell.
+- Assumptions: doors are visual-only this slice. The walls behind them remain solid colliders, so the player capsule cannot actually walk into a door from inside the room. REQ-001 (timeline persistence) and REQ-005 (fixed door destinations) will revisit `src/scene/door.ts` to add portal trigger volumes; REQ-028 will swap the placeholder warm color for a state-driven lit/dark material. Door size 1.2 x 2.2 picked so the door reads against the player capsule (~1.8 tall) without visually consuming the wall.
+- GDD coverage: REQ-027 flipped from `not_started` to `partial`. Build log entry added to `docs/gdd/23-prototype-scope.md`.
+- Followups: none new.
+
 ## 2026-05-08, Player Capsule + Keyboard Movement (REQ-026 partial)
 
 - Branch: `feature/player-capsule`
