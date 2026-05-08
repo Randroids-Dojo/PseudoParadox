@@ -1,0 +1,141 @@
+import * as THREE from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
+import { PLAYER_CAPSULE } from "../scene/player.ts";
+import { applyInstanceTint } from "../render/instanceTint.ts";
+import { replayAtTick, type InputRecording } from "./inputRecorder.ts";
+
+/**
+ * Ghost-replay capsule (REQ-001 / REQ-002 deepening).
+ *
+ * A ghost is a separate Three.js mesh + Rapier dynamic capsule whose planar
+ * velocity each fixed simulation step is taken from a frozen `InputRecording`
+ * via `replayAtTick`. The ghost owns its own tick counter that advances by
+ * exactly one per call to `advanceTick`, so the host (`src/app.ts`) can drive
+ * every active ghost from the same fixed-step loop that already advances
+ * physics and `TimeOfDay`.
+ *
+ * Past the end of the recording, `replayAtTick` returns a zero vector, so the
+ * ghost simply stops moving. Despawn semantics are NOT in scope for this slice;
+ * deletion is tied to portal traversal and lands with REQ-003.
+ *
+ * The ghost's mesh is tinted once at spawn with `applyInstanceTint` so it reads
+ * as a different generation than the active player. The tint is a one-shot
+ * stamp; it does not update over the day cycle.
+ *
+ * NOT in scope:
+ *   - Portal traversal (REQ-003).
+ *   - Despawn / cleanup of finished ghosts.
+ *   - Multi-ghost scheduling driven by timeline state.
+ *   - Heading-aware movement (input is world-axis-aligned, matching the
+ *     active player).
+ */
+
+/** Minimal subset of `RAPIER.World` the ghost factory needs, so tests can pass
+ * a real world or a stub. */
+export interface GhostWorldHandle {
+  createRigidBody: RAPIER.World["createRigidBody"];
+  createCollider: RAPIER.World["createCollider"];
+}
+
+export interface GhostInstance {
+  mesh: THREE.Mesh;
+  body: RAPIER.RigidBody;
+  /** Origin normalized time-of-day in [0, 1] used for the constant tint. */
+  originNormalized: number;
+  /** Number of `advanceTick` calls applied so far. Starts at 0. */
+  readonly tickIndex: number;
+  /**
+   * Advance the ghost one fixed step: read the recording at the current tick,
+   * write the resulting planar velocity onto the body (preserving y), and
+   * increment the internal tick counter. After the recording is exhausted
+   * this writes a zero planar velocity each call, so the ghost decelerates
+   * to a stop under linear damping.
+   */
+  advanceTick: () => void;
+  /** Copy the body's translation onto the mesh; call once per render frame. */
+  syncMeshFromBody: () => void;
+}
+
+export interface CreateGhostOptions {
+  recording: InputRecording;
+  /**
+   * Normalized time-of-day in [0, 1] used to tint the ghost's mesh via
+   * `applyInstanceTint`. Typically the `TimeOfDay.normalized()` reading at
+   * the moment the ghost was spawned (which represents the recording's
+   * origin from the host's perspective).
+   */
+  originNormalized: number;
+  scene: THREE.Scene;
+  world: GhostWorldHandle;
+  /** World-space spawn position. The capsule center y is computed so the base
+   * sits on y=0 regardless of the supplied y; only x and z are used. */
+  startPosition: { x: number; z: number };
+}
+
+/**
+ * Build a ghost-replay capsule. The mesh and body match the active player's
+ * dimensions so a recorded path produces visually identical motion. The ghost
+ * is dynamic (not kinematic) so it interacts with the same colliders the
+ * active player does; that keeps the door-blocking behavior consistent with
+ * REQ-002 ("worked around or physically redirected").
+ */
+export function createGhost(options: CreateGhostOptions): GhostInstance {
+  const { recording, originNormalized, scene, world, startPosition } = options;
+  const { radius, cylinderLength } = PLAYER_CAPSULE;
+
+  const geometry = new THREE.CapsuleGeometry(radius, cylinderLength, 8, 16);
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xc4d0e6,
+    roughness: 0.6,
+    metalness: 0.0,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = "ghost";
+  applyInstanceTint(mesh, originNormalized);
+  scene.add(mesh);
+
+  const restY = cylinderLength / 2 + radius;
+
+  const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
+    .setTranslation(startPosition.x, restY, startPosition.z)
+    .enabledRotations(false, true, false)
+    .setLinearDamping(8.0);
+
+  const body = world.createRigidBody(bodyDesc);
+
+  const colliderDesc = RAPIER.ColliderDesc.capsule(
+    cylinderLength / 2,
+    radius,
+  ).setFriction(0.5);
+  world.createCollider(colliderDesc, body);
+
+  // Mutable counter behind a getter on the returned object so the tick index
+  // is observable but not externally writable. `advanceTick` is the only
+  // mutation site, which makes ordering of replay calls verifiable.
+  let tickIndex = 0;
+
+  const advanceTick = (): void => {
+    const velocity = replayAtTick(recording, tickIndex);
+    const current = body.linvel();
+    body.setLinvel({ x: velocity.x, y: current.y, z: velocity.z }, true);
+    tickIndex += 1;
+  };
+
+  const syncMeshFromBody = (): void => {
+    const t = body.translation();
+    mesh.position.set(t.x, t.y, t.z);
+  };
+
+  syncMeshFromBody();
+
+  return {
+    mesh,
+    body,
+    originNormalized,
+    get tickIndex(): number {
+      return tickIndex;
+    },
+    advanceTick,
+    syncMeshFromBody,
+  };
+}

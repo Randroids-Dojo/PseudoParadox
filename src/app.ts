@@ -6,6 +6,7 @@ import { createPlayer } from "./scene/player.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
+import { createGhost, type GhostInstance } from "./sim/ghostInstance.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -42,6 +43,43 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // here at the app level for now; future slices that spawn additional
   // instances will give each its own recorder.
   const inputRecorder = new InputRecorder();
+
+  // Active ghost instances. Populated on demand by the demo `g` keypress
+  // below. Each ghost owns its own tick counter that advances by one per
+  // fixed simulation step. Despawn semantics belong to a later slice tied to
+  // portal traversal (REQ-003); for now ghosts simply stop moving past the
+  // end of their recording.
+  const ghosts: GhostInstance[] = [];
+  // Capture the player's spawn position so demo ghosts can replay the
+  // recording from the same origin in world space. This is a prototype
+  // shortcut: a real time-travel slice will spawn ghosts at the door of
+  // arrival, not at world origin.
+  const playerSpawn = (() => {
+    const t = player.body.translation();
+    return { x: t.x, z: t.z };
+  })();
+
+  // Demo trigger: pressing `g` snapshots the recorder and spawns a ghost
+  // capsule that replays the snapshot from the player's spawn position. The
+  // recorder keeps recording afterward so successive `g` presses spawn a
+  // ghost of the longer-and-longer current run; a portal-driven boundary
+  // lands with REQ-003. `keydown` is filtered to ignore auto-repeat so a
+  // held key spawns exactly one ghost per physical press.
+  const onSpawnGhost = (event: KeyboardEvent): void => {
+    if (event.repeat) return;
+    if (event.code !== "KeyG") return;
+    const recording = inputRecorder.snapshot();
+    if (recording.length === 0) return;
+    const ghost = createGhost({
+      recording,
+      originNormalized: timeOfDay.normalized(),
+      scene: sceneCtx.scene,
+      world,
+      startPosition: playerSpawn,
+    });
+    ghosts.push(ghost);
+  };
+  window.addEventListener("keydown", onSpawnGhost);
 
   // Track the most recent frame time so the physics integrator can use
   // a stable fixed step independent of the browser's vsync jitter.
@@ -82,12 +120,24 @@ export async function startApp(container: HTMLElement): Promise<void> {
       inputRecorder.record(keyboard.state, timeOfDay.normalized());
       const velocity = inputToVelocity(keyboard.state);
       player.setPlanarVelocity(velocity.x, velocity.z);
+      // Advance every active ghost by one tick BEFORE stepping the world so
+      // each ghost's planar velocity is written into the same `world.step()`
+      // that consumes the active player's velocity. Past the end of the
+      // recording `replayAtTick` returns zero, so the ghost decelerates to
+      // a stop under linear damping (REQ-002: the recording itself is
+      // immutable; the ghost cannot be altered, only worked around).
+      for (const ghost of ghosts) {
+        ghost.advanceTick();
+      }
       world.step();
       physicsAccumulatorMs -= fixedStepMs;
       steps += 1;
     }
 
     player.syncMeshFromBody();
+    for (const ghost of ghosts) {
+      ghost.syncMeshFromBody();
+    }
     // Apply the interpolated background color from whatever tick the
     // simulation is currently on. The clock itself is advanced inside the
     // fixed-step loop above, not here, so frame rate cannot affect it.
