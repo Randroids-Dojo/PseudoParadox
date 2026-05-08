@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-08, Vercel CLI Link
 
 - Branch: `chore/vercel-link`
-- PR: (pending)
+- PR: `#10`
 - Changed: linked the local repo to the existing `randroid88s-projects/pseudo-paradox` Vercel project (live at https://pseudo-paradox.vercel.app, originally created and deployed via the Vercel dashboard). `vercel link --yes` produced `.vercel/project.json` and pulled `VERCEL_OIDC_TOKEN` into `.env.local`. Tidied `.gitignore`: kept `.vercel/` (with a comment naming Vercel's own README.txt as the source of truth on local-only status) and dropped the redundant `.env*.local` line that the Vercel CLI auto-appended (the existing `.env` section already covers `.env.local` and `.env.*.local`).
 - Verification: `git check-ignore` confirms both `.vercel/project.json` and `.env.local` are ignored. `grep -rnP '[\x{2014}\x{2013}]'` clean. `git diff --check` clean. The dashboard already produced a green production deploy 33m before this slice, so the link is wiring CLI access only, not changing deploy behavior.
 - Assumptions: `.vercel/` and `.env.local` stay local per Vercel's own guidance. Auto-deploy on push to main is handled by the Vercel GitHub integration that the dashboard set up; no change to CI configuration in this slice. Database connections remain out of scope per `docs/gdd/99-out-of-scope.md` (save/load explicitly excluded for v1); a KV store will be provisioned later only if a feature requires persistence.
