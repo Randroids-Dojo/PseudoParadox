@@ -1,5 +1,5 @@
 ---
-title: "implement: render four doors per wall (REQ-027)"
+title: "implement: render four doors (one per wall) (REQ-027)"
 status: open
 priority: 1
 issue-type: task

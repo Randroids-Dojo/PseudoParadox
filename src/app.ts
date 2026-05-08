@@ -29,15 +29,23 @@ export async function startApp(container: HTMLElement): Promise<void> {
   let lastFrameMs = performance.now();
   let physicsAccumulatorMs = 0;
   const fixedStepMs = fixedStepSeconds * 1000;
+  const maxStepsPerFrame = 5;
+  // Bound the accumulator itself (not just per-frame steps). Without this
+  // clamp, returning from a long tab pause leaves a massive backlog that
+  // drains across many subsequent frames in delayed catch-up mode. Clamping
+  // to the per-frame budget means we accept some lost simulation time after
+  // a long pause but stay real-time responsive afterward.
+  const maxAccumulatorMs = fixedStepMs * maxStepsPerFrame;
 
   function frame(nowMs: number): void {
     const deltaMs = nowMs - lastFrameMs;
     lastFrameMs = nowMs;
 
-    physicsAccumulatorMs += deltaMs;
-    // Cap the catch-up so a tab returning from background does not run
-    // hundreds of physics steps in one frame.
-    const maxStepsPerFrame = 5;
+    physicsAccumulatorMs = Math.min(
+      physicsAccumulatorMs + deltaMs,
+      maxAccumulatorMs,
+    );
+
     let steps = 0;
     while (physicsAccumulatorMs >= fixedStepMs && steps < maxStepsPerFrame) {
       world.step();

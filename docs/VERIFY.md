@@ -28,10 +28,11 @@ npm run build
 npm run dev
 ```
 
-Opens the prototype on http://localhost:5173. The shell currently renders an
-empty placeholder room with a hemisphere fill light, a directional key light,
-and a fixed isometric camera. Subsequent slices add doors, the player, and
-the timeline recorder against this base.
+Opens the prototype on http://localhost:5173 by default (or the next free
+port if 5173 is in use). The shell currently renders an empty placeholder
+room with a hemisphere fill light, a directional key light, and a fixed
+isometric camera. Subsequent slices add doors, the player, and the timeline
+recorder against this base.
 
 ## Smoke test
 
