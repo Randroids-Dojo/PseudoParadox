@@ -1,6 +1,8 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import { createRenderer } from "./render/renderer.ts";
 import { buildScene } from "./scene/scene.ts";
+import { createPlayer } from "./scene/player.ts";
+import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -20,6 +22,8 @@ export async function startApp(container: HTMLElement): Promise<void> {
 
   const renderer = createRenderer(container);
   const sceneCtx = buildScene();
+  const player = createPlayer(sceneCtx.scene, world);
+  const keyboard = createKeyboardState(window);
 
   // Track the most recent frame time so the physics integrator can use
   // a stable fixed step independent of the browser's vsync jitter.
@@ -48,11 +52,17 @@ export async function startApp(container: HTMLElement): Promise<void> {
 
     let steps = 0;
     while (physicsAccumulatorMs >= fixedStepMs && steps < maxStepsPerFrame) {
+      // Sample input once per physics step so target velocity reacts at the
+      // simulation rate, not the render rate. The mapping is pure; the only
+      // mutation is on the rigid body itself.
+      const velocity = inputToVelocity(keyboard.state);
+      player.setPlanarVelocity(velocity.x, velocity.z);
       world.step();
       physicsAccumulatorMs -= fixedStepMs;
       steps += 1;
     }
 
+    player.syncMeshFromBody();
     renderer.render(sceneCtx.scene, sceneCtx.camera);
     requestAnimationFrame(frame);
   }

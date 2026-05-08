@@ -40,4 +40,5 @@ This section mirrors the original GDD prototype scope. The atomic-row coverage i
 
 ### Build log
 
+- 2026-05-08: REQ-026 partial. Player capsule spawns at the room center and is keyboard-controllable in world XZ via WASD or arrow keys at 4 m/s, normalized on diagonals, applied as target velocity each fixed physics step. Camera stays fixed; 5:00 timeline anchor not yet wired. Files: `src/input/keyboard.ts`, `src/scene/player.ts`, `src/app.ts`, `tests/input/keyboard.test.ts`. PR (pending: feature/player-capsule).
 - 2026-05-08: scaffolded the runtime stack (Vite + TypeScript + Three.js + Rapier3D). Empty placeholder room (10x10x4 units) renders with hemisphere fill plus directional key light at a fixed isometric camera. Files: `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`, `src/main.ts`, `src/app.ts`, `src/render/renderer.ts`, `src/scene/scene.ts`, `src/scene/room.ts`, `tests/scene/room.test.ts`. PR (pending: feature/vite-scaffold).
