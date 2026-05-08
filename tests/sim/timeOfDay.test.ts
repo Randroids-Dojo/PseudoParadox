@@ -110,6 +110,16 @@ describe("TimeOfDay", () => {
     expect(() => new TimeOfDay({ cycleSeconds: 0.51 })).toThrow();
   });
 
+  it("accepts mathematically aligned configurations despite IEEE-754 noise", () => {
+    // 0.1 + 0.2 is 0.30000000000000004 in IEEE-754, but multiplied by 10 it
+    // is mathematically 3, which is integer-aligned at 10 ticks per second.
+    // The constructor should tolerate this within epsilon rather than
+    // rejecting a configuration the caller clearly intended.
+    const cycleSeconds = 0.1 + 0.2;
+    const clock = new TimeOfDay({ cycleSeconds, ticksPerSecond: 10 });
+    expect(clock.ticksPerCycle).toBe(3);
+  });
+
   it("rejects non-integer or non-positive ticksPerSecond", () => {
     expect(() => new TimeOfDay({ ticksPerSecond: 0 })).toThrow();
     expect(() => new TimeOfDay({ ticksPerSecond: -60 })).toThrow();

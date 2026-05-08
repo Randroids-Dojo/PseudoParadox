@@ -61,14 +61,17 @@ export class TimeOfDay {
     // Reject non-tick-aligned cycles. Storing a quantized variant of
     // `cycleSeconds` would make the public field disagree with what the
     // caller passed in; the prototype configuration is 60s * 60Hz = 3600
-    // ticks exactly, so this constraint costs nothing.
-    const exactTicksPerCycle = cycleSeconds * ticksPerSecond;
-    if (!Number.isInteger(exactTicksPerCycle) || exactTicksPerCycle <= 0) {
+    // ticks exactly, so this constraint costs nothing. An epsilon tolerance
+    // accepts mathematically aligned values that an IEEE-754 multiply
+    // perturbs slightly (e.g. `0.1 * 10` yields `1.0000000000000002`).
+    const product = cycleSeconds * ticksPerSecond;
+    const rounded = Math.round(product);
+    if (rounded <= 0 || Math.abs(product - rounded) > 1e-9) {
       throw new Error(
-        `TimeOfDay cycleSeconds * ticksPerSecond must be a positive integer, got ${exactTicksPerCycle}`,
+        `TimeOfDay cycleSeconds * ticksPerSecond must be a positive integer, got ${product}`,
       );
     }
-    const ticksPerCycle = exactTicksPerCycle;
+    const ticksPerCycle = rounded;
     this.cycleSeconds = cycleSeconds;
     this.ticksPerSecond = ticksPerSecond;
     this.ticksPerCycle = ticksPerCycle;
