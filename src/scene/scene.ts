@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { ROOM_DIMENSIONS, buildRoom } from "./room.ts";
+import type { Portal } from "../sim/portal.ts";
 
 export interface SceneContext {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
+  portals: readonly Portal[];
 }
 
 /**
@@ -21,7 +23,7 @@ export function buildScene(): SceneContext {
   scene.background = new THREE.Color(0x101418);
 
   const room = buildRoom();
-  scene.add(room);
+  scene.add(room.group);
 
   const hemi = new THREE.HemisphereLight(0xb1c5ff, 0x202020, 0.6);
   scene.add(hemi);
@@ -42,5 +44,5 @@ export function buildScene(): SceneContext {
   camera.position.set(width * 0.9, 9, depth * 0.9);
   camera.lookAt(0, 1, 0);
 
-  return { scene, camera };
+  return { scene, camera, portals: room.portals };
 }

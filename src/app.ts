@@ -8,6 +8,7 @@ import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
 import { createGhost, type GhostInstance } from "./sim/ghostInstance.ts";
+import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -51,6 +52,22 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // here at the app level for now; future slices that spawn additional
   // instances will give each its own recorder.
   const inputRecorder = new InputRecorder();
+
+  // REQ-009 deepening: edge-triggered portal overlap detector. Reports an
+  // `enter` once per portal when the active player walks into its trigger
+  // volume and an `exit` once when leaving. Lit-only filtering and teleport
+  // land in the next slice; this detector emits for every portal the player
+  // overlaps. The detector is driven once per fixed simulation step so its
+  // tick numbers align with the recorder and ghost replay.
+  const portalTriggers = createPortalTriggerSet(sceneCtx.portals);
+  let portalTick = 0;
+  portalTriggers.onPortalOverlap((event) => {
+    // Console-only signal until the traversal slice consumes the event.
+    // eslint-disable-next-line no-console
+    console.log(
+      `portal ${event.kind}: ${event.portal.direction} -> ${event.portal.destinationHours}h @ tick ${event.tick} (lit=${event.portal.isLit})`,
+    );
+  });
 
   // Active ghost instances. Populated on demand by the demo `g` keypress
   // below. Each ghost owns its own tick counter that advances by one per
@@ -138,6 +155,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
         ghost.advanceTick();
       }
       world.step();
+      // REQ-009: evaluate portal-overlap edges AFTER the world step so the
+      // detector reads the post-integration translation. The same tick
+      // counter advances here regardless of how many ghosts exist.
+      const playerPos = player.body.translation();
+      portalTriggers.step(playerPos.x, playerPos.z, portalTick);
+      portalTick += 1;
       physicsAccumulatorMs -= fixedStepMs;
       steps += 1;
     }

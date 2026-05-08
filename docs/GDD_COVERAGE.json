@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T18:31:00-05:00",
+  "updatedAt": "2026-05-08T18:42:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -107,14 +107,18 @@
       "requirement": "A lit door is enterable and sends the player to the door's fixed destination time.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
       "status": "partial",
-      "note": "Lit/dark predicate lands as a pure function in `src/sim/portal.ts`. `isLit(portal)` returns the portal's stubbed flag; a downstream traversal slice will gate door entry on this predicate (REQ-009's runtime half: actually sending the player). The visual half lands here too: `applyDoorLitState(door, true)` stamps a warm color plus an emissive boost on lit doors so the player can read which doors are enterable at a glance. Still partial because traversal, collision triggers, and arrival-derived lit/dark (REQ-011) have not shipped.",
+      "note": "Lit/dark predicate lands as a pure function in `src/sim/portal.ts`. `isLit(portal)` returns the portal's stubbed flag; a downstream traversal slice will gate door entry on this predicate (REQ-009's runtime half: actually sending the player). The visual half lands too: `applyDoorLitState(door, true)` stamps a warm color plus an emissive boost on lit doors. Overlap detection lands in `src/sim/portalTrigger.ts`: `createPortalTriggerSet(portals)` returns an edge-triggered detector whose `step(x, z, tick)` emits `enter` and `exit` events per portal as the active player walks into and out of each door's trigger volume. The detector uses pure XZ AABB containment (the Rapier-sensor path was considered and deferred for simplicity); it emits for both lit and dark portals in this slice, and the next slice gates teleport on `isLit(portal)` at the subscriber. `src/app.ts` drives the detector once per fixed step after `world.step()` and registers a console-only subscriber. Still partial because traversal (actually sending the player), collision triggers via Rapier sensors, and arrival-derived lit/dark (REQ-011) have not shipped.",
       "implementationRefs": [
         "src/sim/portal.ts",
+        "src/sim/portalTrigger.ts",
         "src/scene/door.ts",
-        "src/scene/room.ts"
+        "src/scene/room.ts",
+        "src/scene/scene.ts",
+        "src/app.ts"
       ],
       "testRefs": [
         "tests/sim/portal.test.ts",
+        "tests/sim/portalTrigger.test.ts",
         "tests/scene/door.test.ts",
         "tests/scene/room.test.ts"
       ],
