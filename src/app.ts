@@ -3,6 +3,7 @@ import { createRenderer } from "./render/renderer.ts";
 import { interpolateWarmToCool } from "./render/colorTint.ts";
 import { buildScene } from "./scene/scene.ts";
 import { createPlayer } from "./scene/player.ts";
+import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
@@ -37,6 +38,13 @@ export async function startApp(container: HTMLElement): Promise<void> {
   const player = createPlayer(sceneCtx.scene, world, {
     originNormalized: timeOfDay.normalized(),
   });
+  // REQ-031: subtle floor ring underneath the active player. This is the
+  // prototype's only non-diegetic UI element. The ring is added to the same
+  // scene as the player and snapped to the player's planar position each
+  // render frame below.
+  const floorRing = createFloorRing();
+  sceneCtx.scene.add(floorRing);
+  updateFloorRing(floorRing, player.body);
   const keyboard = createKeyboardState(window);
   // REQ-001 / REQ-002 foundation: capture input each fixed step so the active
   // player's path can later be replayed by a ghost capsule. Ownership lives
@@ -138,6 +146,11 @@ export async function startApp(container: HTMLElement): Promise<void> {
     for (const ghost of ghosts) {
       ghost.syncMeshFromBody();
     }
+    // REQ-031: keep the active-player floor ring snapped to the player's
+    // planar position. Done after `syncMeshFromBody` for symmetry; the ring
+    // reads from the body directly so ordering does not matter, but keeping
+    // both visual updates adjacent makes the render-frame contract obvious.
+    updateFloorRing(floorRing, player.body);
     // Apply the interpolated background color from whatever tick the
     // simulation is currently on. The clock itself is advanced inside the
     // fixed-step loop above, not here, so frame rate cannot affect it.

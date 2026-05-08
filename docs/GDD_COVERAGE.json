@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T18:25:00-05:00",
+  "updatedAt": "2026-05-08T18:31:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -353,9 +353,15 @@
       "id": "REQ-031",
       "requirement": "The active player instance shows a subtle floor ring underfoot.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "note": "`createFloorRing()` returns a Three.js RingGeometry mesh (inner 0.5, outer 0.7) with a low-opacity neutral white material, rotated flat onto the XZ plane and pinned to y=0.01 above the floor. `updateFloorRing(ring, body)` copies the body's planar translation onto the ring while keeping y pinned, so a jumping or falling player cannot drag the ring off the floor. `src/app.ts` adds the ring to the scene next to the player and updates it once per render frame after `player.syncMeshFromBody()`. The ring is intentionally neutral-toned (not warm-to-cool) because the GDD specifies it as the SOLE non-diegetic UI element. Multi-instance ring handoff (follow the most-recently-spawned active instance) lives with the slice that introduces multi-active-player semantics.",
+      "implementationRefs": [
+        "src/scene/floorRing.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/scene/floorRing.test.ts"
+      ],
       "followupRefs": []
     },
     {
