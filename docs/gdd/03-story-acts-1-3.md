@@ -1,0 +1,59 @@
+# Story Structure: Acts 1-3
+
+**Status:** not_started
+
+The prototype covers exactly three acts in a single room. Each act is a deterministic, designer-authored sequence the player must reproduce by manipulating their past instances. The prototype is complete when the player can finish Act 3.
+
+## Act 1: Wake up
+
+- Clock reads 12:00.
+- Two people drag a knocked-out body in through the open North door and place it in the center of the room.
+- Fade to black.
+- Fade in. Clock reads 5:00.
+- The player is standing in the center of the room.
+- The North door is dark (spawn-only).
+- The South and East doors are lit (enterable).
+- The West door is dark.
+
+Door destinations from 5:00:
+
+- South: 12:00 (entering this door triggers the Act 1 cinematic from the player's first-person perspective; the two people knock the player out).
+- East: 6:00 (room is empty; only the West door is lit).
+- North: dark.
+- West: dark at 5:00.
+
+At 6:00, the West door leads back to 5:00.
+
+## Act 2: Meet yourself
+
+The player goes East to 6:00, then West to 5:00. On returning to 5:00, the player sees another instance of themselves (You-1). You-1 repeats what You1 did: walks to the West door and disappears.
+
+Repeat the loop. This time, when You1 returns to 5:00, knock out You-1. Drag the body through the East door to 6:00. Wait for another instance to wake up. That instance (You-2, in the recording) knocks You1 out.
+
+Fade out.
+
+## Act 3: Escape
+
+Fade in. Clock reads 5:00. Repeat the Act 2 sequence to position a knocked-out instance at 6:00. Wait for the other instance to wake.
+
+This time, run toward the West door as the other instance chases you. Both instances get pulled through and arrive at 5:00. Two other instances of the player are now present in the same scene.
+
+Curiosity beat: the two instances are visibly aware of each other. The player teams up with the instance from 6:00 to knock out the 5:00 instance. Drag that instance South to 12:00. Place the body in the center of the room (mirroring Act 1).
+
+Knock out the instance brought from 6:00.
+
+The North door at 12:00 is now open. No one is left to stop the player.
+
+Run through the North door.
+
+**Level complete.**
+
+## Beat dependencies
+
+The acts cannot be executed out of order. Act 3 requires the timeline state produced by Act 2. Act 2 requires the discovery beat from Act 1. The prototype's main job is to make these state transitions legible to the player without text or tutorial.
+
+## Failure recovery
+
+There is no auto-rewind. If the player gets stuck or makes the puzzle unsolvable, hard reset is available in the pause menu. See `17-ui-failure-state.md`.
+
+### Build log

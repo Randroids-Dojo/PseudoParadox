@@ -1,0 +1,367 @@
+{
+  "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
+  "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
+  "updatedAt": "2026-05-08",
+  "rows": [
+    {
+      "id": "REQ-001",
+      "requirement": "Timeline persistence: actions performed during a time period are recorded and replay as a permanent past instance whenever another instance witnesses that period from outside it.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-002",
+      "requirement": "Past instances replay recorded input frame-exact and cannot be altered, only worked around or physically redirected.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-003",
+      "requirement": "Traveling through a portal does not erase the prior timeline; the entered instance continues to exist as a recorded instance in the timeline left behind.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-004",
+      "requirement": "System enforces the no-paradox invariant: a player cannot prevent themselves from having done something they already did.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-005",
+      "requirement": "Portals have fixed locations and fixed destinations; a given door always leads to the same other time.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-006",
+      "requirement": "An unvisited future contains no recorded events and no instances; a time period only contains events once an instance has entered it.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-007",
+      "requirement": "Instance generation numbering tracks generations from the original spawn (You1, You-1, You-2, ...).",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#instance-numbering",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-008",
+      "requirement": "Player input always controls the most recently spawned active instance.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#instance-numbering",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-009",
+      "requirement": "A lit door is enterable and sends the player to the door's fixed destination time.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-010",
+      "requirement": "A dark door is a spawn-only exit; instances emerge from it and the player cannot enter.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-011",
+      "requirement": "Door lit-versus-dark state is computed from arriving instances in the recorded timeline, not stored as a discoverable variable.",
+      "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-012",
+      "requirement": "Act 1 cinematic at 12:00: two figures drag a knocked-out body through the North door to the center of the room, then fade to black.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-013",
+      "requirement": "Act 1 spawn at 5:00: the player stands in the center of the room, with North and West dark and South and East lit.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-014",
+      "requirement": "Door destinations from 5:00: South leads to 12:00 and East leads to 6:00.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-015",
+      "requirement": "6:00 timeline state: the room is empty, only the West door is lit, and the West door leads back to 5:00.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-016",
+      "requirement": "Act 2 first loop: traveling East then West produces a You-1 instance who replays You1's path, walks West, and disappears.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-2-meet-yourself",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-017",
+      "requirement": "Act 2 second loop: knocking out You-1 on return to 5:00 and dragging the body East to 6:00 produces a You-2 instance who wakes and knocks out You1.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-2-meet-yourself",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-018",
+      "requirement": "Act 3 setup: repeating the Act 2 sequence positions a knocked-out instance at 6:00 and the player waits for the other instance to wake.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-019",
+      "requirement": "Act 3 chase beat: running toward the West door while another instance chases pulls both instances through to 5:00 in the same frame.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-020",
+      "requirement": "Act 3 team-up beat: the two instances at 5:00 coordinate to knock out the 5:00 instance.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-021",
+      "requirement": "Act 3 mirror beat: dragging the knocked-out instance South to 12:00 and placing the body in the center of the room mirrors the Act 1 cinematic.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-022",
+      "requirement": "Act 3 second knockout: the player knocks out the instance brought from 6:00 inside the 12:00 timeline.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-023",
+      "requirement": "Act 3 escape: with no replay-instance staffing the North door cinematic, the North door at 12:00 is open and running through completes the level.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-024",
+      "requirement": "Beat dependency enforcement: acts cannot be executed out of order, and Act 3 requires the timeline state produced by Act 2.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#beat-dependencies",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-025",
+      "requirement": "Hard reset is available in the pause menu and returns the simulation to a clean Act 1 state.",
+      "gddRef": "docs/gdd/03-story-acts-1-3.md#failure-recovery",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": ["F-003"]
+    },
+    {
+      "id": "REQ-026",
+      "requirement": "Player spawn is keyboard-controllable in the room at 5:00.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-027",
+      "requirement": "Four doors render in the scene, one per wall.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-028",
+      "requirement": "Lit-versus-dark visual state of each door correctly reflects portal availability per the time travel rules.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-029",
+      "requirement": "Room color tints across a warm-to-cool spectrum over time.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-030",
+      "requirement": "Past instances tint to the room color at the time they last traveled, providing a visible timestamp.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-031",
+      "requirement": "The active player instance shows a subtle floor ring underfoot.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-032",
+      "requirement": "Thought-bubble icons appear above past instances before key actions (door enter, fight, sleep).",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-033",
+      "requirement": "Knockouts produce ragdoll physics on the receiving instance.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-034",
+      "requirement": "Unconscious bodies can be picked up by the player.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-035",
+      "requirement": "Unconscious bodies can be dragged across the room while held.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-036",
+      "requirement": "Unconscious bodies can be thrown through doors and travel to the door's destination time.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-037",
+      "requirement": "Demo build deploys to web with no install required.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#definition-of-shippable",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-038",
+      "requirement": "Demo build loads in under 10 seconds on a typical broadband connection.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#definition-of-shippable",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-039",
+      "requirement": "Demo build runs at 60fps on a 2020-era laptop.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#definition-of-shippable",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-040",
+      "requirement": "Demo build supports the full Act 1 to Act 3 puzzle without crashes or timeline desync.",
+      "gddRef": "docs/gdd/23-prototype-scope.md#definition-of-shippable",
+      "status": "not_started",
+      "implementationRefs": [],
+      "testRefs": [],
+      "followupRefs": []
+    }
+  ]
+}
