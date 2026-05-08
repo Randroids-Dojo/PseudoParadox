@@ -25,13 +25,18 @@ export async function startApp(container: HTMLElement): Promise<void> {
 
   const renderer = createRenderer(container);
   const sceneCtx = buildScene();
-  const player = createPlayer(sceneCtx.scene, world);
-  const keyboard = createKeyboardState(window);
   // REQ-029: warm-to-cool room tint driven by the deterministic simulation
   // tick. The clock is advanced once per fixed physics step below, not per
   // render frame, so REQ-001 timeline recording playback stays frame-exact
   // independent of how many frames render between physics steps.
   const timeOfDay = new TimeOfDay({ ticksPerSecond: 60 });
+  // REQ-030: stamp the player capsule with the warm-to-cool tint at its
+  // spawn time. With a freshly constructed clock at tick 0 this is the warm
+  // anchor; a later portal-traversal slice will re-stamp on travel.
+  const player = createPlayer(sceneCtx.scene, world, {
+    originNormalized: timeOfDay.normalized(),
+  });
+  const keyboard = createKeyboardState(window);
   // REQ-001 / REQ-002 foundation: capture input each fixed step so the active
   // player's path can later be replayed by a ghost capsule. Ownership lives
   // here at the app level for now; future slices that spawn additional
