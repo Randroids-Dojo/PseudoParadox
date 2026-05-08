@@ -1,8 +1,10 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import { createRenderer } from "./render/renderer.ts";
+import { interpolateWarmToCool } from "./render/colorTint.ts";
 import { buildScene } from "./scene/scene.ts";
 import { createPlayer } from "./scene/player.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
+import { TimeOfDay } from "./sim/timeOfDay.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -24,6 +26,9 @@ export async function startApp(container: HTMLElement): Promise<void> {
   const sceneCtx = buildScene();
   const player = createPlayer(sceneCtx.scene, world);
   const keyboard = createKeyboardState(window);
+  // REQ-029: warm-to-cool room tint driven by a real-time clock for now.
+  // A later slice locks this to the deterministic simulation step.
+  const timeOfDay = new TimeOfDay();
 
   // Track the most recent frame time so the physics integrator can use
   // a stable fixed step independent of the browser's vsync jitter.
@@ -63,6 +68,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
     }
 
     player.syncMeshFromBody();
+    // Advance the time-of-day clock once per render frame and apply the
+    // interpolated background color. Driving this off frame delta (rather
+    // than the fixed physics step) keeps the visual transition smooth
+    // independent of how many physics steps fired this frame.
+    timeOfDay.advance(deltaMs / 1000);
+    sceneCtx.scene.background = interpolateWarmToCool(timeOfDay.normalized());
     renderer.render(sceneCtx.scene, sceneCtx.camera);
     requestAnimationFrame(frame);
   }

@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-08, Warm-to-Cool Room Background Tint (REQ-029 partial)
+
+- Branch: `feature/req-029-color-tint-20260508-015106`
+- PR: (pending)
+- Changed: room background now tints across a warm-to-cool spectrum over time. Added `src/sim/timeOfDay.ts` exposing `TimeOfDay` (a small clock with `advance(dt)`, `normalized()`, `setNormalized(n)`, `cycleSeconds`) and `DEFAULT_CYCLE_SECONDS = 60`. Added `src/render/colorTint.ts` exposing `WARM_ANCHOR_HEX = 0xf6c084`, `COOL_ANCHOR_HEX = 0x5a78b8`, and a pure `interpolateWarmToCool(t)` that lerps between the two anchors and returns a fresh `THREE.Color`. Wired the loop in `src/app.ts` to advance the clock by frame delta and assign the interpolated color to `sceneCtx.scene.background` each render frame. Added `tests/sim/timeOfDay.test.ts` (default state, proportional advance, exact-cycle wrap, mid-cycle overshoot wrap, setNormalized wrap of negative and >1 inputs, zero/negative dt no-op, non-positive cycle rejection) and `tests/render/colorTint.test.ts` (t=0 returns warm, t=1 returns cool, t=0.5 channelwise midpoint, clamping at both ends, fresh-instance isolation).
+- Verification: em-dash and en-dash grep returned nothing across the working tree. `git diff --check` clean. `npm test` 26/26 passing across the five suites. `npm run build` succeeded (chunk-size warning carried over). `npm run dev` smoke booted Vite and `curl http://localhost:5173/` returned HTTP 200.
+- Assumptions: cycle length picked at 60 seconds real time per full day. Long enough to read the warm-to-cool sweep over a typical playtest, short enough that REQ-029's success criterion ("tints over time") is visibly satisfied within a few seconds. The clock currently ticks off render-frame delta, not the deterministic physics step. That is sufficient for the visual tint but is NOT sufficient for REQ-001 timeline recording, which needs a sim-locked clock; a follow-up dot tracks that finishing pass. Anchor colors `#f6c084` (warm) and `#5a78b8` (cool) chosen as muted late-afternoon and pre-dawn analogs that keep the room geometry, doors, and player capsule readable at any t. `interpolateWarmToCool` clamps out-of-range t values rather than wrapping; the renderer never feeds out-of-range inputs but the clamp keeps the function total for REQ-030 reuse.
+- GDD coverage: REQ-029 flipped from `not_started` to `partial` (warm-to-cool tint visible; deterministic-clock binding deferred). Build log entry added to `docs/gdd/23-prototype-scope.md`.
+- Followups: none new.
+
 ## 2026-05-08, Four Doors Render at Wall Midpoints (REQ-027 partial)
 
 - Branch: `feature/req-027-four-doors-20260508-013623`
