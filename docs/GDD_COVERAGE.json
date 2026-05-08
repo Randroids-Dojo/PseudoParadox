@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T02:18:00-05:00",
+  "updatedAt": "2026-05-08T02:55:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -303,9 +303,18 @@
       "id": "REQ-030",
       "requirement": "Past instances tint to the room color at the time they last traveled, providing a visible timestamp.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "partial",
+      "note": "`applyInstanceTint(mesh, originNormalized)` stamps a capsule's material color with `interpolateWarmToCool(originNormalized)` at construction. The active player capsule receives the stamp at spawn from `TimeOfDay.normalized()` so the wiring is end-to-end visible. Re-stamping on portal traversal lands with the ghost-replay capsule slice, which also handles past-instance lifetime; this slice covers the helper plus the active-player wiring only.",
+      "implementationRefs": [
+        "src/render/instanceTint.ts",
+        "src/render/colorTint.ts",
+        "src/scene/player.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/render/instanceTint.test.ts",
+        "tests/scene/player.test.ts"
+      ],
       "followupRefs": []
     },
     {

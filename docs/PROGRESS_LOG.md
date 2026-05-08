@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-08, Instance-Color Tint Helper And Player-Capsule Wiring (REQ-030 partial)
+
+- Branch: `feature/req-030-instance-tint-20260508-024950`
+- PR: (pending)
+- Changed: added `src/render/instanceTint.ts` exporting `applyInstanceTint(mesh, originNormalized)`. The helper validates that the mesh has a single color-bearing material (Standard / Basic / Lambert / Phong), throws on a non-finite origin or an unsupported material, and otherwise mutates the existing material's `color` in place to `interpolateWarmToCool(originNormalized)`. Returning the resolved tint makes verification cheap. `src/scene/player.ts` now accepts an optional `originNormalized` (default 0), exposes it on the returned `Player` for future replay slices, and stamps the capsule's material at construction via `applyInstanceTint`. `src/app.ts` passes `timeOfDay.normalized()` at spawn so the active player visibly carries its origin tint from frame 1. New tests: `tests/render/instanceTint.test.ts` (9 cases covering anchors, mid-cycle, multi-mesh distinctness, clamping, in-place mutation, error handling) and `tests/scene/player.test.ts` (3 cases proving `createPlayer` stamps the right tint and exposes the origin).
+- Verification: `npm test` 58/58 across the eight suites. `npm run build` succeeded (chunk-size warning carried over from prior PRs). Em-dash and en-dash grep returned nothing across the working tree. `git diff --check` clean.
+- Assumptions: ghost-replay capsules are NOT in scope this slice; the wiring is exercised on the existing single player capsule with a synthesized origin (the freshly-constructed `TimeOfDay` reading at spawn time, which is currently 0). Re-stamping on portal traversal lands with the ghost-replay slice. The helper mutates the existing material in place rather than swapping in a new clone, so a caller does not need to dispose of an old material; this is fine for one-shot stamping at construction (the documented contract). Multi-material and shader-material meshes throw rather than silently no-op so future regressions are caught at the boundary.
+- GDD coverage: REQ-030 flipped from `not_started` to `partial`. Build log entry added to `docs/gdd/23-prototype-scope.md`.
+- Followups: none new.
+
 ## 2026-05-08, TimeOfDay Locked To Deterministic Simulation Tick (REQ-029 done)
 
 - Branch: `feature/timeofday-sim-binding-20260508`

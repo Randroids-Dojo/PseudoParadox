@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
+import { applyInstanceTint } from "../render/instanceTint.ts";
 
 /**
  * Player capsule dimensions for the prototype (REQ-026).
@@ -27,6 +28,13 @@ export interface Player {
   mesh: THREE.Mesh;
   body: RAPIER.RigidBody;
   /**
+   * Normalized time-of-day in [0, 1] representing the moment this instance
+   * last traveled (or, for the active player, the moment it spawned). REQ-030
+   * uses this to drive the per-instance warm-to-cool tint. Recorded for
+   * future ghost-replay slices that want to re-stamp on portal traversal.
+   */
+  originNormalized: number;
+  /**
    * Sets the desired planar (world-XZ) velocity on the body, preserving
    * vertical velocity from gravity. Call this once per fixed physics step
    * (from the physics update loop), not once per render frame, so the
@@ -40,6 +48,15 @@ export interface Player {
   syncMeshFromBody: () => void;
 }
 
+export interface CreatePlayerOptions {
+  /**
+   * Normalized time-of-day in [0, 1] used to tint the capsule via
+   * `applyInstanceTint`. Defaults to 0 (warm anchor) so callers that do not
+   * yet have a `TimeOfDay` clock get a deterministic spawn color.
+   */
+  originNormalized?: number;
+}
+
 /**
  * Builds the player capsule: a Three.js mesh plus a Rapier dynamic rigid
  * body with a capsule collider. Both are placed at world origin (the room
@@ -50,10 +67,18 @@ export interface Player {
  *   - heading rotation (movement is world-axis-aligned)
  *   - door collisions (REQ-027 lands the door geometry)
  */
-export function createPlayer(scene: THREE.Scene, world: RAPIER.World): Player {
+export function createPlayer(
+  scene: THREE.Scene,
+  world: RAPIER.World,
+  options: CreatePlayerOptions = {},
+): Player {
   const { radius, cylinderLength } = PLAYER_CAPSULE;
+  const originNormalized = options.originNormalized ?? 0;
 
   const geometry = new THREE.CapsuleGeometry(radius, cylinderLength, 8, 16);
+  // The starting color is overwritten by `applyInstanceTint` below; the
+  // initial value is kept so a future material-property tweak (roughness,
+  // metalness) has a well-defined baseline to mutate from.
   const material = new THREE.MeshStandardMaterial({
     color: 0xc4d0e6,
     roughness: 0.6,
@@ -61,6 +86,10 @@ export function createPlayer(scene: THREE.Scene, world: RAPIER.World): Player {
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = "player";
+  // REQ-030: stamp the capsule with the warm-to-cool tint at the instance's
+  // origin normalized time. For the active player this happens once at
+  // spawn; a future portal-traversal slice will re-stamp on travel.
+  applyInstanceTint(mesh, originNormalized);
   scene.add(mesh);
 
   // Capsule center y so the base of the lower hemisphere just touches y=0.
@@ -96,5 +125,11 @@ export function createPlayer(scene: THREE.Scene, world: RAPIER.World): Player {
   // does not show the capsule at the origin before the first physics step.
   syncMeshFromBody();
 
-  return { mesh, body, setPlanarVelocity, syncMeshFromBody };
+  return {
+    mesh,
+    body,
+    originNormalized,
+    setPlanarVelocity,
+    syncMeshFromBody,
+  };
 }
