@@ -31,3 +31,6 @@ pnpm-debug.log*
 # `.claude/scheduled_tasks.lock` is a per-machine lock file written by the
 # Claude Code scheduler. Local-only.
 .claude/scheduled_tasks.lock
+# `.vercel/` is created by `vercel link` and holds project IDs and pulled env
+# vars. Local-only per Vercel's own guidance in .vercel/README.txt.
+.vercel/
