@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-08, Vite + TS + Three.js + Rapier3D Scaffold
+
+- Branch: `feature/vite-scaffold`
+- PR: (pending)
+- Changed: bootstrapped the runtime stack. Added `package.json` (vite, vitest, typescript, three, @dimforge/rapier3d-compat, @types/three), `tsconfig.json` (strict ES2022 bundler resolution), `vite.config.ts`, `index.html`, `.gitignore`, and `docs/VERIFY.md`. Created the source tree under `src/`: `main.ts` mounts the app, `app.ts` initializes Rapier WASM and runs a fixed-step physics tick alongside `requestAnimationFrame`, `render/renderer.ts` builds the WebGL renderer with auto-resize, `scene/scene.ts` composes the placeholder scene, and `scene/room.ts` exposes `ROOM_DIMENSIONS` plus a placeholder floor + four-wall room. Added `tests/scene/room.test.ts` covering the room dimension contract and child count.
+- Verification: `grep -rnP '[\x{2014}\x{2013}]'` returned nothing; `git diff --check` clean; `npm run type-check` passed; `npm test` passed (2/2); `npm run build` produced `dist/` (chunk-size warning noted but acceptable for the prototype shell, code-splitting deferred to a polish slice).
+- Assumptions: chose `@dimforge/rapier3d-compat` (single bundled WASM) over the wasm-pack flavor to keep Vite config trivial. Picked a 10x10x4 unit room as the placeholder footprint; door placement and final scale will be revisited when REQ-027 lands. The fixed step is 1/60s with a 5-step max catch-up to prevent tab-restore physics explosions.
+- GDD coverage: no REQ rows flipped this slice. The scaffold is foundational: no user-visible requirement is yet satisfied, but every subsequent prototype slice depends on this shell. Build log entry added to `docs/gdd/23-prototype-scope.md`.
+- Followups: none new.
+
 ## 2026-05-08, Audit Remediation: Atomic Coverage Rows
 
 - Branch: `chore/spiral-audit-remediation`

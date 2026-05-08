@@ -39,3 +39,5 @@ These items are listed in `99-out-of-scope.md` with rationale.
 This section mirrors the original GDD prototype scope. The atomic-row coverage in `docs/GDD_COVERAGE.json` is what the loop tracks. This list is a human-readable double check.
 
 ### Build log
+
+- 2026-05-08: scaffolded the runtime stack (Vite + TypeScript + Three.js + Rapier3D). Empty placeholder room (10x10x4 units) renders with hemisphere fill plus directional key light at a fixed isometric camera. Files: `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`, `src/main.ts`, `src/app.ts`, `src/render/renderer.ts`, `src/scene/scene.ts`, `src/scene/room.ts`, `tests/scene/room.test.ts`. PR (pending: feature/vite-scaffold).
