@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-08, Per-Tick Input Recording Buffer (REQ-001 / REQ-002 partial)
+
+- Branch: `feature/per-tick-input-recording-20260508-020621`
+- PR: (pending)
+- Changed: laid the foundation for time-travel ghost replay. Added `src/sim/inputRecorder.ts` exposing `InputRecorder` (a class with `record(keys, timeOfDay)`, `length`, and `snapshot()`), the `InputFrame` and `InputRecording` types, and a pure `replayAtTick(recording, tick)` helper that returns a `PlanarVelocity` derived through `inputToVelocity`. Tick indices are assigned monotonically by the recorder so callers cannot skip or repeat a tick. Snapshots are deeply frozen and defensively copied so subsequent `record` calls cannot retroactively mutate a recording. `replayAtTick` returns a stable `{x, z}` zero vector for ticks past the end of the recording or for negative ticks. Wired the recorder into `src/app.ts`: each fixed physics step now pushes the live `keyboard.state` plus the current `timeOfDay.normalized()` into the active player's recorder before applying the velocity to the body. Added `tests/sim/inputRecorder.test.ts` covering record-then-snapshot round trip, monotonic ticks, defensive copy of live KeyState, snapshot non-mutation, deep freezing, replay mid-recording, replay past end, replay on empty, replay at negative tick, and the stable shape contract.
+- Verification: em-dash and en-dash grep returned nothing across the working tree. `git diff --check` clean. `npm test` 39/39 across the six suites. `npm run build` succeeded (chunk-size warning carried over). `npm run dev` smoke booted Vite and `curl http://localhost:5173/` returned HTTP 200.
+- Assumptions: the recorder owns tick numbering rather than accepting it from the caller. This trades a small loss of generality for a stronger invariant: a recording is always a contiguous monotonic sequence starting at 0. The recorder is owned by the active player at the app level; future slices that introduce additional instances will give each its own recorder. `replayAtTick` derives the planar velocity through `inputToVelocity` rather than caching it at record time so any later refinement to the input mapping (heading-aware movement, custom speed) replays consistently with live input. Captured time-of-day is stored alongside each frame in anticipation of REQ-030 (instance-color tinting based on origin timestamp), but no consumer reads it yet this slice. The recorder currently captures every tick of a session with no upper bound; bounded buffers and portal-triggered boundaries land with REQ-003.
+- GDD coverage: REQ-001 and REQ-002 flipped from `not_started` to `partial` (recordings exist; the permanent-past-instance half lands when the ghost replay capsule ships). Build log entry added to `docs/gdd/02-time-travel-rules.md`.
+- Followups: none new.
+
 ## 2026-05-08, Warm-to-Cool Room Background Tint (REQ-029 partial)
 
 - Branch: `feature/req-029-color-tint-20260508-015106`

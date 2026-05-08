@@ -5,6 +5,7 @@ import { buildScene } from "./scene/scene.ts";
 import { createPlayer } from "./scene/player.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
+import { InputRecorder } from "./sim/inputRecorder.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -29,6 +30,11 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // REQ-029: warm-to-cool room tint driven by a real-time clock for now.
   // A later slice locks this to the deterministic simulation step.
   const timeOfDay = new TimeOfDay();
+  // REQ-001 / REQ-002 foundation: capture input each fixed step so the active
+  // player's path can later be replayed by a ghost capsule. Ownership lives
+  // here at the app level for now; future slices that spawn additional
+  // instances will give each its own recorder.
+  const inputRecorder = new InputRecorder();
 
   // Track the most recent frame time so the physics integrator can use
   // a stable fixed step independent of the browser's vsync jitter.
@@ -59,7 +65,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
     while (physicsAccumulatorMs >= fixedStepMs && steps < maxStepsPerFrame) {
       // Sample input once per physics step so target velocity reacts at the
       // simulation rate, not the render rate. The mapping is pure; the only
-      // mutation is on the rigid body itself.
+      // mutation is on the rigid body itself. The same KeyState snapshot is
+      // also pushed into the recorder so a ghost capsule can later replay
+      // this path tick-for-tick.
+      inputRecorder.record(keyboard.state, timeOfDay.normalized());
       const velocity = inputToVelocity(keyboard.state);
       player.setPlanarVelocity(velocity.x, velocity.z);
       world.step();

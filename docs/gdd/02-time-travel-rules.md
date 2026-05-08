@@ -1,6 +1,6 @@
 # Time Travel Rules
 
-**Status:** not_started
+**Status:** partial
 
 The simulation rules that make the game internally consistent. These rules are non-negotiable. If a feature would require breaking one of these rules, the feature is wrong.
 
@@ -36,3 +36,5 @@ A door's lit/dark state is a function of where instances are arriving from in th
 - What happens if an instance is killed or removed? (Out of scope for v1; killing is not a mechanic. See `99-out-of-scope.md`.)
 
 ### Build log
+
+- 2026-05-08: per-tick input recording buffer lands as the foundation for REQ-001 / REQ-002. Each fixed simulation step pushes the active player's KeyState plus the current TimeOfDay normalized snapshot into an `InputRecorder`. Snapshots are deeply frozen and defensively copied. A pure `replayAtTick(recording, tick)` returns the recorded planar velocity, or a zero vector for ticks past the end of the recording. Files: `src/sim/inputRecorder.ts`, `src/app.ts`, `tests/sim/inputRecorder.test.ts`. PR (pending).
