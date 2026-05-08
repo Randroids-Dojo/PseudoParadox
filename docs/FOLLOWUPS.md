@@ -27,6 +27,15 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Nice To Have
 
+### F-005: CodeRabbit usage credits exhausted
+
+- Priority: nice-to-have
+- Context: PR #4 (`feature/player-capsule`) opened on 2026-05-08 received only an initial walkthrough comment, then CodeRabbit replied with a rate-limit warning indicating "You've run out of usage credits. Purchase more in the billing tab." The status check resolved to SUCCESS without producing any actual line-level review feedback. The autonomous loop merged PR #4 on a CLEAN merge state with no actionable comments outstanding.
+- Blocker: paid CodeRabbit usage caps a non-engineering action (billing).
+- Unblock condition: top up CodeRabbit credits in `app.coderabbit.ai/settings/subscription`, or accept that reviews on the PRs filed during the rate-limit window were a free-pass.
+- PR / Dot reference (when picked up):
+
+
 ### F-002: Author missing GDD section files
 
 - Priority: nice-to-have
