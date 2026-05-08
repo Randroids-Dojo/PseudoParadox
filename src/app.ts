@@ -7,8 +7,9 @@ import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
-import { createGhost, type GhostInstance } from "./sim/ghostInstance.ts";
+import type { GhostInstance } from "./sim/ghostInstance.ts";
 import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
+import { wireTraversal, type ActiveLifetime } from "./sim/portalTraversal.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -47,64 +48,50 @@ export async function startApp(container: HTMLElement): Promise<void> {
   sceneCtx.scene.add(floorRing);
   updateFloorRing(floorRing, player.body);
   const keyboard = createKeyboardState(window);
-  // REQ-001 / REQ-002 foundation: capture input each fixed step so the active
-  // player's path can later be replayed by a ghost capsule. Ownership lives
-  // here at the app level for now; future slices that spawn additional
-  // instances will give each its own recorder.
-  const inputRecorder = new InputRecorder();
-
-  // REQ-009 deepening: edge-triggered portal overlap detector. Reports an
-  // `enter` once per portal when the active player walks into its trigger
-  // volume and an `exit` once when leaving. Lit-only filtering and teleport
-  // land in the next slice; this detector emits for every portal the player
-  // overlaps. The detector is driven once per fixed simulation step so its
-  // tick numbers align with the recorder and ghost replay.
-  const portalTriggers = createPortalTriggerSet(sceneCtx.portals);
-  let portalTick = 0;
-  portalTriggers.onPortalOverlap((event) => {
-    // Console-only signal until the traversal slice consumes the event.
-    // eslint-disable-next-line no-console
-    console.log(
-      `portal ${event.kind}: ${event.portal.direction} -> ${event.portal.destinationHours}h @ tick ${event.tick} (lit=${event.portal.isLit})`,
-    );
-  });
-
-  // Active ghost instances. Populated on demand by the demo `g` keypress
-  // below. Each ghost owns its own tick counter that advances by one per
-  // fixed simulation step. Despawn semantics belong to a later slice tied to
-  // portal traversal (REQ-003); for now ghosts simply stop moving past the
-  // end of their recording.
-  const ghosts: GhostInstance[] = [];
-  // Capture the player's spawn position so demo ghosts can replay the
-  // recording from the same origin in world space. This is a prototype
-  // shortcut: a real time-travel slice will spawn ghosts at the door of
-  // arrival, not at world origin.
+  // REQ-001 / REQ-002 / REQ-003 foundation: the active player owns a
+  // `lifetime` whose `recorder` captures input each fixed step. On portal
+  // traversal the lifetime is closed (its recording snapshotted onto a
+  // ghost) and a fresh one is opened at the destination time. Holding the
+  // lifetime in a `let` keeps the per-frame capture path resolving against
+  // the current recorder after a traversal swaps it.
   const playerSpawn = (() => {
     const t = player.body.translation();
     return { x: t.x, z: t.z };
   })();
-
-  // Demo trigger: pressing `g` snapshots the recorder and spawns a ghost
-  // capsule that replays the snapshot from the player's spawn position. The
-  // recorder keeps recording afterward so successive `g` presses spawn a
-  // ghost of the longer-and-longer current run; a portal-driven boundary
-  // lands with REQ-003. `keydown` is filtered to ignore auto-repeat so a
-  // held key spawns exactly one ghost per physical press.
-  const onSpawnGhost = (event: KeyboardEvent): void => {
-    if (event.repeat) return;
-    if (event.code !== "KeyG") return;
-    const recording = inputRecorder.snapshot();
-    if (recording.length === 0) return;
-    const ghost = createGhost({
-      recording,
-      originNormalized: timeOfDay.normalized(),
-      scene: sceneCtx.scene,
-      world,
-      startPosition: playerSpawn,
-    });
-    ghosts.push(ghost);
+  const lifetime: ActiveLifetime = {
+    startPosition: { ...playerSpawn },
+    recorder: new InputRecorder(),
+    originNormalized: timeOfDay.normalized(),
   };
-  window.addEventListener("keydown", onSpawnGhost);
+
+  // REQ-009 deepening: edge-triggered portal overlap detector. Reports an
+  // `enter` once per portal when the active player walks into its trigger
+  // volume and an `exit` once when leaving. The detector is driven once per
+  // fixed simulation step so its tick numbers align with the recorder and
+  // ghost replay; lit/dark filtering and the teleport response live in
+  // `wireTraversal` below (REQ-009 runtime half / REQ-010).
+  const portalTriggers = createPortalTriggerSet(sceneCtx.portals);
+  let portalTick = 0;
+
+  // Active ghost instances. Each ghost owns its own tick counter that
+  // advances by one per fixed simulation step. Despawn semantics belong to
+  // a later slice tied to per-timeline ghost bookkeeping; for now ghosts
+  // simply stop moving past the end of their recording.
+  const ghosts: GhostInstance[] = [];
+
+  // REQ-009 runtime / REQ-013 / REQ-014 partial: on a lit-portal `enter`,
+  // snapshot the lifetime's recording into a ghost from the lifetime's
+  // start position, teleport the active player to the destination spawn
+  // pose, re-stamp the player's origin tint, and open a fresh lifetime at
+  // the destination time. Dark portals are filtered (REQ-010).
+  wireTraversal({
+    detector: portalTriggers,
+    player,
+    lifetime,
+    scene: sceneCtx.scene,
+    world,
+    ghosts,
+  });
 
   // Track the most recent frame time so the physics integrator can use
   // a stable fixed step independent of the browser's vsync jitter.
@@ -142,7 +129,7 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // mutation is on the rigid body itself. The same KeyState snapshot is
       // also pushed into the recorder so a ghost capsule can later replay
       // this path tick-for-tick.
-      inputRecorder.record(keyboard.state, timeOfDay.normalized());
+      lifetime.recorder.record(keyboard.state, timeOfDay.normalized());
       const velocity = inputToVelocity(keyboard.state);
       player.setPlanarVelocity(velocity.x, velocity.z);
       // Advance every active ghost by one tick BEFORE stepping the world so

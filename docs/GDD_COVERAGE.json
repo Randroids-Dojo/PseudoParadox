@@ -1,23 +1,25 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T18:42:00-05:00",
+  "updatedAt": "2026-05-08T18:50:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
       "requirement": "Timeline persistence: actions performed during a time period are recorded and replay as a permanent past instance whenever another instance witnesses that period from outside it.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
       "status": "partial",
-      "note": "Per-tick input recording buffer captures keyboard state plus normalized time-of-day each fixed step. A ghost capsule (`createGhost`) now drains a frozen recording back into a separate Rapier dynamic capsule body tick-for-tick, integrated through the same fixed-step physics loop as the active player. Pressing `g` in the running app spawns a ghost from a snapshot of the current recording at the player's spawn position; past the end of the recording the ghost holds zero planar velocity. Still partial because portal-driven recording boundaries (REQ-003) and timeline persistence across portal traversal are not yet implemented; the demo trigger spawns a ghost from world origin rather than from a door of arrival.",
+      "note": "Per-tick input recording buffer captures keyboard state plus normalized time-of-day each fixed step. A ghost capsule (`createGhost`) drains a frozen recording back into a separate Rapier dynamic capsule body tick-for-tick, integrated through the same fixed-step physics loop as the active player. `wireTraversal` (`src/sim/portalTraversal.ts`) now snapshots the active player's lifetime recording onto a ghost on every lit-portal entry and resets the recorder to a fresh buffer keyed at tick 0 of the destination timeline; the ghost spawns at the lifetime's start position with the lifetime's `originNormalized` as its tint. Still partial because per-timeline indexing of recordings (a ghost should only be visible in the timeline it was recorded in) is not yet implemented: the current slice keeps every spawned ghost alive in every timeline.",
       "implementationRefs": [
         "src/sim/inputRecorder.ts",
         "src/sim/timeOfDay.ts",
         "src/sim/ghostInstance.ts",
+        "src/sim/portalTraversal.ts",
         "src/app.ts"
       ],
       "testRefs": [
         "tests/sim/inputRecorder.test.ts",
-        "tests/sim/ghostInstance.test.ts"
+        "tests/sim/ghostInstance.test.ts",
+        "tests/sim/portalTraversal.test.ts"
       ],
       "followupRefs": []
     },
@@ -43,9 +45,19 @@
       "id": "REQ-003",
       "requirement": "Traveling through a portal does not erase the prior timeline; the entered instance continues to exist as a recorded instance in the timeline left behind.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "partial",
+      "note": "`wireTraversal` (`src/sim/portalTraversal.ts`) snapshots the active player's lifetime recording on every lit-portal entry and spawns a ghost replaying the snapshot from the lifetime's start position. The ghost persists after traversal so the path the player walked in the timeline being LEFT BEHIND is preserved as a permanent past instance. Still partial because the ghost is currently visible in every timeline (per-timeline indexing of recordings lands later, alongside REQ-007 instance generation numbering); a ghost recorded at 5:00 should only be visible when the player is back at 5:00.",
+      "implementationRefs": [
+        "src/sim/portalTraversal.ts",
+        "src/sim/ghostInstance.ts",
+        "src/sim/inputRecorder.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/portalTraversal.test.ts",
+        "tests/sim/ghostInstance.test.ts",
+        "tests/sim/inputRecorder.test.ts"
+      ],
       "followupRefs": []
     },
     {
@@ -106,11 +118,13 @@
       "id": "REQ-009",
       "requirement": "A lit door is enterable and sends the player to the door's fixed destination time.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
-      "status": "partial",
-      "note": "Lit/dark predicate lands as a pure function in `src/sim/portal.ts`. `isLit(portal)` returns the portal's stubbed flag; a downstream traversal slice will gate door entry on this predicate (REQ-009's runtime half: actually sending the player). The visual half lands too: `applyDoorLitState(door, true)` stamps a warm color plus an emissive boost on lit doors. Overlap detection lands in `src/sim/portalTrigger.ts`: `createPortalTriggerSet(portals)` returns an edge-triggered detector whose `step(x, z, tick)` emits `enter` and `exit` events per portal as the active player walks into and out of each door's trigger volume. The detector uses pure XZ AABB containment (the Rapier-sensor path was considered and deferred for simplicity); it emits for both lit and dark portals in this slice, and the next slice gates teleport on `isLit(portal)` at the subscriber. `src/app.ts` drives the detector once per fixed step after `world.step()` and registers a console-only subscriber. Still partial because traversal (actually sending the player), collision triggers via Rapier sensors, and arrival-derived lit/dark (REQ-011) have not shipped.",
+      "status": "done",
+      "note": "End-to-end traversal lands in `src/sim/portalTraversal.ts`. `wireTraversal` subscribes to the `PortalTriggerSet` from PR #14, filters `enter` events on `isLit(portal)`, and on each lit entry: snapshots the active player's lifetime recorder onto a ghost spawned at the lifetime's start position with the lifetime's `originNormalized` as the tint (so the ghost belongs to the timeline being LEFT BEHIND), teleports the active player to the destination spawn pose (room center default; pluggable via `resolveSpawnPose` for per-time spawn poses in the next slice), zeros the player's velocity, re-stamps `player.originNormalized` and the player mesh tint via `applyInstanceTint(destinationNormalized)` (REQ-030), and opens a fresh `InputRecorder` keyed at tick 0 of the destination timeline. Dark portals are filtered (REQ-010). `src/app.ts` constructs an `ActiveLifetime` next to the player and wires the traversal handler; the per-fixed-step recording call resolves against the lifetime's current recorder so a swap on traversal does not require re-binding. The destination spawn pose detail (per-time spawn poses authored from the GDD's Act 1 anchors at 5:00 and 6:00) lands as REQ-013/REQ-014 in the next slice; the resolver hook is in place for that slice to drop in a real lookup.",
       "implementationRefs": [
         "src/sim/portal.ts",
         "src/sim/portalTrigger.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/ghostInstance.ts",
         "src/scene/door.ts",
         "src/scene/room.ts",
         "src/scene/scene.ts",
@@ -119,6 +133,8 @@
       "testRefs": [
         "tests/sim/portal.test.ts",
         "tests/sim/portalTrigger.test.ts",
+        "tests/sim/portalTraversal.test.ts",
+        "tests/sim/ghostInstance.test.ts",
         "tests/scene/door.test.ts",
         "tests/scene/room.test.ts"
       ],
@@ -129,14 +145,16 @@
       "requirement": "A dark door is a spawn-only exit; instances emerge from it and the player cannot enter.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
       "status": "partial",
-      "note": "Dark portal half of the data model lands in `src/sim/portal.ts`. The Act 1 canonical table marks North and West dark per the GDD; `applyDoorLitState(door, false)` stamps the dark visual (near-black diffuse, no emissive). Traversal will refuse entry on dark portals via the same `isLit` predicate that REQ-009 reads. Still partial because the spawn-only-emergence runtime half (instances actually emerging from dark doors) lands later, alongside REQ-003 portal traversal.",
+      "note": "Dark portal half of the data model lands in `src/sim/portal.ts`. The Act 1 canonical table marks North and West dark per the GDD; `applyDoorLitState(door, false)` stamps the dark visual (near-black diffuse, no emissive). `wireTraversal` (`src/sim/portalTraversal.ts`) filters `enter` events on `isLit(portal)`, so dark portals do NOT teleport the player or spawn a ghost; this enforces the 'player cannot enter' half of REQ-010. Still partial because the spawn-only-emergence runtime half (instances actually emerging from dark doors when arriving from a recorded timeline) lands later, alongside per-timeline indexing.",
       "implementationRefs": [
         "src/sim/portal.ts",
+        "src/sim/portalTraversal.ts",
         "src/scene/door.ts",
         "src/scene/room.ts"
       ],
       "testRefs": [
         "tests/sim/portal.test.ts",
+        "tests/sim/portalTraversal.test.ts",
         "tests/scene/door.test.ts",
         "tests/scene/room.test.ts"
       ],
@@ -164,18 +182,39 @@
       "id": "REQ-013",
       "requirement": "Act 1 spawn at 5:00: the player stands in the center of the room, with North and West dark and South and East lit.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "partial",
+      "note": "The lit/dark Act 1 anchors are already wired (PR #12: `createActOnePortals` paints South and East lit, North and West dark) and the player capsule spawns at the room center. Traversal (`src/sim/portalTraversal.ts`) teleports the player to the destination spawn pose on lit-portal entry, defaulting to the room center via the pluggable `resolveSpawnPose` resolver. Still partial because the 5:00 timeline state itself (the time-of-day clock starting AT 5:00 normalized rather than at tick 0, and re-pinning to 5:00 on a return traversal) is not yet wired; the next slice authors per-time spawn poses and the 5:00 clock anchor.",
+      "implementationRefs": [
+        "src/sim/portal.ts",
+        "src/sim/portalTraversal.ts",
+        "src/scene/player.ts",
+        "src/scene/room.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/portal.test.ts",
+        "tests/sim/portalTraversal.test.ts",
+        "tests/scene/room.test.ts"
+      ],
       "followupRefs": []
     },
     {
       "id": "REQ-014",
       "requirement": "Door destinations from 5:00: South leads to 12:00 and East leads to 6:00.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "partial",
+      "note": "The destinations are authored in `ACT_ONE_PORTAL_SPECS` (PR #12: South to 12:00, East to 6:00) and `wireTraversal` reads `portal.destinationHours` via `portalDestinationNormalized` to drive both the player teleport's spawn pose lookup and the player's re-stamped `originNormalized` tint on traversal. So entering the South door at 5:00 now sends the player to 12:00 and entering the East door sends the player to 6:00, end-to-end. Still partial because the destination-side timeline state (the time-of-day clock pinning to 12:00 or 6:00 on arrival, and 6:00's West-only-lit configuration of REQ-015) is not yet wired; that flips REQ-014 to done alongside REQ-013 in the next slice.",
+      "implementationRefs": [
+        "src/sim/portal.ts",
+        "src/sim/portalTraversal.ts",
+        "src/scene/room.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/portal.test.ts",
+        "tests/sim/portalTraversal.test.ts",
+        "tests/scene/room.test.ts"
+      ],
       "followupRefs": []
     },
     {
