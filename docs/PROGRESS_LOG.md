@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-08, Player Capsule + Keyboard Movement (REQ-026 partial)
+
+- Branch: `feature/player-capsule`
+- PR: (pending)
+- Changed: spawned a keyboard-controllable player capsule at the room center. Added `src/input/keyboard.ts` (pure `inputToVelocity` mapping plus a DOM-bound `createKeyboardState` for WASD and arrow keys, default speed `PLAYER_SPEED_MPS = 4`). Added `src/scene/player.ts` (`createPlayer` builds a Three.js `CapsuleGeometry` mesh plus a Rapier dynamic capsule rigid body with capsule collider, locked pitch and roll, linear damping 8.0, exposes `setPlanarVelocity` and `syncMeshFromBody`). Wired the player into `src/app.ts`: input is sampled once per fixed physics step, target velocity is written to the body, mesh syncs to body translation each render frame. Added `tests/input/keyboard.test.ts` covering zero state, single-axis mappings, diagonal normalization, opposing-key cancellation, and custom speed.
+- Verification: em-dash and en-dash grep returns nothing across the working tree. `git diff --check` clean. `npm run type-check` passed. `npm test` passed (8/8 across `tests/scene/room.test.ts` and `tests/input/keyboard.test.ts`). `npm run build` produced `dist/` (chunk-size warning carried over from the scaffold slice; code-splitting still deferred).
+- Assumptions: WASD plus arrow keys both mapped to the same four directions because the prototype scope does not yet specify a binding scheme. Movement speed picked at 4 m/s by feel: a brisk walk that crosses the 10 m room in roughly 2.5 seconds. Yaw rotation is left enabled at the body level because future heading-aware slices may want it; the input layer ignores yaw for now. Linear damping 8.0 chosen so the capsule decelerates immediately when keys release (kinematic-feel) without drifting.
+- GDD coverage: REQ-026 flipped from `not_started` to `partial`. Build log entry added to `docs/gdd/23-prototype-scope.md`.
+- Followups: none new.
+
 ## 2026-05-08, Vite + TS + Three.js + Rapier3D Scaffold
 
 - Branch: `feature/vite-scaffold`
