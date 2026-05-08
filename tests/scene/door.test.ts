@@ -1,6 +1,12 @@
+import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import {
+  DOOR_DARK_COLOR_HEX,
   DOOR_DIMENSIONS,
+  DOOR_LIT_COLOR_HEX,
+  DOOR_LIT_EMISSIVE_HEX,
+  DOOR_LIT_EMISSIVE_INTENSITY,
+  applyDoorLitState,
   createDoor,
   createFourDoors,
   type DoorDirection,
@@ -78,5 +84,48 @@ describe("door", () => {
       "east",
       "west",
     ]);
+  });
+
+  describe("applyDoorLitState", () => {
+    const { width, depth } = ROOM_DIMENSIONS;
+
+    it("stamps the lit color and emissive boost on a lit door", () => {
+      const door = createDoor("south", width, depth);
+      applyDoorLitState(door, true);
+      const material = door.mesh.material as THREE.MeshStandardMaterial;
+      expect(material.color.getHex()).toBe(DOOR_LIT_COLOR_HEX);
+      expect(material.emissive.getHex()).toBe(DOOR_LIT_EMISSIVE_HEX);
+      expect(material.emissiveIntensity).toBeCloseTo(
+        DOOR_LIT_EMISSIVE_INTENSITY,
+      );
+    });
+
+    it("stamps the dark color and clears emissive on a dark door", () => {
+      const door = createDoor("north", width, depth);
+      applyDoorLitState(door, false);
+      const material = door.mesh.material as THREE.MeshStandardMaterial;
+      expect(material.color.getHex()).toBe(DOOR_DARK_COLOR_HEX);
+      expect(material.emissive.getHex()).toBe(0x000000);
+      expect(material.emissiveIntensity).toBe(0);
+    });
+
+    it("can be re-stamped from dark to lit on the same door (REQ-011 prep)", () => {
+      const door = createDoor("east", width, depth);
+      applyDoorLitState(door, false);
+      applyDoorLitState(door, true);
+      const material = door.mesh.material as THREE.MeshStandardMaterial;
+      expect(material.color.getHex()).toBe(DOOR_LIT_COLOR_HEX);
+      expect(material.emissiveIntensity).toBeCloseTo(
+        DOOR_LIT_EMISSIVE_INTENSITY,
+      );
+    });
+
+    it("throws on a door whose mesh has an unsupported material", () => {
+      const door = createDoor("west", width, depth);
+      door.mesh.material = new THREE.MeshBasicMaterial();
+      expect(() => applyDoorLitState(door, true)).toThrow(
+        /MeshStandardMaterial/,
+      );
+    });
   });
 });

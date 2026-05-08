@@ -1,5 +1,11 @@
+import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { ROOM_DIMENSIONS, buildRoom } from "../../src/scene/room.ts";
+import {
+  DOOR_DARK_COLOR_HEX,
+  DOOR_LIT_COLOR_HEX,
+  type DoorDirection,
+} from "../../src/scene/door.ts";
 
 describe("room", () => {
   it("exposes square room dimensions matching the prototype spec", () => {
@@ -16,5 +22,25 @@ describe("room", () => {
     const room = buildRoom();
     // 1 floor + 4 walls + 4 doors.
     expect(room.children.length).toBe(9);
+  });
+
+  it("paints South and East doors lit, North and West doors dark (REQ-013/REQ-014)", () => {
+    const room = buildRoom();
+    const doorMeshes = room.children.filter(
+      (c): c is THREE.Mesh => c instanceof THREE.Mesh && c.name.startsWith("door-"),
+    );
+    expect(doorMeshes).toHaveLength(4);
+
+    const colorByDirection = new Map<DoorDirection, number>();
+    for (const mesh of doorMeshes) {
+      const direction = mesh.name.replace("door-", "") as DoorDirection;
+      const material = mesh.material as THREE.MeshStandardMaterial;
+      colorByDirection.set(direction, material.color.getHex());
+    }
+
+    expect(colorByDirection.get("south")).toBe(DOOR_LIT_COLOR_HEX);
+    expect(colorByDirection.get("east")).toBe(DOOR_LIT_COLOR_HEX);
+    expect(colorByDirection.get("north")).toBe(DOOR_DARK_COLOR_HEX);
+    expect(colorByDirection.get("west")).toBe(DOOR_DARK_COLOR_HEX);
   });
 });

@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T18:15:00-05:00",
+  "updatedAt": "2026-05-08T18:25:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -61,9 +61,18 @@
       "id": "REQ-005",
       "requirement": "Portals have fixed locations and fixed destinations; a given door always leads to the same other time.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "partial",
+      "note": "Portal data model lands in `src/sim/portal.ts`. `createPortal({ door, destinationHours, isLit })` returns a frozen object with `readonly destinationHours` so the destination cannot mutate at runtime. Validation rejects non-finite destinations and destinations outside `[0, 24)` so callers downstream can trust the range. `createActOnePortals(doors)` produces the canonical four-door Act 1 configuration (South lit -> 12:00, East lit -> 6:00, North dark, West dark) and `src/scene/room.ts` consumes it at room build time. Still partial because the door MESH locations are placeholders sized for the prototype; a later slice will tie them to the room's actual collision geometry, and the runtime traversal half (REQ-009 send-the-player) is not yet implemented.",
+      "implementationRefs": [
+        "src/sim/portal.ts",
+        "src/scene/door.ts",
+        "src/scene/room.ts"
+      ],
+      "testRefs": [
+        "tests/sim/portal.test.ts",
+        "tests/scene/door.test.ts",
+        "tests/scene/room.test.ts"
+      ],
       "followupRefs": []
     },
     {
@@ -97,18 +106,36 @@
       "id": "REQ-009",
       "requirement": "A lit door is enterable and sends the player to the door's fixed destination time.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "partial",
+      "note": "Lit/dark predicate lands as a pure function in `src/sim/portal.ts`. `isLit(portal)` returns the portal's stubbed flag; a downstream traversal slice will gate door entry on this predicate (REQ-009's runtime half: actually sending the player). The visual half lands here too: `applyDoorLitState(door, true)` stamps a warm color plus an emissive boost on lit doors so the player can read which doors are enterable at a glance. Still partial because traversal, collision triggers, and arrival-derived lit/dark (REQ-011) have not shipped.",
+      "implementationRefs": [
+        "src/sim/portal.ts",
+        "src/scene/door.ts",
+        "src/scene/room.ts"
+      ],
+      "testRefs": [
+        "tests/sim/portal.test.ts",
+        "tests/scene/door.test.ts",
+        "tests/scene/room.test.ts"
+      ],
       "followupRefs": []
     },
     {
       "id": "REQ-010",
       "requirement": "A dark door is a spawn-only exit; instances emerge from it and the player cannot enter.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "partial",
+      "note": "Dark portal half of the data model lands in `src/sim/portal.ts`. The Act 1 canonical table marks North and West dark per the GDD; `applyDoorLitState(door, false)` stamps the dark visual (near-black diffuse, no emissive). Traversal will refuse entry on dark portals via the same `isLit` predicate that REQ-009 reads. Still partial because the spawn-only-emergence runtime half (instances actually emerging from dark doors) lands later, alongside REQ-003 portal traversal.",
+      "implementationRefs": [
+        "src/sim/portal.ts",
+        "src/scene/door.ts",
+        "src/scene/room.ts"
+      ],
+      "testRefs": [
+        "tests/sim/portal.test.ts",
+        "tests/scene/door.test.ts",
+        "tests/scene/room.test.ts"
+      ],
       "followupRefs": []
     },
     {

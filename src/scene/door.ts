@@ -20,6 +20,22 @@ export const DOOR_DIMENSIONS = {
   depth: 0.12,
 } as const;
 
+/**
+ * Visual constants for the lit/dark door state stub.
+ *
+ * REQ-009 (lit doors enterable) and REQ-010 (dark doors spawn-only) need a
+ * legible visual difference even before the runtime traversal slice ships,
+ * so a player looking at the room can tell which doors are which. A lit door
+ * keeps the warm placeholder color and adds an emissive boost; a dark door
+ * is desaturated almost to black with no emissive. REQ-011 will replace the
+ * stamping caller (lit/dark will be derived from timeline arrivals) but the
+ * material treatment stays the same.
+ */
+export const DOOR_LIT_COLOR_HEX = 0xf2c987;
+export const DOOR_DARK_COLOR_HEX = 0x1a1612;
+export const DOOR_LIT_EMISSIVE_HEX = 0x6a3a14;
+export const DOOR_LIT_EMISSIVE_INTENSITY = 0.6;
+
 export interface Door {
   mesh: THREE.Mesh;
   direction: DoorDirection;
@@ -103,4 +119,35 @@ export function createFourDoors(
     "west",
   ];
   return directions.map((d) => createDoor(d, roomWidth, roomDepth));
+}
+
+/**
+ * Stamps the lit/dark visual state onto a door's material in place.
+ *
+ * Lit doors get a warm color plus an emissive boost so they read as glowing.
+ * Dark doors get a near-black color and no emissive. The mesh's material is
+ * mutated rather than replaced so callers do not need to dispose of an old
+ * material.
+ *
+ * REQ-009 / REQ-010 ship the lit/dark visual stub here; REQ-011 will swap
+ * the call site to compute the boolean from the recorded timeline. The
+ * function only cares about the boolean, so the call site changes without
+ * touching this helper.
+ */
+export function applyDoorLitState(door: Door, isLit: boolean): void {
+  const material = door.mesh.material;
+  if (Array.isArray(material) || !(material instanceof THREE.MeshStandardMaterial)) {
+    throw new Error(
+      "applyDoorLitState: door mesh must have a single MeshStandardMaterial",
+    );
+  }
+  if (isLit) {
+    material.color.setHex(DOOR_LIT_COLOR_HEX);
+    material.emissive.setHex(DOOR_LIT_EMISSIVE_HEX);
+    material.emissiveIntensity = DOOR_LIT_EMISSIVE_INTENSITY;
+  } else {
+    material.color.setHex(DOOR_DARK_COLOR_HEX);
+    material.emissive.setHex(0x000000);
+    material.emissiveIntensity = 0;
+  }
 }
