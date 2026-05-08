@@ -120,8 +120,8 @@ export class TimeOfDay {
   /**
    * Force the clock to a specific normalized position. Inputs outside
    * [0, 1) are wrapped, so `setNormalized(1.25)` is equivalent to
-   * `setNormalized(0.25)`. The position is snapped to the nearest whole
-   * tick so subsequent `advanceTicks` calls stay drift-free.
+   * `setNormalized(0.25)`. The position is wrapped into [0, 1) and floored
+   * to a whole tick so subsequent `advanceTicks` calls stay drift-free.
    */
   setNormalized(n: number): void {
     if (!Number.isFinite(n)) {

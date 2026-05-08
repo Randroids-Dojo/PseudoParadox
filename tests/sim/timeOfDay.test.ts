@@ -6,6 +6,15 @@ import {
 } from "../../src/sim/timeOfDay.ts";
 
 describe("TimeOfDay", () => {
+  it("wraps and floors initialNormalized at construction time", () => {
+    // Locks the startup determinism contract: the constructor uses the same
+    // wrap-and-floor path setNormalized does, so seeking with an out-of-range
+    // initial value lands on the same tick as a constructor-built clock.
+    const clock = new TimeOfDay({ cycleSeconds: 10, initialNormalized: 1.251 });
+    expect(clock.tick()).toBe(150);
+    expect(clock.normalized()).toBeCloseTo(0.25, 12);
+  });
+
   it("starts at normalized 0 and tick 0 by default", () => {
     const clock = new TimeOfDay();
     expect(clock.normalized()).toBe(0);
