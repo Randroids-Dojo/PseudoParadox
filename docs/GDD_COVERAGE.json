@@ -1,21 +1,23 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T02:55:00-05:00",
+  "updatedAt": "2026-05-08T18:15:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
       "requirement": "Timeline persistence: actions performed during a time period are recorded and replay as a permanent past instance whenever another instance witnesses that period from outside it.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
       "status": "partial",
-      "note": "Per-tick input recording buffer captures keyboard state plus normalized time-of-day each fixed step. The time-of-day capture is now deterministic across frame rates because `TimeOfDay` is locked to the fixed simulation tick (REQ-029 finishing pass). Permanent-past-instance replay (the ghost capsule that drains a frozen recording back into a movement step) lands in a follow-up slice.",
+      "note": "Per-tick input recording buffer captures keyboard state plus normalized time-of-day each fixed step. A ghost capsule (`createGhost`) now drains a frozen recording back into a separate Rapier dynamic capsule body tick-for-tick, integrated through the same fixed-step physics loop as the active player. Pressing `g` in the running app spawns a ghost from a snapshot of the current recording at the player's spawn position; past the end of the recording the ghost holds zero planar velocity. Still partial because portal-driven recording boundaries (REQ-003) and timeline persistence across portal traversal are not yet implemented; the demo trigger spawns a ghost from world origin rather than from a door of arrival.",
       "implementationRefs": [
         "src/sim/inputRecorder.ts",
         "src/sim/timeOfDay.ts",
+        "src/sim/ghostInstance.ts",
         "src/app.ts"
       ],
       "testRefs": [
-        "tests/sim/inputRecorder.test.ts"
+        "tests/sim/inputRecorder.test.ts",
+        "tests/sim/ghostInstance.test.ts"
       ],
       "followupRefs": []
     },
@@ -23,14 +25,17 @@
       "id": "REQ-002",
       "requirement": "Past instances replay recorded input frame-exact and cannot be altered, only worked around or physically redirected.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
-      "status": "partial",
-      "note": "Pure `replayAtTick(recording, tick)` returns the recorded planar velocity for any tick (zero vector past the end of the recording). The simulation tick that drives recording is now drift-free (REQ-029 finishing pass) so replay timing matches origin timing across frame rates. Wiring this onto a ghost capsule lands in a follow-up slice; the recording itself is already immutable via deep freezing.",
+      "status": "done",
+      "note": "End-to-end ghost replay landed: `createGhost` builds a Three.js mesh + Rapier dynamic capsule whose `advanceTick()` writes `replayAtTick(recording, tickIndex)` onto the body's planar velocity each fixed step, preserving y so gravity is not overwritten. The recording itself is deeply frozen at snapshot time so it cannot be mutated after capture. Past the end of the recording the ghost writes a zero planar velocity each tick and decelerates to a stop under the same linear damping as the active player. The ghost is a dynamic body with the same capsule collider as the player so it can be physically redirected (worked around) but not altered. `applyInstanceTint` stamps each ghost with its origin-time color so the player can read which timeline a ghost came from.",
       "implementationRefs": [
         "src/sim/inputRecorder.ts",
-        "src/sim/timeOfDay.ts"
+        "src/sim/timeOfDay.ts",
+        "src/sim/ghostInstance.ts",
+        "src/app.ts"
       ],
       "testRefs": [
-        "tests/sim/inputRecorder.test.ts"
+        "tests/sim/inputRecorder.test.ts",
+        "tests/sim/ghostInstance.test.ts"
       ],
       "followupRefs": []
     },
