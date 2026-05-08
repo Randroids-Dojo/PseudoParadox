@@ -1,4 +1,4 @@
-# Pseudo Paradox — Game Design Document
+# Pseudo Paradox , Game Design Document
 
 **Original Concept:** May 14, 2015  
 **Design Session:** May 2026  
@@ -42,7 +42,7 @@ There will be no paradoxes in this game no matter what the user does. Even thoug
 
 You wake up on the floor of a spaceship. In a slightly rectangular room. You are disoriented. You don't know who you are or how you got there. You look around and see a door on each wall. Do you dare enter?
 
-Pseudo Paradox is a single-room time travel puzzle game. The player manipulates their own past instances — physically knocking them out, dragging their bodies, and coordinating their actions — to escape a room. Every action is deterministic. No paradoxes are possible. The confusion is the puzzle.
+Pseudo Paradox is a single-room time travel puzzle game. The player manipulates their own past instances , physically knocking them out, dragging their bodies, and coordinating their actions , to escape a room. Every action is deterministic. No paradoxes are possible. The confusion is the puzzle.
 
 ---
 
@@ -50,10 +50,10 @@ Pseudo Paradox is a single-room time travel puzzle game. The player manipulates 
 
 Prioritized, in order:
 
-1. **Interaction with multiple selves** — The core mechanic. Everything serves this.
-2. **No paradoxes, ever** — Timelines are written and immutable. Player trust is non-negotiable.
-3. **Sci-fi diegetic feel** — UI lives in the world. The room tells you everything.
-4. **Logical puzzles** — Not contrived. Every puzzle is a natural extension of the situation.
+1. **Interaction with multiple selves** , The core mechanic. Everything serves this.
+2. **No paradoxes, ever** , Timelines are written and immutable. Player trust is non-negotiable.
+3. **Sci-fi diegetic feel** , UI lives in the world. The room tells you everything.
+4. **Logical puzzles** , Not contrived. Every puzzle is a natural extension of the situation.
 
 ---
 
@@ -61,7 +61,7 @@ Prioritized, in order:
 
 - Timelines are **written by action**. Once you have done something in a time period, that action is permanent and will replay as a past instance.
 - Past instances **replay recorded input** exactly. They cannot be changed, only worked around or physically redirected.
-- Traveling through a portal does not erase your prior timeline — it adds to it.
+- Traveling through a portal does not erase your prior timeline , it adds to it.
 - There are **no paradoxes**. You cannot prevent yourself from having done something you already did.
 - Portals are **fixed in location** and do not change destinations.
 - An **unvisited future** (a time period no instance has entered) contains no instances and no written events.
@@ -78,11 +78,11 @@ Each time a new instance enters the room, they are one generation further from t
 
 Clock reads 12:00. Two people drag in a knocked-out body from the open North door to the center of the room. Fade to black.
 
-Fade in. Clock reads 5:00. You are standing in the center of the room. The North door is dark (spawn-only). The South and East doors are lit (enterable). South goes back to 12:00 — if you go there, the two people will knock you out. East goes forward to 6:00, where the room is empty and only the West door is lit. The West door returns to 5:00.
+Fade in. Clock reads 5:00. You are standing in the center of the room. The North door is dark (spawn-only). The South and East doors are lit (enterable). South goes back to 12:00 , if you go there, the two people will knock you out. East goes forward to 6:00, where the room is empty and only the West door is lit. The West door returns to 5:00.
 
 ### Act 2
 
-Go East to 6:00, then back West to 5:00. You see another instance of yourself. It repeats what you did — it enters the West door and disappears.
+Go East to 6:00, then back West to 5:00. You see another instance of yourself. It repeats what you did , it enters the West door and disappears.
 
 Repeat the loop. This time, when you return to 5:00, knock out the other instance. Drag the body through the East door to 6:00. Wait for another instance to wake up. He knocks you out. Fade out.
 
@@ -90,7 +90,7 @@ Repeat the loop. This time, when you return to 5:00, knock out the other instanc
 
 Fade in. Clock reads 5:00. Repeat the Act 2 sequence to get a knocked-out instance at 6:00. Wait for the other instance to wake. This time, run toward the West door as he chases you. You both get pulled through and arrive at 5:00. Now there are two other instances present.
 
-They are curious about each other. You and the instance from 6:00 team up — knock out the 5:00 instance. Drag him South to 12:00. Place the body in the center of the room, just as was done to you at the start. Knock out the instance you brought from 6:00. Run through the now-open North door — no one is left to stop you.
+They are curious about each other. You and the instance from 6:00 team up , knock out the 5:00 instance. Drag him South to 12:00. Place the body in the center of the room, just as was done to you at the start. Knock out the instance you brought from 6:00. Run through the now-open North door , no one is left to stop you.
 
 **Level complete.**
 
@@ -111,13 +111,13 @@ They are curious about each other. You and the instance from 6:00 team up — kn
 ### Portal Interaction
 
 - Walk into a lit door to travel to its fixed destination time.
-- Dark doors are spawn-only exits — other instances emerge from them, you cannot enter.
+- Dark doors are spawn-only exits , other instances emerge from them, you cannot enter.
 - No destination is displayed. The player learns portal destinations through experience.
 
 ### Instance Replay
 
 - Past instances replay previously recorded player input frame-by-frame.
-- Their behavior cannot be altered — only physically interrupted (knockouts, repositioning bodies).
+- Their behavior cannot be altered , only physically interrupted (knockouts, repositioning bodies).
 - Instances follow their recorded path even if the world around them has changed.
 
 ---
@@ -134,7 +134,7 @@ Design philosophy: **almost everything is diegetic.** The room tells the player 
 ### Instance Identity
 
 - Each instance's **sprite tints to match the room color at the exact moment they last traveled**. Their glow is a living timestamp. A warm-amber instance standing in a cool-blue room is immediately readable as displaced in time.
-- The **player's active instance** is indicated by a subtle UI ring on the floor underfoot — the only non-diegetic element.
+- The **player's active instance** is indicated by a subtle UI ring on the floor underfoot , the only non-diegetic element.
 
 ### Door State
 
@@ -178,7 +178,7 @@ Design philosophy: **almost everything is diegetic.** The room tells the player 
 
 ### The Room
 
-- **Slightly rectangular.** Not a perfect square — enough asymmetry to feel like a real space rather than a test chamber.
+- **Slightly rectangular.** Not a perfect square , enough asymmetry to feel like a real space rather than a test chamber.
 - One large open room. A door on each wall. Sparse set dressing to establish spaceship context without cluttering the play space.
 - **No ceiling.** Open-top dollhouse view only.
 
@@ -186,11 +186,11 @@ Design philosophy: **almost everything is diegetic.** The room tells the player 
 
 The room's color temperature shifts across a warm-to-cool spectrum as time progresses. This system does triple duty:
 
-1. **Time signal** — warm = early, cool = late.
-2. **Instance identifier** — each sprite tints to match the room color at their last travel moment.
-3. **Environmental mood** — the room feels different at different times.
+1. **Time signal** , warm = early, cool = late.
+2. **Instance identifier** , each sprite tints to match the room color at their last travel moment.
+3. **Environmental mood** , the room feels different at different times.
 
-A warm-amber instance standing in a cool-blue room is visually displaced — their timestamp is visible at a glance.
+A warm-amber instance standing in a cool-blue room is visually displaced , their timestamp is visible at a glance.
 
 ---
 
@@ -227,7 +227,7 @@ npm run dev
 The prototype covers exactly Acts 1-3 in a single room. Success criteria:
 
 - [ ] Player spawns in room at 5:00
-- [ ] Four doors present — lit/dark state correctly reflects portal availability
+- [ ] Four doors present , lit/dark state correctly reflects portal availability
 - [ ] Room color tints across warm-to-cool spectrum over time
 - [ ] Traveling through a door records player input and spawns a replaying instance
 - [ ] Instances tint to their origin timestamp color
@@ -244,8 +244,8 @@ The prototype covers exactly Acts 1-3 in a single room. Success criteria:
 
 These were flagged during design but are out of prototype scope:
 
-- **AI state tracking per instance** — Anger, Energy, Strength attributes that persist and shift across timeline generations. Larger instances are weaker or angrier based on what happened to them.
-- **Multiplayer** — splitscreen or online, one player time-jumps first, the other follows and hunts the original instance. Mechanics for leaving objects or messages across time periods.
-- **Multi-room / multi-level** — different portal configurations, different objectives, different times of day.
-- **Decades-scale narrative** — final level revisits the first room with an older version of yourself alongside the younger instance. Prototype is a single room over a single day.
-- **Portal variability** — portals that shift destinations after set time thresholds (flagged as high confusion risk, revisit only after core loop is proven).
+- **AI state tracking per instance** , Anger, Energy, Strength attributes that persist and shift across timeline generations. Larger instances are weaker or angrier based on what happened to them.
+- **Multiplayer** , splitscreen or online, one player time-jumps first, the other follows and hunts the original instance. Mechanics for leaving objects or messages across time periods.
+- **Multi-room / multi-level** , different portal configurations, different objectives, different times of day.
+- **Decades-scale narrative** , final level revisits the first room with an older version of yourself alongside the younger instance. Prototype is a single room over a single day.
+- **Portal variability** , portals that shift destinations after set time thresholds (flagged as high confusion risk, revisit only after core loop is proven).
