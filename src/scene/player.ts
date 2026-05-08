@@ -28,8 +28,9 @@ export interface Player {
   body: RAPIER.RigidBody;
   /**
    * Sets the desired planar (world-XZ) velocity on the body, preserving
-   * vertical velocity from gravity. Call this once per frame from the
-   * input layer; physics integration happens on the fixed step.
+   * vertical velocity from gravity. Call this once per fixed physics step
+   * (from the physics update loop), not once per render frame, so the
+   * target velocity reacts at the simulation rate.
    */
   setPlanarVelocity: (vx: number, vz: number) => void;
   /**
