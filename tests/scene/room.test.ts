@@ -21,12 +21,19 @@ describe("room", () => {
   it("builds a group containing a floor, four walls, and four doors", () => {
     const room = buildRoom();
     // 1 floor + 4 walls + 4 doors.
-    expect(room.children.length).toBe(9);
+    expect(room.group.children.length).toBe(9);
+  });
+
+  it("returns the four canonical Act 1 portals alongside the room group", () => {
+    const room = buildRoom();
+    expect(room.portals).toHaveLength(4);
+    const directions = room.portals.map((p) => p.direction);
+    expect(directions).toEqual(["south", "east", "north", "west"]);
   });
 
   it("paints South and East doors lit, North and West doors dark (REQ-013/REQ-014)", () => {
     const room = buildRoom();
-    const doorMeshes = room.children.filter(
+    const doorMeshes = room.group.children.filter(
       (c): c is THREE.Mesh => c instanceof THREE.Mesh && c.name.startsWith("door-"),
     );
     expect(doorMeshes).toHaveLength(4);

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { applyDoorLitState, createFourDoors } from "./door.ts";
 import { createActOnePortals } from "../sim/portal.ts";
+import type { Portal } from "../sim/portal.ts";
 
 /**
  * Canonical room dimensions for the prototype.
@@ -18,12 +19,23 @@ export const ROOM_DIMENSIONS = {
 } as const;
 
 /**
+ * Aggregates the room's scene group and the portal data structures built
+ * alongside its doors. The portals are returned so `src/app.ts` can wire
+ * runtime systems (overlap detection, traversal) against the same Portal
+ * instances that `buildRoom` paints lit/dark on at construction.
+ */
+export interface RoomBuild {
+  group: THREE.Group;
+  portals: readonly Portal[];
+}
+
+/**
  * Builds the placeholder room: a floor, four walls, and four doors (one
  * per wall). REQ-027 lands the door meshes; REQ-028 will drive their
  * lit/dark visual state and REQ-001/REQ-005 will wire them to portal
  * traversal.
  */
-export function buildRoom(): THREE.Group {
+export function buildRoom(): RoomBuild {
   const group = new THREE.Group();
   group.name = "room";
 
@@ -94,5 +106,5 @@ export function buildRoom(): THREE.Group {
     applyDoorLitState(portal.door, portal.isLit);
   }
 
-  return group;
+  return { group, portals };
 }
