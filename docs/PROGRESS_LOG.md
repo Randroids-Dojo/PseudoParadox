@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-08, Subtle Floor Ring Under The Active Player (REQ-031 done)
+
+- Branch: `feature/req-031-floor-ring-20260508-182919`
+- PR: (pending)
+- Changed: added `src/scene/floorRing.ts` exporting `createFloorRing()` and `updateFloorRing(ring, body)`. The ring is a Three.js `RingGeometry` (inner radius 0.5, outer 0.7, 48 segments) with a `MeshBasicMaterial` at color `#ffffff`, opacity 0.25, transparent, double-sided, and `depthWrite: false` so the translucent ring does not punch a hole in the depth buffer for later transparent geometry. The mesh is rotated -90deg about X to lie flat on the XZ floor plane and pinned at `y = FLOOR_RING_Y_OFFSET = 0.01` to clear the floor box's top face without z-fighting at the prototype camera distance. `updateFloorRing` reads the body's translation, copies x and z onto the ring, and pins y to the configured offset so a jumping or falling player cannot drag the ring off the floor. `src/app.ts` now creates the ring after the player, adds it to the scene, snaps it once at construction, and calls `updateFloorRing(floorRing, player.body)` once per render frame after `player.syncMeshFromBody()`. New tests in `tests/scene/floorRing.test.ts` (7 cases): mesh name and flat-on-XZ rotation, subtle material defaults (color, opacity, transparent, DoubleSide, depthWrite off), inner/outer radii match the configured constants, body translation copied to ring x/z while y stays pinned, follow-up updates do not leak previous-frame pose, synthetic player at world origin lands the ring at `(0, FLOOR_RING_Y_OFFSET, 0)`, and the rotation stays untouched across updates.
+- Verification: `npm test` 92/92 across 11 suites. `npm run build` succeeded (chunk-size warning carried over from prior PRs). Em-dash and en-dash grep returned nothing across the working tree (`. --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.vercel`). `git diff --check` clean.
+- Assumptions: the ring is a single neutral-white tone, not warm-to-cool tinted; the GDD calls it the SOLE non-diegetic UI element so it stays outside the in-world color language. `MeshBasicMaterial` is used (not standard) so the ring color is unaffected by scene lights and remains constant against the warm-to-cool background tint. The ring tracks the active player capsule directly; multi-instance handoff (ring follows the most-recently-spawned active instance after a portal traversal) is out of scope for this slice and lands with the slice that introduces multi-active-player semantics. The ring renders inside the same `THREE.Scene` as the room; a separate overlay scene was considered and rejected because a single-scene render keeps depth ordering against the floor consistent without compositing.
+- GDD coverage: REQ-031 from `not_started` to `done` (the prototype-scope success criterion is "the active player instance shows a subtle floor ring underfoot" and that ships end-to-end here). Build log entry appended to `docs/gdd/23-prototype-scope.md`.
+- Followups: none new.
+
 ## 2026-05-08, Portal Data Structure With Stubbed Lit/Dark (REQ-005 / REQ-009 / REQ-010 partial)
 
 - Branch: `feature/portal-data-structure-20260508-182035`
