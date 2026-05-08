@@ -1,16 +1,17 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T02:08:00-05:00",
+  "updatedAt": "2026-05-08T02:18:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
       "requirement": "Timeline persistence: actions performed during a time period are recorded and replay as a permanent past instance whenever another instance witnesses that period from outside it.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
       "status": "partial",
-      "note": "Per-tick input recording buffer captures keyboard state plus normalized time-of-day each fixed step. Permanent-past-instance replay (the ghost capsule that drains a frozen recording back into a movement step) lands in a follow-up slice.",
+      "note": "Per-tick input recording buffer captures keyboard state plus normalized time-of-day each fixed step. The time-of-day capture is now deterministic across frame rates because `TimeOfDay` is locked to the fixed simulation tick (REQ-029 finishing pass). Permanent-past-instance replay (the ghost capsule that drains a frozen recording back into a movement step) lands in a follow-up slice.",
       "implementationRefs": [
         "src/sim/inputRecorder.ts",
+        "src/sim/timeOfDay.ts",
         "src/app.ts"
       ],
       "testRefs": [
@@ -23,9 +24,10 @@
       "requirement": "Past instances replay recorded input frame-exact and cannot be altered, only worked around or physically redirected.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
       "status": "partial",
-      "note": "Pure `replayAtTick(recording, tick)` returns the recorded planar velocity for any tick (zero vector past the end of the recording). Wiring this onto a ghost capsule lands in a follow-up slice; the recording itself is already immutable via deep freezing.",
+      "note": "Pure `replayAtTick(recording, tick)` returns the recorded planar velocity for any tick (zero vector past the end of the recording). The simulation tick that drives recording is now drift-free (REQ-029 finishing pass) so replay timing matches origin timing across frame rates. Wiring this onto a ghost capsule lands in a follow-up slice; the recording itself is already immutable via deep freezing.",
       "implementationRefs": [
-        "src/sim/inputRecorder.ts"
+        "src/sim/inputRecorder.ts",
+        "src/sim/timeOfDay.ts"
       ],
       "testRefs": [
         "tests/sim/inputRecorder.test.ts"
@@ -284,8 +286,8 @@
       "id": "REQ-029",
       "requirement": "Room color tints across a warm-to-cool spectrum over time.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "partial",
-      "note": "Warm-to-cool background tint is wired through a real-time TimeOfDay clock. The clock is not yet locked to the deterministic simulation tick; that finishing pass is owed before REQ-001 timeline recording can be deterministic.",
+      "status": "done",
+      "note": "Warm-to-cool background tint is wired through a tick-locked TimeOfDay clock. Internal state is an integer `tickIndex` modulo `ticksPerCycle`, advanced once per fixed 60Hz physics step in `src/app.ts` via `advanceTicks(1)`. The same number of fixed steps always produces the same `normalized()` output, so timeline recording playback (REQ-001) and per-instance origin-time tints (REQ-030) can rely on it.",
       "implementationRefs": [
         "src/sim/timeOfDay.ts",
         "src/render/colorTint.ts",
