@@ -41,6 +41,11 @@ export class TimeOfDay {
     }
     this.cycleSeconds = cycleSeconds;
     const initial = options.initialNormalized ?? 0;
+    if (!Number.isFinite(initial)) {
+      throw new Error(
+        `TimeOfDay initialNormalized must be a finite number, got ${initial}`,
+      );
+    }
     this.elapsedSeconds = wrapNonNegative(initial, 1) * cycleSeconds;
   }
 

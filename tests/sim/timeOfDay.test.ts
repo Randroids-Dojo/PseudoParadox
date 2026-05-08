@@ -50,4 +50,9 @@ describe("TimeOfDay", () => {
     expect(() => new TimeOfDay({ cycleSeconds: 0 })).toThrow();
     expect(() => new TimeOfDay({ cycleSeconds: -1 })).toThrow();
   });
+
+  it("rejects non-finite initialNormalized", () => {
+    expect(() => new TimeOfDay({ initialNormalized: NaN })).toThrow();
+    expect(() => new TimeOfDay({ initialNormalized: Infinity })).toThrow();
+  });
 });
