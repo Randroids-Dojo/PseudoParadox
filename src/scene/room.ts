@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { createFourDoors } from "./door.ts";
+import { applyDoorLitState, createFourDoors } from "./door.ts";
+import { createActOnePortals } from "../sim/portal.ts";
 
 /**
  * Canonical room dimensions for the prototype.
@@ -78,8 +79,19 @@ export function buildRoom(): THREE.Group {
 
   // Doors: one per wall, placed at the wall midpoint. Visual-only for now;
   // collisions and portal traversal land in later slices (REQ-001/REQ-005).
-  for (const door of createFourDoors(width, depth)) {
+  // Each door is paired with a Portal carrying its fixed destination time
+  // and a stubbed lit/dark flag (REQ-005, REQ-009, REQ-010). The canonical
+  // Act 1 configuration (REQ-013/REQ-014) lights South and East and leaves
+  // North and West dark. The visual differentiation is applied here so the
+  // room reads correctly at startup; a downstream slice (REQ-011) will
+  // replace the stub with timeline-derived lit/dark and re-stamp on change.
+  const doors = createFourDoors(width, depth);
+  for (const door of doors) {
     group.add(door.mesh);
+  }
+  const portals = createActOnePortals(doors);
+  for (const portal of portals) {
+    applyDoorLitState(portal.door, portal.isLit);
   }
 
   return group;
