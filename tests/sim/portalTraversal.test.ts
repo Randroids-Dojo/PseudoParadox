@@ -397,6 +397,50 @@ describe("wireTraversal: multi-portal sequence", () => {
   });
 });
 
+describe("wireTraversal: spawn pose contract", () => {
+  it("default room-center pose sits outside every Act 1 portal trigger volume (no re-entry ping-pong)", () => {
+    // Sanity guard: the SpawnPoseResolver contract says the resolved pose
+    // must be outside every trigger volume. If a future per-time resolver
+    // breaks this invariant the next `step()` after a teleport will fire a
+    // fresh enter event on the trigger the player spawned in. The default
+    // resolver returns (0, 0); confirm that is outside all four canonical
+    // Act 1 triggers.
+    const doors = createFourDoors(ROOM_DIMENSIONS.width, ROOM_DIMENSIONS.depth);
+    const portals = createActOnePortals(doors);
+    const detector = createPortalTriggerSet(portals);
+    for (const trigger of detector.triggers) {
+      const insideRoomCenter =
+        Math.abs(0 - trigger.centerX) <= trigger.halfX &&
+        Math.abs(0 - trigger.centerZ) <= trigger.halfZ;
+      expect(insideRoomCenter).toBe(false);
+    }
+  });
+
+  it("traversing through a lit portal does not immediately re-trigger another enter at the destination", () => {
+    // End-to-end guard: an enter on the south trigger teleports the player
+    // to the room center; the very next `step()` (now at the room center)
+    // must not emit any new enter events. If this regresses a future change
+    // (e.g. a per-time resolver puts the player inside another trigger),
+    // this test catches the ping-pong loop before it ships.
+    const { scene, world, player, lifetime, ghosts } = buildHarness();
+    const doors = createFourDoors(ROOM_DIMENSIONS.width, ROOM_DIMENSIONS.depth);
+    const portals = createActOnePortals(doors);
+    const detector = createPortalTriggerSet(portals);
+    wireTraversal({ detector, player, lifetime, scene, world, ghosts });
+
+    const events: string[] = [];
+    detector.onPortalOverlap((e) => events.push(`${e.kind}:${e.portal.direction}`));
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, HALF_DEPTH - 0.4, 0); // enter south
+    // After traversal the player is at (0, 0). No new enter should fire.
+    detector.step(0, 0, 1);
+    detector.step(0, 0, 2);
+
+    expect(events.filter((e) => e.startsWith("enter"))).toEqual(["enter:south"]);
+  });
+});
+
 describe("wireTraversal: custom spawn pose resolver", () => {
   it("uses the supplied resolver to pick the destination spawn position", () => {
     const { scene, world, player, lifetime, ghosts } = buildHarness();

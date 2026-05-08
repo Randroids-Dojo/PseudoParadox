@@ -379,16 +379,20 @@
       "requirement": "Past instances tint to the room color at the time they last traveled, providing a visible timestamp.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
       "status": "partial",
-      "note": "`applyInstanceTint(mesh, originNormalized)` stamps a capsule's material color with `interpolateWarmToCool(originNormalized)` at construction. The active player capsule receives the stamp at spawn from `TimeOfDay.normalized()` so the wiring is end-to-end visible. Re-stamping on portal traversal lands with the ghost-replay capsule slice, which also handles past-instance lifetime; this slice covers the helper plus the active-player wiring only.",
+      "note": "`applyInstanceTint(mesh, originNormalized)` stamps a capsule's material color with `interpolateWarmToCool(originNormalized)` at construction. The active player capsule receives the stamp at spawn from `TimeOfDay.normalized()`. Ghost capsules spawned via `createGhost(...)` carry an `originNormalized` derived from the recording's source timeline. Portal traversal (`src/sim/portalTraversal.ts`) now re-stamps the active player's tint and `originNormalized` to the destination's normalized time on every lit-portal entry via `applyInstanceTint(player.mesh, destinationNormalized)`, and tints the spawned ghost on the LIFETIME's origin (the timeline being left behind). Still partial because the system's notion of 'the time the instance last traveled' is currently a one-shot stamp on traversal rather than a per-frame mirror of the rendered timeline; a future per-timeline-rendering slice may revisit this row.",
       "implementationRefs": [
         "src/render/instanceTint.ts",
         "src/render/colorTint.ts",
         "src/scene/player.ts",
+        "src/sim/ghostInstance.ts",
+        "src/sim/portalTraversal.ts",
         "src/app.ts"
       ],
       "testRefs": [
         "tests/render/instanceTint.test.ts",
-        "tests/scene/player.test.ts"
+        "tests/scene/player.test.ts",
+        "tests/sim/ghostInstance.test.ts",
+        "tests/sim/portalTraversal.test.ts"
       ],
       "followupRefs": []
     },

@@ -93,6 +93,15 @@ export interface ActivePlayerHandle {
  * the world-space spawn position for that timeline. The default resolver
  * always returns the room center; the next slice will author per-time spawn
  * poses (REQ-013).
+ *
+ * CONTRACT: the returned pose MUST sit outside every portal trigger volume
+ * in the room. Otherwise the next `PortalTriggerSet.step()` call after the
+ * teleport will see the player as "newly inside" the trigger the player
+ * spawned in and emit a fresh `enter` event, kicking off a re-traversal
+ * loop. The default room-center pose `(0, 0)` is safely outside all four
+ * Act 1 trigger volumes (which sit ~4.7m from center on a 10x10 room).
+ * The next slice authoring per-time spawn poses must hold this invariant
+ * (or extend the detector with a "skip-one-tick" priming hook).
  */
 export type SpawnPoseResolver = (destinationNormalized: number) => {
   x: number;
