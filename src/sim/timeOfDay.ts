@@ -58,12 +58,17 @@ export class TimeOfDay {
         `TimeOfDay ticksPerSecond must be a positive integer, got ${ticksPerSecond}`,
       );
     }
-    const ticksPerCycle = Math.round(cycleSeconds * ticksPerSecond);
-    if (ticksPerCycle <= 0) {
+    // Reject non-tick-aligned cycles. Storing a quantized variant of
+    // `cycleSeconds` would make the public field disagree with what the
+    // caller passed in; the prototype configuration is 60s * 60Hz = 3600
+    // ticks exactly, so this constraint costs nothing.
+    const exactTicksPerCycle = cycleSeconds * ticksPerSecond;
+    if (!Number.isInteger(exactTicksPerCycle) || exactTicksPerCycle <= 0) {
       throw new Error(
-        `TimeOfDay cycleSeconds * ticksPerSecond must round to a positive integer, got ${ticksPerCycle}`,
+        `TimeOfDay cycleSeconds * ticksPerSecond must be a positive integer, got ${exactTicksPerCycle}`,
       );
     }
+    const ticksPerCycle = exactTicksPerCycle;
     this.cycleSeconds = cycleSeconds;
     this.ticksPerSecond = ticksPerSecond;
     this.ticksPerCycle = ticksPerCycle;
@@ -100,26 +105,6 @@ export class TimeOfDay {
       return;
     }
     this.tickIndex = wrapNonNegative(this.tickIndex + n, this.ticksPerCycle);
-  }
-
-  /**
-   * Advance the clock by `dtSeconds` of simulation time, expressed as a
-   * whole number of ticks. `dtSeconds` is converted to ticks by rounding,
-   * so callers passing the renderer's frame delta do not need to know
-   * about tick granularity. Use `advanceTicks` directly from inside the
-   * fixed-step loop where exactness matters.
-   *
-   * Negative or non-finite deltas are clamped to zero.
-   */
-  advanceSeconds(dtSeconds: number): void {
-    if (!Number.isFinite(dtSeconds) || dtSeconds <= 0) {
-      return;
-    }
-    const ticks = Math.round(dtSeconds * this.ticksPerSecond);
-    if (ticks <= 0) {
-      return;
-    }
-    this.tickIndex = wrapNonNegative(this.tickIndex + ticks, this.ticksPerCycle);
   }
 
   /** Current monotonic tick index modulo the cycle length. */

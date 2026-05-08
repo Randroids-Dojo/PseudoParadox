@@ -89,27 +89,16 @@ describe("TimeOfDay", () => {
     expect(() => clock.advanceTicks(Infinity)).toThrow();
   });
 
-  it("advanceSeconds rounds to the nearest whole tick", () => {
-    // Convenience API for callers outside the fixed-step loop. 2.5 simulation
-    // seconds at 60Hz rounds to 150 ticks regardless of float precision.
-    const clock = new TimeOfDay({ cycleSeconds: 10 });
-    clock.advanceSeconds(2.5);
-    expect(clock.tick()).toBe(150);
-    expect(clock.normalized()).toBeCloseTo(0.25, 12);
-  });
-
-  it("advanceSeconds ignores zero or negative dt", () => {
-    const clock = new TimeOfDay({ cycleSeconds: 10 });
-    clock.setNormalized(0.4);
-    const before = clock.tick();
-    clock.advanceSeconds(0);
-    clock.advanceSeconds(-3);
-    expect(clock.tick()).toBe(before);
-  });
-
   it("rejects non-positive cycle lengths", () => {
     expect(() => new TimeOfDay({ cycleSeconds: 0 })).toThrow();
     expect(() => new TimeOfDay({ cycleSeconds: -1 })).toThrow();
+  });
+
+  it("rejects non-tick-aligned cycle configurations", () => {
+    // 0.5s cycle at 60Hz = 30 ticks (aligned, allowed).
+    expect(() => new TimeOfDay({ cycleSeconds: 0.5 })).not.toThrow();
+    // 0.51s cycle at 60Hz = 30.6 ticks (not aligned, rejected).
+    expect(() => new TimeOfDay({ cycleSeconds: 0.51 })).toThrow();
   });
 
   it("rejects non-integer or non-positive ticksPerSecond", () => {
