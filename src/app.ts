@@ -27,9 +27,11 @@ export async function startApp(container: HTMLElement): Promise<void> {
   const sceneCtx = buildScene();
   const player = createPlayer(sceneCtx.scene, world);
   const keyboard = createKeyboardState(window);
-  // REQ-029: warm-to-cool room tint driven by a real-time clock for now.
-  // A later slice locks this to the deterministic simulation step.
-  const timeOfDay = new TimeOfDay();
+  // REQ-029: warm-to-cool room tint driven by the deterministic simulation
+  // tick. The clock is advanced once per fixed physics step below, not per
+  // render frame, so REQ-001 timeline recording playback stays frame-exact
+  // independent of how many frames render between physics steps.
+  const timeOfDay = new TimeOfDay({ ticksPerSecond: 60 });
   // REQ-001 / REQ-002 foundation: capture input each fixed step so the active
   // player's path can later be replayed by a ghost capsule. Ownership lives
   // here at the app level for now; future slices that spawn additional
@@ -63,6 +65,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
 
     let steps = 0;
     while (physicsAccumulatorMs >= fixedStepMs && steps < maxStepsPerFrame) {
+      // Advance the time-of-day clock first so the recorder captures the
+      // tick-of-arrival's normalized time, matching what any later instance
+      // observing this tick from outside will see (REQ-030).
+      timeOfDay.advanceTicks(1);
       // Sample input once per physics step so target velocity reacts at the
       // simulation rate, not the render rate. The mapping is pure; the only
       // mutation is on the rigid body itself. The same KeyState snapshot is
@@ -77,11 +83,9 @@ export async function startApp(container: HTMLElement): Promise<void> {
     }
 
     player.syncMeshFromBody();
-    // Advance the time-of-day clock once per render frame and apply the
-    // interpolated background color. Driving this off frame delta (rather
-    // than the fixed physics step) keeps the visual transition smooth
-    // independent of how many physics steps fired this frame.
-    timeOfDay.advance(deltaMs / 1000);
+    // Apply the interpolated background color from whatever tick the
+    // simulation is currently on. The clock itself is advanced inside the
+    // fixed-step loop above, not here, so frame rate cannot affect it.
     sceneCtx.scene.background = interpolateWarmToCool(timeOfDay.normalized());
     renderer.render(sceneCtx.scene, sceneCtx.camera);
     requestAnimationFrame(frame);
