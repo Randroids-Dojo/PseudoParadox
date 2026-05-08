@@ -76,8 +76,8 @@ export class TimeOfDay {
     // Floor here rather than round so `setNormalized` is the exact left
     // inverse of `normalized` for tick-aligned values, and so seek-to-start
     // (initial = 0) lands at tick 0.
-    this.tickIndex = wrapNonNegativeInt(
-      Math.floor(wrapNonNegativeFloat(initial, 1) * ticksPerCycle),
+    this.tickIndex = wrapNonNegative(
+      Math.floor(wrapNonNegative(initial, 1) * ticksPerCycle),
       ticksPerCycle,
     );
   }
@@ -99,7 +99,7 @@ export class TimeOfDay {
     if (n <= 0) {
       return;
     }
-    this.tickIndex = wrapNonNegativeInt(this.tickIndex + n, this.ticksPerCycle);
+    this.tickIndex = wrapNonNegative(this.tickIndex + n, this.ticksPerCycle);
   }
 
   /**
@@ -119,7 +119,7 @@ export class TimeOfDay {
     if (ticks <= 0) {
       return;
     }
-    this.tickIndex = wrapNonNegativeInt(this.tickIndex + ticks, this.ticksPerCycle);
+    this.tickIndex = wrapNonNegative(this.tickIndex + ticks, this.ticksPerCycle);
   }
 
   /** Current monotonic tick index modulo the cycle length. */
@@ -142,29 +142,21 @@ export class TimeOfDay {
     if (!Number.isFinite(n)) {
       throw new Error(`TimeOfDay.setNormalized requires a finite number, got ${n}`);
     }
-    this.tickIndex = wrapNonNegativeInt(
-      Math.floor(wrapNonNegativeFloat(n, 1) * this.ticksPerCycle),
+    this.tickIndex = wrapNonNegative(
+      Math.floor(wrapNonNegative(n, 1) * this.ticksPerCycle),
       this.ticksPerCycle,
     );
   }
 }
 
 /**
- * Wrap a non-negative-modulus float into [0, modulus). JavaScript's `%`
+ * Wrap a value into the half-open interval [0, modulus). JavaScript's `%`
  * operator returns a signed remainder, so a naive `value % modulus` would
- * leave negative inputs negative.
+ * leave negative inputs negative; this helper folds them back into range.
+ * Used for both float (normalized seek) and integer (tick) arithmetic;
+ * the operator behaves identically for both.
  */
-function wrapNonNegativeFloat(value: number, modulus: number): number {
-  const r = value % modulus;
-  return r < 0 ? r + modulus : r;
-}
-
-/**
- * Integer variant of the wrap above. Kept separate so the tick-arithmetic
- * path never goes through float modulus, which would silently truncate at
- * Number.MAX_SAFE_INTEGER scale.
- */
-function wrapNonNegativeInt(value: number, modulus: number): number {
+function wrapNonNegative(value: number, modulus: number): number {
   const r = value % modulus;
   return r < 0 ? r + modulus : r;
 }
