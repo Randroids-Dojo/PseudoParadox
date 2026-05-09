@@ -182,8 +182,8 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
   - A. Verify once at slice time with a single Playwright run; do NOT add to CI. Vercel's preview deploy already proves the build is shippable.
   - B. Add a recurring smoke to CI. Catches regressions but adds cost to every PR.
 - Recommended default: A. The Vercel preview deploy is the de-facto smoke; doubling it in CI is redundant.
-- Status: open
-- Resolution:
+- Status: resolved
+- Resolution: A (with refinement). Per RULE 3 the slice did NOT add Playwright as a core devDep. Verification at slice time is a manual browser smoke against `pseudo-paradox.vercel.app` documented in `docs/SHIP_VERIFICATION.md` (page load, scene render, console health, WASD movement, lit-portal traversal, hard reset). The automated Playwright smoke is documented as F-008 for the spillover release if it lands.
 
 ### Q-019: REQ-039 frame-time threshold reading
 
@@ -193,8 +193,8 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
   - B. Mean. Smoothes over jank but penalizes stable runs with one bad outlier.
   - C. Maximum. Strict; would fail on any single dropped frame.
 - Recommended default: A (95th-percentile). Standard performance-engineering reading; matches the player's perception of "feels smooth."
-- Status: open
-- Resolution:
+- Status: resolved
+- Resolution: A (95th-percentile). `tests/perf/frameTime.test.ts` measures the simulation's per-step CPU time across N=300 steps with 4 active ghosts and asserts the 95th-percentile is under MAX_FRAME_MS = 16.67. Per RULE 3 this is a Vitest in-process REGRESSION GUARD, not a real-browser frame-budget measurement; the latter is documented as F-008.
 
 ### Q-020: REQ-040 end-to-end test runtime
 
@@ -203,10 +203,8 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
   - A. Playwright against the local dev server. Real browser, real WebGL, real Rapier3D WASM, real key events. Slow (several seconds startup) but the only environment that exercises the full stack.
   - B. Vitest plus jsdom plus a Three.js mock plus a Rapier mock. Fast but requires writing two non-trivial mocks; a passing test does not prove the live build works.
 - Recommended default: A. The test fires once per CI run; the slowness is acceptable. Mocks would build a parallel system that drifts from production.
-- Status: open
-- Resolution:
-
-### Q-021: How does Act 1's cinematic record the knocked-out body?
+- Status: resolved
+- Resolution: B (with refinement). Per RULE 3 (no new core deps) the slice did NOT add Playwright. `tests/sim/endToEndCompletability.test.ts` drives the full Act 1 to escape sequence in-process using the same primitives `src/app.ts` composes (Three.js scene, Rapier world, InputRecorder, GhostInstance, TimelineRegistry, ActStateObserver, mountAct1Cinematic, wireTraversal, applyKnockout/Carry, etc.); no Three.js or Rapier mock is needed because the real modules run in Node. The delta from option A is the WebGL canvas plus the host's per-fixed-step loop wiring; that gap is documented as F-008.
 
 - Context: REQ-012's cinematic has three "actors" at 12:00: two figures dragging a body. The body itself is unconscious and immobile during the drag. The dossier needs a representation that fits the existing ghost pipeline.
 - Options:
