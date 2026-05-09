@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T12:05:00-05:00",
+  "updatedAt": "2026-05-09T12:15:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -362,9 +362,27 @@
       "id": "REQ-018",
       "requirement": "Act 3 setup: repeating the Act 2 sequence positions a knocked-out instance at 6:00 and the player waits for the other instance to wake.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Integration test in `tests/sim/act3Setup.test.ts` drives the existing primitives (recorder, traversal, registry, ghost, knockout, carry, instanceId) through the GDD's scripted Act 3 setup beat. Phase 1 reuses the Loop 1 plus Loop 2 sequence (helpers `runLoopOne` and `runLoopTwo`) to land at active=6 with the active player unconscious at 6:00, bucket 5 holding the unconscious ghost-A plus the dragging-East ghost-C, bucket 6 holding the loop-1 West-bound ghost-B. The observer is opened mid-test and fed the loop-1 then loop-2 snapshots so the watermark advances to `act-2-loop-2`. Phase 2 begins the Act 3 fresh lifetime at 5:00 via a new `beginNewLifetimeAt5` helper that mirrors the lifetime-rollover the host's traversal handler runs on a lit-portal traversal (`wireTraversal` step 1-7), minus the trigger event: it files the prior unconscious lifetime as a ghost in bucket 6 (using the recorder's snapshot, post-flipped to unconscious via `applyKnockout` in the same pattern `mountAct1Cinematic` uses for the Act 1 body ghost), advances the active player's `instanceId` via `nextInstanceId`, opens a fresh `InputRecorder`, restamps `originNormalized` to 5/24, places the body at the room center, clears velocity / rotation / mesh tilt, and finally calls `setActiveTimeline(5)` (which hides bucket 6 leaving the unconscious ghost unconscious because hide does NOT reset, and resets bucket 5 ghosts to tick 0 conscious per REQ-033 reset semantics; the act-3-setup predicate does not read bucket 5 so the conscious reset is harmless). To make the recorder snapshot non-empty at the boundary, `runLoopTwo` records one idle frame at 6:00 BEFORE the knockout (the East traversal swapped to a fresh recorder; without the idle frame the recorder would be empty and the prior lifetime would silently skip the file step). Phase 3 builds the snapshot and asserts `isAct3Setup(snapshot) === true` plus `observer.update(snapshot)` walks from `act-2-loop-2` to `act-3-setup`. A second case pins the two conjunctions of `isAct3Setup` (currentTimeline === 5, ghosts6.some(unconscious)) by satisfying the full state, then dropping each conjunction in turn (currentTimeline switched to 6, no unconscious ghost in bucket 6 by mapping the projection to conscious) and asserting `isAct3Setup` returns false on each variant. NO production code touched: the existing `isAct3Setup` predicate from PR #30 fires correctly on the live-state snapshot once the lifetime-boundary mechanism is exercised; the predicate's `currentTimeline === 5 && ghostsFor(6).some(g => g.consciousness === 'unconscious')` is the correct dossier-pseudocode mapping for the Act 3 setup beat (the watermark prerequisite is enforced by the observer's monotonic walk, not by the predicate).",
+      "implementationRefs": [
+        "src/sim/actState.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/timelineRegistry.ts",
+        "src/sim/ghostInstance.ts",
+        "src/sim/inputRecorder.ts",
+        "src/sim/knockoutState.ts",
+        "src/sim/applyKnockoutBody.ts",
+        "src/sim/carryState.ts",
+        "src/sim/applyCarry.ts",
+        "src/sim/instanceId.ts"
+      ],
+      "testRefs": [
+        "tests/sim/act3Setup.test.ts",
+        "tests/sim/act2Loop2.test.ts",
+        "tests/sim/act2Loop1.test.ts",
+        "tests/sim/actState.test.ts"
+      ],
       "followupRefs": []
     },
     {
