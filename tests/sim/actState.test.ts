@@ -502,10 +502,12 @@ describe("evaluateActState", () => {
     expect(evaluateActState(snap)).toBe("not-started");
   });
 
-  it("returns the higher beat when both act-1-spawn and act-3-setup succeed", () => {
-    // act-1-spawn (3 ghosts in 12:00, active timeline 5) AND act-3-setup
-    // (active timeline 5, unconscious ghost in 6:00) BOTH succeed; the
-    // walk-from-highest order picks act-3-setup.
+  it("does not skip beats: a snapshot satisfying a late beat from not-started halts at the first failing prerequisite", () => {
+    // The snapshot locally satisfies isAct1Spawn (3 ghosts in 12:00, active
+    // timeline 5) AND isAct3Setup (unconscious ghost in 6:00), but does
+    // NOT satisfy isAct2Loop1 (no ghosts in the 5:00 bucket) or
+    // isAct2Loop2. The forward walk halts at act-1-spawn because
+    // act-2-loop-1 fails.
     const snap = buildSnapshot({
       currentTimeline: 5,
       buckets: {
@@ -513,11 +515,55 @@ describe("evaluateActState", () => {
         6: [ghost({ id: 2, consciousness: "unconscious" })],
       },
     });
-    expect(evaluateActState(snap)).toBe("act-3-setup");
+    expect(evaluateActState(snap)).toBe("act-1-spawn");
+  });
+
+  it("does not jump to escaped from not-started even when isEscaped passes locally", () => {
+    // Snapshot locally satisfies isEscaped (timeline 12, north crossing,
+    // cinematic complete) but the walk from not-started halts at the
+    // first failing prerequisite (isAct1Spawn fails because there are
+    // only 0 ghosts in the 12:00 bucket from a not-started timeline of
+    // 12, i.e. wrong timeline). Even if act-1-spawn passed, the walk
+    // would still need each intermediate beat to pass. The result is
+    // not-started.
+    const snap = buildSnapshot({
+      currentTimeline: 12,
+      activePlayerCrossedNorthAt12: true,
+      buckets: {
+        12: [
+          ghost({ id: 10, tickIndex: 50, recordingLength: 50 }),
+          ghost({ id: 11, tickIndex: 50, recordingLength: 50 }),
+          ghost({ id: 12, tickIndex: 1, recordingLength: 1 }),
+        ],
+      },
+    });
+    expect(evaluateActState(snap)).toBe("not-started");
+  });
+
+  it("advances multiple steps in one call when all intermediate predicates pass", () => {
+    // Construct a snapshot that satisfies isAct1Spawn, isAct2Loop1, AND
+    // isAct3Setup simultaneously: timeline 5, 3 ghosts in 12:00, a
+    // completed ghost in the 5:00 bucket, an unconscious ghost in 6:00.
+    // The forward walk advances from not-started through act-1-spawn,
+    // act-2-loop-1, then halts at act-2-loop-2 (which requires timeline
+    // 6 plus an unconscious active player); the highest reachable beat
+    // is act-2-loop-1.
+    const snap = buildSnapshot({
+      currentTimeline: 5,
+      buckets: {
+        12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
+        5: [ghost({ id: 1, tickIndex: 100, recordingLength: 100 })],
+        6: [ghost({ id: 2, consciousness: "unconscious" })],
+      },
+    });
+    expect(evaluateActState(snap)).toBe("act-2-loop-1");
   });
 
   it("never returns a state below the supplied watermark", () => {
     // Snapshot satisfies act-1-spawn only; watermark already at act-3-chase.
+    // The walk skips already-reached states (states at or below watermark
+    // are known-reached) and tests only forward; with no later predicates
+    // succeeding the result floors to the watermark.
     const snap = buildSnapshot({
       currentTimeline: 5,
       buckets: {
@@ -539,6 +585,167 @@ describe("evaluateActState", () => {
 // Observer wrapper: monotonicity, regression refusal, hardReset, ring buffer.
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// Snapshot builders for each beat, including the prerequisites the observer
+// walks through. Each builder returns a snapshot that satisfies the named
+// beat AND every preceding beat in the chain. Use these to drive the
+// observer through valid sequences.
+// -----------------------------------------------------------------------------
+
+function snapAct1Spawn(): ActStateSnapshot {
+  return buildSnapshot({
+    currentTimeline: 5,
+    buckets: {
+      12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
+    },
+  });
+}
+
+function snapAct2Loop1(): ActStateSnapshot {
+  return buildSnapshot({
+    currentTimeline: 5,
+    buckets: {
+      12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
+      5: [ghost({ id: 1, tickIndex: 100, recordingLength: 100 })],
+      6: [ghost({ id: 2 })],
+    },
+  });
+}
+
+function snapAct2Loop2(): ActStateSnapshot {
+  return buildSnapshot({
+    currentTimeline: 6,
+    activeConsciousness: "unconscious",
+    buckets: {
+      12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
+      // Note: at timeline 6 the act-2-loop-1 predicate cannot pass
+      // (requires timeline 5), but the observer's watermark is already
+      // at act-2-loop-1 from a prior tick, so the prerequisite is
+      // already satisfied. The forward walk only needs act-2-loop-2 to
+      // pass to advance from the watermark.
+      5: [ghost({ id: 1, consciousness: "unconscious" })],
+      6: [ghost({ id: 2 })],
+    },
+  });
+}
+
+function snapAct3Setup(): ActStateSnapshot {
+  return buildSnapshot({
+    currentTimeline: 5,
+    buckets: {
+      12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
+      5: [ghost({ id: 1, tickIndex: 100, recordingLength: 100 })],
+      6: [ghost({ id: 2, consciousness: "unconscious" })],
+    },
+  });
+}
+
+function snapAct3Chase(): ActStateSnapshot {
+  // act-3-chase requires the same active timeline as act-3-setup (timeline
+  // 5) plus two distinct West entries. Reuses the act-3-setup baseline
+  // and adds the West-entry buffer.
+  return buildSnapshot({
+    currentTimeline: 5,
+    buckets: {
+      12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
+      5: [ghost({ id: 1, tickIndex: 100, recordingLength: 100 })],
+      6: [ghost({ id: 2, consciousness: "unconscious" })],
+    },
+    recentWestEntries: [
+      { instanceId: 1, tick: 100 },
+      { instanceId: 2, tick: 101 },
+    ],
+  });
+}
+
+function snapAct3TeamUp(): ActStateSnapshot {
+  return buildSnapshot({
+    currentTimeline: 5,
+    buckets: {
+      12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
+      5: [
+        ghost({ id: 1, tickIndex: 100, recordingLength: 100 }),
+        ghost({
+          id: 7,
+          consciousness: "unconscious",
+          originNormalized: 5 / 24,
+        }),
+      ],
+      6: [ghost({ id: 2, consciousness: "unconscious" })],
+    },
+    recentWestEntries: [
+      { instanceId: 1, tick: 100 },
+      { instanceId: 2, tick: 101 },
+    ],
+  });
+}
+
+function snapAct3Mirror(): ActStateSnapshot {
+  // act-3-mirror requires timeline 12, idle carry, and an unconscious
+  // ghost within radius. Once the observer's watermark is at
+  // act-3-team-up, prior states' predicates need not pass on the new
+  // snapshot; the forward walk only checks act-3-mirror onward.
+  return buildSnapshot({
+    currentTimeline: 12,
+    activeCarry: { kind: "idle" },
+    buckets: {
+      12: [
+        ghost({ id: 10 }),
+        ghost({ id: 11 }),
+        ghost({
+          id: 7,
+          consciousness: "unconscious",
+          position: { x: 0.5, z: 0.0 },
+        }),
+      ],
+    },
+  });
+}
+
+function snapAct3FinalKnockout(): ActStateSnapshot {
+  return buildSnapshot({
+    currentTimeline: 12,
+    activeCarry: { kind: "idle" },
+    buckets: {
+      12: [
+        ghost({ id: 10 }),
+        ghost({
+          id: 7,
+          consciousness: "unconscious",
+          position: { x: 0.5, z: 0.0 },
+        }),
+        ghost({ id: 8, consciousness: "unconscious" }),
+      ],
+    },
+  });
+}
+
+function snapEscaped(): ActStateSnapshot {
+  return buildSnapshot({
+    currentTimeline: 12,
+    activeCarry: { kind: "idle" },
+    activePlayerCrossedNorthAt12: true,
+    buckets: {
+      12: [
+        ghost({ id: 10, tickIndex: 50, recordingLength: 50 }),
+        ghost({
+          id: 7,
+          consciousness: "unconscious",
+          position: { x: 0.5, z: 0.0 },
+          tickIndex: 50,
+          recordingLength: 50,
+        }),
+        ghost({
+          id: 8,
+          consciousness: "unconscious",
+          tickIndex: 1,
+          recordingLength: 1,
+        }),
+      ],
+    },
+  });
+}
+
 describe("createActStateObserver", () => {
   it("opens at not-started", () => {
     const obs = createActStateObserver();
@@ -547,73 +754,58 @@ describe("createActStateObserver", () => {
 
   it("advances the watermark when a higher predicate succeeds", () => {
     const obs = createActStateObserver();
-    const snap = buildSnapshot({
-      currentTimeline: 5,
-      buckets: {
-        12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
-      },
-    });
-    expect(obs.update(snap)).toBe("act-1-spawn");
+    expect(obs.update(snapAct1Spawn())).toBe("act-1-spawn");
     expect(obs.state).toBe("act-1-spawn");
   });
 
-  it("never regresses below the watermark across snapshots", () => {
+  it("does not skip beats: a fresh observer fed an act-3-chase-shaped snapshot stays at not-started", () => {
+    // The chase snapshot has West entries but no ghosts in the 12:00
+    // bucket, so isAct1Spawn fails and the walk halts at not-started.
     const obs = createActStateObserver();
-    // First, push the observer up to act-3-chase via a snapshot that
-    // satisfies that predicate (and lower beats too).
-    const chaseSnap = buildSnapshot({
+    const chaseShaped = buildSnapshot({
       currentTimeline: 5,
       recentWestEntries: [
         { instanceId: 1, tick: 100 },
         { instanceId: 2, tick: 101 },
       ],
     });
-    expect(obs.update(chaseSnap)).toBe("act-3-chase");
-    // Then, feed a snapshot that only satisfies act-1-spawn.
-    const lowerSnap = buildSnapshot({
-      currentTimeline: 5,
-      buckets: {
-        12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
-      },
-    });
-    expect(obs.update(lowerSnap)).toBe("act-3-chase");
+    expect(obs.update(chaseShaped)).toBe("not-started");
+  });
+
+  it("never regresses below the watermark across snapshots", () => {
+    const obs = createActStateObserver();
+    // Drive the observer up through the chain via valid sequence.
+    obs.update(snapAct1Spawn());
+    obs.update(snapAct2Loop1());
+    obs.update(snapAct2Loop2());
+    obs.update(snapAct3Setup());
+    obs.update(snapAct3Chase());
+    expect(obs.state).toBe("act-3-chase");
+    // Then feed a snapshot that only satisfies act-1-spawn locally.
+    expect(obs.update(snapAct1Spawn())).toBe("act-3-chase");
+    expect(obs.state).toBe("act-3-chase");
   });
 
   it("does not regress out of escaped under any snapshot", () => {
     const obs = createActStateObserver();
-    // Walk into escaped.
-    const escapedSnap = buildSnapshot({
-      currentTimeline: 12,
-      activePlayerCrossedNorthAt12: true,
-      buckets: {
-        12: [
-          ghost({ id: 10, tickIndex: 50, recordingLength: 50 }),
-          ghost({ id: 11, tickIndex: 50, recordingLength: 50 }),
-          ghost({ id: 12, tickIndex: 1, recordingLength: 1 }),
-        ],
-      },
-    });
-    expect(obs.update(escapedSnap)).toBe("escaped");
-    // A subsequent snapshot for an earlier beat (e.g. act-1-spawn) does
-    // not pull the observer back.
-    const earlierSnap = buildSnapshot({
-      currentTimeline: 5,
-      buckets: {
-        12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
-      },
-    });
-    expect(obs.update(earlierSnap)).toBe("escaped");
+    // Walk through the chain to escaped via a valid sequence.
+    obs.update(snapAct1Spawn());
+    obs.update(snapAct2Loop1());
+    obs.update(snapAct2Loop2());
+    obs.update(snapAct3Setup());
+    obs.update(snapAct3Chase());
+    obs.update(snapAct3TeamUp());
+    obs.update(snapAct3Mirror());
+    obs.update(snapAct3FinalKnockout());
+    expect(obs.update(snapEscaped())).toBe("escaped");
+    // A subsequent snapshot for an earlier beat does not pull the
+    // observer back.
+    expect(obs.update(snapAct1Spawn())).toBe("escaped");
   });
 
   it("hardReset returns the observer to not-started and clears the ring buffer", () => {
     const obs = createActStateObserver();
-    const snap = buildSnapshot({
-      currentTimeline: 5,
-      buckets: {
-        12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
-      },
-    });
-    obs.update(snap);
+    obs.update(snapAct1Spawn());
     obs.recordWestEntry({ instanceId: 1, tick: 50 });
     expect(obs.state).toBe("act-1-spawn");
     expect(obs.recentWestEntries().length).toBe(1);
@@ -646,55 +838,60 @@ describe("createActStateObserver", () => {
     expect(snap2.length).toBe(2);
   });
 
-  it("walks an end-to-end valid sequence monotonically", () => {
+  it("walks an end-to-end valid sequence monotonically through every beat", () => {
     const obs = createActStateObserver();
-    // act-1-spawn
-    obs.update(
-      buildSnapshot({
-        currentTimeline: 5,
-        buckets: {
-          12: [ghost({ id: 10 }), ghost({ id: 11 }), ghost({ id: 12 })],
-        },
-      }),
-    );
-    expect(obs.state).toBe("act-1-spawn");
-    // act-2-loop-1
-    obs.update(
-      buildSnapshot({
-        currentTimeline: 5,
-        buckets: {
-          5: [ghost({ id: 1, tickIndex: 100, recordingLength: 100 })],
-          6: [ghost({ id: 2 })],
-        },
-      }),
-    );
-    expect(obs.state).toBe("act-2-loop-1");
-    // act-2-loop-2
-    obs.update(
-      buildSnapshot({
-        currentTimeline: 6,
-        activeConsciousness: "unconscious",
-        buckets: {
-          5: [ghost({ id: 1, consciousness: "unconscious" })],
-          6: [ghost({ id: 2 })],
-        },
-      }),
-    );
-    expect(obs.state).toBe("act-2-loop-2");
-    // escaped at the end
-    obs.update(
-      buildSnapshot({
-        currentTimeline: 12,
-        activePlayerCrossedNorthAt12: true,
-        buckets: {
-          12: [
-            ghost({ id: 10, tickIndex: 50, recordingLength: 50 }),
-            ghost({ id: 11, tickIndex: 50, recordingLength: 50 }),
-            ghost({ id: 12, tickIndex: 1, recordingLength: 1 }),
-          ],
-        },
-      }),
-    );
-    expect(obs.state).toBe("escaped");
+    expect(obs.update(snapAct1Spawn())).toBe("act-1-spawn");
+    expect(obs.update(snapAct2Loop1())).toBe("act-2-loop-1");
+    expect(obs.update(snapAct2Loop2())).toBe("act-2-loop-2");
+    expect(obs.update(snapAct3Setup())).toBe("act-3-setup");
+    expect(obs.update(snapAct3Chase())).toBe("act-3-chase");
+    expect(obs.update(snapAct3TeamUp())).toBe("act-3-team-up");
+    expect(obs.update(snapAct3Mirror())).toBe("act-3-mirror");
+    expect(obs.update(snapAct3FinalKnockout())).toBe("act-3-final-knockout");
+    expect(obs.update(snapEscaped())).toBe("escaped");
+  });
+
+  it("rejects escaped before act-3-final-knockout has been reached", () => {
+    // Drive the observer up to act-3-mirror via a valid sequence and
+    // then feed an escape-shaped snapshot. The forward walk halts at
+    // act-3-final-knockout (the snapshot does not satisfy that
+    // predicate) so the observer must NOT report escaped.
+    const obs = createActStateObserver();
+    obs.update(snapAct1Spawn());
+    obs.update(snapAct2Loop1());
+    obs.update(snapAct2Loop2());
+    obs.update(snapAct3Setup());
+    obs.update(snapAct3Chase());
+    obs.update(snapAct3TeamUp());
+    obs.update(snapAct3Mirror());
+    expect(obs.state).toBe("act-3-mirror");
+    // An escape-shaped snapshot at this point has the cinematic
+    // completed plus the north-trigger crossing, but the 12:00 bucket
+    // for the snapshot crafted below has only one unconscious ghost
+    // (the mirror body), so isAct3FinalKnockout fails. The forward
+    // walk halts there; the watermark stays at act-3-mirror.
+    const escapeShapedButNoFinalKnockout = buildSnapshot({
+      currentTimeline: 12,
+      activeCarry: { kind: "idle" },
+      activePlayerCrossedNorthAt12: true,
+      buckets: {
+        12: [
+          ghost({ id: 10, tickIndex: 50, recordingLength: 50 }),
+          ghost({
+            id: 7,
+            consciousness: "unconscious",
+            position: { x: 0.5, z: 0.0 },
+            tickIndex: 50,
+            recordingLength: 50,
+          }),
+        ],
+      },
+    });
+    expect(obs.update(escapeShapedButNoFinalKnockout)).toBe("act-3-mirror");
+    // Once isAct3FinalKnockout passes (two unconscious ghosts at 12)
+    // and then isEscaped passes on the next snapshot, the observer
+    // advances to escaped.
+    expect(obs.update(snapAct3FinalKnockout())).toBe("act-3-final-knockout");
+    expect(obs.update(snapEscaped())).toBe("escaped");
   });
 });

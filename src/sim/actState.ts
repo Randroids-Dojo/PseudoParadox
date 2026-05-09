@@ -448,15 +448,25 @@ const PREDICATES: Readonly<
 };
 
 /**
- * Pure entry point: walks the linear chain from highest to lowest and
- * returns the highest beat whose predicate succeeds. `watermark` floors the
- * result: the function never returns a state lower than the watermark even
- * if no predicate currently succeeds (which preserves the dossier's
- * monotonicity contract from inside the pure function as well as from the
- * observer's mutable wrapper).
+ * Pure entry point: walks the linear chain in order from `watermark + 1` and
+ * advances as long as each successive predicate passes, returning the first
+ * state whose predicate fails (equivalently, the highest reachable state
+ * given the chain prerequisites). The dossier section 3.4 spec quote:
+ * "walks the linear ActState chain in order, returning the first state whose
+ * predicate fails (i.e. the highest state whose predicate succeeds)."
  *
- * Returns `INITIAL_ACT_STATE` ("not-started") iff no predicate succeeds AND
- * the watermark is also `not-started`.
+ * Prerequisites are enforced by the forward walk: a candidate beat is only
+ * reached if every earlier-than-it beat has either been previously reached
+ * (the watermark is at least that high) OR its predicate passes in the
+ * current snapshot. A snapshot that locally satisfies a late beat (e.g.,
+ * `isEscaped`) but has a low watermark and intermediate predicates that fail
+ * cannot skip past those gaps; the walk halts at the first gap.
+ *
+ * `watermark` floors the result: the function never returns a state lower
+ * than the watermark, since states up to the watermark have already been
+ * reached at some point during the simulation lifetime. Returns
+ * `INITIAL_ACT_STATE` ("not-started") iff no predicate succeeds AND the
+ * watermark is also `not-started`.
  */
 export function evaluateActState(
   snapshot: ActStateSnapshot,
@@ -465,13 +475,24 @@ export function evaluateActState(
   // Once `escaped` has been reached the chain terminates: the observer
   // does not regress out of the terminal state for any reason.
   if (watermark === "escaped") return "escaped";
-  for (let i = ACT_STATE_CHAIN.length - 1; i > 0; i--) {
+  let highest: ActState = watermark;
+  // Walk forward from the state right after the watermark. States at or
+  // below the watermark are already known to have been reached, so we only
+  // need to test whether the chain has advanced beyond the watermark.
+  for (
+    let i = actStateIndex(watermark) + 1;
+    i < ACT_STATE_CHAIN.length;
+    i++
+  ) {
     const candidate = ACT_STATE_CHAIN[i] as Exclude<ActState, "not-started">;
-    if (PREDICATES[candidate](snapshot)) {
-      return maxActState(candidate, watermark);
+    if (!PREDICATES[candidate](snapshot)) {
+      // First predicate that fails. The chain prerequisite is broken
+      // here, so no later beat is reachable from the current snapshot.
+      break;
     }
+    highest = candidate;
   }
-  return watermark;
+  return highest;
 }
 
 // =============================================================================
