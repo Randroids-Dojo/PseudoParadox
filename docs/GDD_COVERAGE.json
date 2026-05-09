@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T10:58:00-05:00",
+  "updatedAt": "2026-05-09T11:10:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -68,9 +68,20 @@
       "id": "REQ-004",
       "requirement": "System enforces the no-paradox invariant: a player cannot prevent themselves from having done something they already did.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "No-paradox invariants codified as property-style tests. `tests/sim/noParadox.test.ts` (6 cases, each running 100 randomized input sequences derived from a hand-rolled 32-bit Lehmer LCG seeded from the test name per Q-017 default) pins the four invariants from `docs/gdd/40-act-progress-and-narrative-beats.md` section 7. Invariant 1 (recording immutability post-snapshot): the snapshot's outer object, frames array, and per-frame keys are all `Object.isFrozen` true; further recording past the snapshot point does not perturb the snapshot's observable state; explicit mutation attempts (push to `frames`, write to `frame.tick`, write to `frame.keys`, overwrite `length`) are silently rejected or throw under strict mode and leave the snapshot observably unchanged. Invariant 2 (registry monotonicity): a 50-op random sequence mixing 70% `add` and 30% `setActiveTimeline` against `createTimelineRegistry({ initialTimeline: 5 })` keeps the total ghost count across timelines {5, 6, 12} monotonically non-decreasing; `clearAllGhosts` is the only operation that returns the count to zero. Invariant 3 (tick-K causality): a ghost built from a recording snapshot at tick K produces bit-identical body translations across 20 fixed simulation steps regardless of whether the source recorder kept recording past K, and `replayAtTick(snap, t)` reads the same value before and after the recorder is mutated past K. Invariant 4 (cross-cutting key stability): a snapshot's per-frame keys are equality-stable after the recording is filed into a registry and the ghost runs five fixed simulation steps. NO production code change; the existing `InputRecorder` / `TimelineRegistry` / `GhostInstance` / `replayAtTick` implementations already satisfy every invariant.",
+      "implementationRefs": [
+        "src/sim/inputRecorder.ts",
+        "src/sim/timelineRegistry.ts",
+        "src/sim/ghostInstance.ts"
+      ],
+      "testRefs": [
+        "tests/sim/noParadox.test.ts",
+        "tests/sim/inputRecorder.test.ts",
+        "tests/sim/timelineRegistry.test.ts",
+        "tests/sim/ghostInstance.test.ts"
+      ],
       "followupRefs": []
     },
     {
