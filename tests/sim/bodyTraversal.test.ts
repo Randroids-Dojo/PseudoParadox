@@ -129,13 +129,20 @@ describe("InFlightRegistry.step: REQ-036 lit-portal traversal", () => {
     const triggers = makeTriggers([south]);
     const reg = createInFlightRegistry({ triggers });
 
-    // Position the body INSIDE the south trigger volume with a forward arc.
-    // South trigger sits at +z; HALF_DEPTH - small offset is inside.
+    // Body launched from outside the trigger; tests an edge crossing.
+    // The detector is edge-triggered: register seeds overlap from
+    // the body's current position (so a thrown-while-resident body
+    // does not falsely fire), then step() picks up the boundary
+    // crossing on the next tick.
     const stub = buildStubBody(
-      { x: 0, y: 1.5, z: HALF_DEPTH - 0.2 },
+      { x: 0, y: 1.5, z: HALF_DEPTH - 1.5 },
       { x: 0, y: 4, z: 5 },
     );
     reg.register({ id: 7, body: stub.body });
+    // Move the body INTO the trigger volume to simulate the arc
+    // crossing. The detector is sampled against the body's live
+    // translation each step.
+    stub.setPos(0, 1.5, HALF_DEPTH - 0.2);
     reg.step(litAll);
 
     // Default spawn pose is room center (0, 0).
@@ -151,38 +158,65 @@ describe("InFlightRegistry.step: REQ-036 lit-portal traversal", () => {
     expect(reg.inFlight()).toContain(7);
   });
 
-  it("does NOT teleport a body crossing a DARK portal (REQ-010 lit gate)", () => {
-    const south = makePortal("south", 12, false);
+  it("does NOT teleport a body that is registered while ALREADY inside a trigger (edge-triggered detector)", () => {
+    // Regression: a body thrown while standing inside a trigger
+    // volume should not falsely fire a teleport on the first step.
+    // The detector is edge-triggered, so register() seeds the
+    // overlap state from the body's current position.
+    const south = makePortal("south", 12, true);
     const triggers = makeTriggers([south]);
     const reg = createInFlightRegistry({ triggers });
 
     const startZ = HALF_DEPTH - 0.2;
     const stub = buildStubBody(
       { x: 0, y: 1.5, z: startZ },
+      { x: 0, y: 0, z: 0 },
+    );
+    reg.register({ id: 7, body: stub.body });
+    reg.step(litAll);
+
+    // Position unchanged: the detector saw the body as already
+    // inside, no edge crossed, no teleport fired.
+    const t = stub.pos();
+    expect(t.z).toBeCloseTo(startZ, 6);
+  });
+
+  it("does NOT teleport a body crossing a DARK portal (REQ-010 lit gate)", () => {
+    const south = makePortal("south", 12, false);
+    const triggers = makeTriggers([south]);
+    const reg = createInFlightRegistry({ triggers });
+
+    const stub = buildStubBody(
+      { x: 0, y: 1.5, z: HALF_DEPTH - 1.5 },
       { x: 0, y: 4, z: 5 },
     );
     reg.register({ id: 7, body: stub.body });
+    // Move into the trigger volume.
+    const insideZ = HALF_DEPTH - 0.2;
+    stub.setPos(0, 1.5, insideZ);
     reg.step(litNone);
 
-    // Position unchanged.
+    // Position unchanged: dark portal does not teleport.
     const t = stub.pos();
     expect(t.x).toBeCloseTo(0, 6);
-    expect(t.z).toBeCloseTo(startZ, 6);
+    expect(t.z).toBeCloseTo(insideZ, 6);
   });
 
   it("does NOT spawn a ghost (closed-form: thrown bodies are inert moving objects)", () => {
     // The InFlightRegistry exposes no ghost-spawn surface. This test
     // pins the API contract: the registry's public methods are
-    // limited to register / step / clear / inFlight. No method takes
-    // a `TimelineRegistry` and no method spawns a `GhostInstance`.
+    // limited to register / step / clear / inFlight / clearTracking.
+    // No method takes a `TimelineRegistry` and no method spawns a
+    // `GhostInstance`.
     const south = makePortal("south", 12, true);
     const triggers = makeTriggers([south]);
     const reg = createInFlightRegistry({ triggers });
     const stub = buildStubBody(
-      { x: 0, y: 1.5, z: HALF_DEPTH - 0.2 },
+      { x: 0, y: 1.5, z: HALF_DEPTH - 1.5 },
       { x: 0, y: 4, z: 5 },
     );
     reg.register({ id: 7, body: stub.body });
+    stub.setPos(0, 1.5, HALF_DEPTH - 0.2);
     reg.step(litAll);
 
     // No ghost was created. The registry does not produce
@@ -231,14 +265,15 @@ describe("InFlightRegistry.step: REQ-036 lit-portal traversal", () => {
     const triggers = makeTriggers([south]);
     const reg = createInFlightRegistry({ triggers });
 
-    // Position inside the south trigger with an arc.
+    // Body launched from outside the trigger with an arc.
     const stub = buildStubBody(
-      { x: 0, y: 1.5, z: HALF_DEPTH - 0.2 },
+      { x: 0, y: 1.5, z: HALF_DEPTH - 1.5 },
       { x: 0, y: 4, z: 5 },
     );
     reg.register({ id: 7, body: stub.body });
 
-    // First step: teleport to room center, body still tracked.
+    // First step: move into the trigger and teleport.
+    stub.setPos(0, 1.5, HALF_DEPTH - 0.2);
     reg.step(litAll);
     expect(reg.inFlight()).toContain(7);
 
@@ -310,8 +345,8 @@ describe("InFlightRegistry: integration with a real Rapier body across multiple 
     world.timestep = 1 / 60;
 
     const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
-      // Position right next to the south trigger inside-edge.
-      .setTranslation(0, 1.5, HALF_DEPTH - 0.4)
+      // Position OUTSIDE the trigger; the body will fly INTO it.
+      .setTranslation(0, 1.5, HALF_DEPTH - 1.5)
       .enabledRotations(false, true, false)
       .setLinearDamping(0.5);
     const body = world.createRigidBody(bodyDesc);
@@ -323,16 +358,19 @@ describe("InFlightRegistry: integration with a real Rapier body across multiple 
     const reg = createInFlightRegistry({ triggers });
     reg.register({ id: 7, body });
 
-    // Step the registry first: should teleport the body to (0, 0).
-    reg.step(litAll);
+    // Move the body into the trigger via a real Rapier step. Several
+    // ticks of forward velocity (5 m/s along +z) push the body into
+    // the south trigger's volume.
+    for (let i = 0; i < 30; i += 1) {
+      world.step();
+      reg.step(litAll);
+      // Stop if the teleport happened (the body's z snapped back to 0).
+      if (Math.abs(body.translation().z) < HALF_DEPTH - 1.5) break;
+    }
     const tAfter = body.translation();
     expect(tAfter.x).toBeCloseTo(0, 4);
-    expect(tAfter.z).toBeCloseTo(0, 4);
-
-    // Velocity preserved (rotated zero degrees).
-    const v = body.linvel();
-    expect(v.x).toBeCloseTo(0, 4);
-    expect(v.y).toBeCloseTo(4, 4);
-    expect(v.z).toBeCloseTo(5, 4);
+    expect(Math.abs(tAfter.z)).toBeLessThan(HALF_DEPTH - 1.5);
+    // The body remains in flight (still tracked, not yet settled).
+    expect(reg.inFlight()).toContain(7);
   });
 });

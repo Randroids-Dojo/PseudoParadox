@@ -227,15 +227,18 @@ export function hardReset(options: HardResetOptions): void {
   // reset settles.
   portalTriggers.resetOverlapState();
 
-  // 8. REQ-036: tear down every in-flight thrown body. The registry
-  // walks its tracked bodies, removes each body's mesh from `scene`
-  // and rigid body from `world`, and empties the list. This is
-  // separate from `clearAllGhosts` because thrown bodies do NOT spawn
-  // ghosts (dossier section 7), so the registry is its own bucket.
+  // 8. REQ-036: drop every in-flight body's tracking reference. The
+  // underlying Rapier bodies and Three.js meshes have ALREADY been
+  // destroyed by `registry.clearAllGhosts` above (the in-flight
+  // registry tracks ghost bodies, not separate flying objects;
+  // dossier section 7 specifies thrown bodies are the same
+  // `GhostInstance` capsules in flight). Calling `clear(scene,
+  // world)` here would re-run the destruction on the already-
+  // removed bodies. `clearTracking` drops references only.
   // Optional so test harnesses that do not exercise throw can omit
   // the field.
   if (inFlightRegistry) {
-    inFlightRegistry.clear(scene, world);
+    inFlightRegistry.clearTracking();
   }
 
   // 9. REQ-036: reset the facing tracker to `DEFAULT_FACING` (north,

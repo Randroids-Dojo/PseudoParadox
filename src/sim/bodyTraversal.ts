@@ -229,8 +229,21 @@ export interface InFlightRegistry {
   ): void;
   /** Tear down every in-flight body: remove each body's mesh from
    * `scene` and rigid body from `world`, then clear the registry. Used
-   * by the hard-reset path. The registry is empty after this call. */
+   * by the hard-reset path. The registry is empty after this call.
+   *
+   * NOTE: when in-flight bodies are also tracked elsewhere (e.g. in a
+   * `TimelineRegistry` that owns the same Rapier bodies), prefer
+   * `clearTracking` to avoid a double teardown. Hard reset's flow is
+   * `registry.clearAllGhosts` (destroys ghost bodies) followed by
+   * `inFlightRegistry.clearTracking` (drops references but does not
+   * re-destroy). */
   clear(scene: THREE.Scene, world: HardResetBodyWorld): void;
+  /** Drop every tracked body without touching `scene` or `world`. Used
+   * when the host has already destroyed the underlying Rapier bodies
+   * (e.g. through `TimelineRegistry.clearAllGhosts` during hard
+   * reset) and only the in-flight registry's references need to be
+   * cleared. */
+  clearTracking(): void;
 }
 
 /** Minimal subset of `RAPIER.World` the registry's `clear` needs. */
@@ -265,15 +278,28 @@ export function createInFlightRegistry(
 
   return {
     register(entry): void {
+      // Seed the per-trigger overlap state from the body's CURRENT
+      // translation rather than starting all flags at false. A body
+      // released while already inside a trigger volume (e.g. an
+      // active player who picked up, walked into a trigger while
+      // carrying, then threw) would otherwise see its first `step()`
+      // treat the resident-inside state as a fresh enter and
+      // teleport without an actual boundary crossing. Seeding from
+      // the current position keeps the detector edge-triggered.
+      const t = entry.body.translation();
       // If the same id is already tracked, replace it (e.g. a re-throw of
       // the same body after it was picked up again). The list stays
       // unique by id.
-      const existingIdx = tracked.findIndex((t) => t.id === entry.id);
+      const existingIdx = tracked.findIndex(
+        (trackedBody) => trackedBody.id === entry.id,
+      );
       const item: BodyInFlight = {
         id: entry.id,
         body: entry.body,
         mesh: entry.mesh,
-        overlapping: new Array<boolean>(triggers.length).fill(false),
+        overlapping: triggers.map((trigger) =>
+          pointInsideTrigger(trigger, t.x, t.z),
+        ),
         subThresholdTicks: 0,
       };
       if (existingIdx >= 0) {
@@ -331,6 +357,10 @@ export function createInFlightRegistry(
           world.removeRigidBody(concrete);
         }
       }
+      tracked.length = 0;
+      concreteBodies.clear();
+    },
+    clearTracking(): void {
       tracked.length = 0;
       concreteBodies.clear();
     },

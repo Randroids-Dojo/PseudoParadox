@@ -380,8 +380,14 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // a successful throw, unchanged otherwise). On a fire we register
       // the body in the in-flight registry so its portal-traversal
       // detector kicks in next tick.
+      // REQ-036: throw is gated on the PRE-toggle carry state (the
+      // dossier specifies T is valid "only while carrying"). Gating on
+      // `previousCarry` rather than `carryAfterToggle` prevents the
+      // same-tick pickup-then-throw chord (pressing F and T in the same
+      // frame should pick up a body, not pick up + immediately launch).
       const throwRisingEdge =
         player.consciousness === "conscious" &&
+        previousCarry.kind === "carrying" &&
         keyboard.state.throw &&
         !previousThrowHeld;
       const facing = facingTracker.current;
