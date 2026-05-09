@@ -54,6 +54,15 @@ export interface GhostInstance {
   advanceTick: () => void;
   /** Copy the body's translation onto the mesh; call once per render frame. */
   syncMeshFromBody: () => void;
+  /**
+   * Rewind the ghost to its initial state: tick counter back to 0, body
+   * translated back to the spawn position with zero linear velocity, and the
+   * mesh resnapped onto the body. Used by `TimelineRegistry` when the active
+   * player re-enters the timeline this ghost was recorded in: each visit is
+   * a fresh playback (REQ-001 / REQ-003 deepening). The model is "the ghost
+   * starts walking again the moment you arrive at its timeline."
+   */
+  reset: () => void;
 }
 
 export interface CreateGhostOptions {
@@ -126,6 +135,16 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     mesh.position.set(t.x, t.y, t.z);
   };
 
+  const reset = (): void => {
+    tickIndex = 0;
+    body.setTranslation(
+      { x: startPosition.x, y: restY, z: startPosition.z },
+      true,
+    );
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    syncMeshFromBody();
+  };
+
   syncMeshFromBody();
 
   return {
@@ -137,5 +156,6 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     },
     advanceTick,
     syncMeshFromBody,
+    reset,
   };
 }
