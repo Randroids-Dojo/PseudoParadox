@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T13:00:00-05:00",
+  "updatedAt": "2026-05-09T13:30:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -433,9 +433,15 @@
       "id": "REQ-022",
       "requirement": "Act 3 second knockout: the player knocks out the instance brought from 6:00 inside the 12:00 timeline.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Integration test pins the Act 3 final knockout beat. Tests-only slice. The mirror-beat harness is reused verbatim through phase 9 to land the world at active=12, carry idle, with one unconscious 12:00-origin placement-record in bucket 12. The 6:00-origin team-up partner is filed into bucket 12 as a fresh conscious GhostInstance (origin 6/24), modelling the GDD beat 'you and the instance from 6:00 team up' followed by the South traversal that brings the partner to 12:00 alongside the player. The active player is positioned next to the partner and the punch resolver's side effects are applied directly (`applyKnockout` plus `applyKnockoutBodyResponse`); bucket 12 now carries TWO unconscious ghosts. The snapshot satisfies `isAct3FinalKnockout` (currentTimeline === 12 && ghostsFor(12).filter(unconscious).length >= 2) and the observer's monotonic walk advances from `act-3-mirror` to `act-3-final-knockout`. A second case pins the predicate's two conjunctions (currentTimeline === 12; at least two unconscious in bucket 12) as load-bearing by satisfying the full state and dropping each conjunction in turn (timeline switched to 5; one of two flipped conscious; both flipped conscious) and asserts `isAct3FinalKnockout` returns false on each variant. NO production code touched: the existing predicate from PR #30 fires correctly on the live-state snapshot, confirming the dossier-pseudocode mapping is the correct read of REQ-022.",
+      "implementationRefs": [
+        "src/sim/actState.ts"
+      ],
+      "testRefs": [
+        "tests/sim/act3FinalKnockout.test.ts"
+      ],
       "followupRefs": []
     },
     {
