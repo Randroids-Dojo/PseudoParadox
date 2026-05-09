@@ -6,11 +6,11 @@ import { createPlayer } from "./scene/player.ts";
 import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
-import { ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
+import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
-import type { GhostInstance } from "./sim/ghostInstance.ts";
 import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
 import { wireTraversal, type ActiveLifetime } from "./sim/portalTraversal.ts";
+import { createTimelineRegistry } from "./sim/timelineRegistry.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -83,24 +83,29 @@ export async function startApp(container: HTMLElement): Promise<void> {
   const portalTriggers = createPortalTriggerSet(sceneCtx.portals);
   let portalTick = 0;
 
-  // Active ghost instances. Each ghost owns its own tick counter that
-  // advances by one per fixed simulation step. Despawn semantics belong to
-  // a later slice tied to per-timeline ghost bookkeeping; for now ghosts
-  // simply stop moving past the end of their recording.
-  const ghosts: GhostInstance[] = [];
+  // Per-timeline ghost bookkeeping. Ghosts are filed against the timeline
+  // they were RECORDED IN (not the timeline they were spawned during a
+  // traversal of). `registry.activeGhosts()` returns only the ghosts in the
+  // timeline the active player is currently inside; the per-fixed-step
+  // loop below ticks and renders only that bucket. On every lit-portal
+  // traversal the registry hides the leaving timeline's ghosts and resets
+  // the entering timeline's ghosts to tick 0 (REQ-001 / REQ-003).
+  const registry = createTimelineRegistry({ initialTimeline: ACT_ONE_HOUR });
 
-  // REQ-009 runtime / REQ-013 / REQ-014 partial: on a lit-portal `enter`,
-  // snapshot the lifetime's recording into a ghost from the lifetime's
-  // start position, teleport the active player to the destination spawn
-  // pose, re-stamp the player's origin tint, and open a fresh lifetime at
-  // the destination time. Dark portals are filtered (REQ-010).
+  // REQ-009 runtime / REQ-013 / REQ-014 partial / REQ-001 / REQ-003: on a
+  // lit-portal `enter`, snapshot the lifetime's recording into a ghost from
+  // the lifetime's start position, teleport the active player to the
+  // destination spawn pose, re-stamp the player's origin tint, open a fresh
+  // lifetime at the destination time, and switch the registry's active
+  // timeline to the destination so per-timeline ghost visibility updates.
+  // Dark portals are filtered (REQ-010).
   wireTraversal({
     detector: portalTriggers,
     player,
     lifetime,
     scene: sceneCtx.scene,
     world,
-    ghosts,
+    registry,
   });
 
   // Track the most recent frame time so the physics integrator can use
@@ -142,13 +147,14 @@ export async function startApp(container: HTMLElement): Promise<void> {
       lifetime.recorder.record(keyboard.state, timeOfDay.normalized());
       const velocity = inputToVelocity(keyboard.state);
       player.setPlanarVelocity(velocity.x, velocity.z);
-      // Advance every active ghost by one tick BEFORE stepping the world so
+      // Advance every ACTIVE ghost (those filed into the timeline the
+      // player is currently in) by one tick BEFORE stepping the world so
       // each ghost's planar velocity is written into the same `world.step()`
-      // that consumes the active player's velocity. Past the end of the
-      // recording `replayAtTick` returns zero, so the ghost decelerates to
-      // a stop under linear damping (REQ-002: the recording itself is
-      // immutable; the ghost cannot be altered, only worked around).
-      for (const ghost of ghosts) {
+      // that consumes the active player's velocity. Ghosts in non-active
+      // timelines are hidden by the registry and not iterated here, so
+      // they neither tick nor render until the player returns to their
+      // timeline (REQ-001 / REQ-003 / REQ-006).
+      for (const ghost of registry.activeGhosts()) {
         ghost.advanceTick();
       }
       world.step();
@@ -163,7 +169,7 @@ export async function startApp(container: HTMLElement): Promise<void> {
     }
 
     player.syncMeshFromBody();
-    for (const ghost of ghosts) {
+    for (const ghost of registry.activeGhosts()) {
       ghost.syncMeshFromBody();
     }
     // REQ-031: keep the active-player floor ring snapped to the player's

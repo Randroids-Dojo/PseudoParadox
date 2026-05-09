@@ -6,12 +6,16 @@ import {
   type Portal,
 } from "./portal.ts";
 import { InputRecorder } from "./inputRecorder.ts";
-import { createGhost, type GhostInstance } from "./ghostInstance.ts";
+import { createGhost } from "./ghostInstance.ts";
 import type {
   OverlapEvent,
   PortalTriggerSet,
 } from "./portalTrigger.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
+import {
+  timelineIdFromNormalized,
+  type TimelineRegistry,
+} from "./timelineRegistry.ts";
 
 /**
  * Portal traversal teleport (REQ-009 runtime half / REQ-013 / REQ-014 partial).
@@ -38,11 +42,14 @@ import { applyInstanceTint } from "../render/instanceTint.ts";
  * Dark portals (REQ-010) MUST NOT teleport the player. The handler filters
  * `enter` events on `isLit(portal)` and ignores the rest.
  *
+ * Per-timeline ghost bookkeeping is wired through `TimelineRegistry`: the
+ * spawned ghost is filed into the SOURCE timeline (taken from
+ * `lifetime.originNormalized`) and the registry's active timeline is
+ * switched to the destination. The host's loop drives `registry.activeGhosts()`
+ * rather than every spawned ghost, so a ghost recorded at 5:00 is hidden
+ * while the player is at 6:00 and visible again on return to 5:00.
+ *
  * NOT in scope this slice:
- *   - Per-timeline ghost bookkeeping. The current slice spawns a ghost on
- *     every lit-portal entry but does not track which ghost belongs to which
- *     timeline. A later slice will key recordings by destination time so a
- *     ghost is only visible in the timeline it was recorded in.
  *   - Act 1 specific spawn pose at 5:00. The destination spawn pose is the
  *     room center for now; the next slice authors per-time spawn poses.
  *   - REQ-007 instance generation numbering.
@@ -121,9 +128,14 @@ export interface WireTraversalOptions {
   scene: THREE.Scene;
   /** Rapier world for spawned ghost rigid bodies. */
   world: TraversalWorldHandle;
-  /** Pushed to whenever a ghost is spawned. The host's fixed-step loop is
-   * responsible for calling `advanceTick()` on each entry per simulation step. */
-  ghosts: GhostInstance[];
+  /**
+   * Per-timeline ghost bookkeeping. Each lit-portal entry files the spawned
+   * ghost into the SOURCE timeline (the timeline being LEFT BEHIND, taken
+   * from `lifetime.originNormalized`) and switches the registry's active
+   * timeline to the destination. The host's loop calls `activeGhosts()` to
+   * decide which ghosts tick and render this frame (REQ-001 / REQ-003).
+   */
+  registry: TimelineRegistry;
   /** Resolves destination spawn pose. Defaults to the room center. */
   resolveSpawnPose?: SpawnPoseResolver;
 }
@@ -154,7 +166,7 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     lifetime,
     scene,
     world,
-    ghosts,
+    registry,
     resolveSpawnPose = DEFAULT_SPAWN_POSE,
   } = options;
 
@@ -174,6 +186,13 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     // 2. Spawn the ghost ONLY if there is a recording to play back. A zero-
     //    length recording would produce a stationary ghost at the start
     //    position; harmless but visual noise.
+    //
+    //    File the ghost into the SOURCE timeline (the timeline being LEFT
+    //    BEHIND, derived from the lifetime's origin). The registry hides it
+    //    immediately because the active timeline is about to switch to the
+    //    destination on step 6 below; the next time the player returns to
+    //    the source timeline, the registry resets the ghost to tick 0 and
+    //    makes it visible again (REQ-001 / REQ-003).
     if (recording.length > 0) {
       const ghost = createGhost({
         recording,
@@ -184,7 +203,8 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
         world,
         startPosition: { ...lifetime.startPosition },
       });
-      ghosts.push(ghost);
+      const sourceTimeline = timelineIdFromNormalized(lifetime.originNormalized);
+      registry.add(sourceTimeline, ghost);
     }
 
     // 3. Teleport the active player to the destination spawn pose. The
@@ -216,6 +236,14 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     lifetime.recorder = new InputRecorder();
     lifetime.startPosition = { x: destination.x, z: destination.z };
     lifetime.originNormalized = destinationNormalized;
+
+    // 6. Switch the registry's active timeline to the destination. This
+    //    hides every ghost in the timeline just left behind (including the
+    //    one spawned in step 2 if it was filed into a non-active bucket),
+    //    and resets every ghost in the entering timeline to tick 0 with its
+    //    spawn pose, then makes it visible. Each timeline visit is a fresh
+    //    playback (REQ-001 / REQ-003).
+    registry.setActiveTimeline(timelineIdFromNormalized(destinationNormalized));
   };
 
   const off = detector.onPortalOverlap(handleEvent);
