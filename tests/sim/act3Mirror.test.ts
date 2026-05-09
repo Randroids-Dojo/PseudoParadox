@@ -92,14 +92,18 @@ import { nextInstanceId } from "../../src/sim/instanceId.ts";
  *     back to `Dynamic`, snaps its translation onto the floor at the
  *     carrier's planar position (room center), and zeroes linvel.
  *     `player.carry` returns to `'idle'`.
- *   - The dragged ghost is rehomed from bucket 5 into bucket 12 by the
- *     in-flight registry's traversal hook (F-007 partial behavior; the
- *     full hook lands in a follow-up slice). For this integration test,
- *     the rehoming is modelled directly via `registry.add(12, ghost)`,
- *     mirroring what the F-007 cross-timeline body rehoming hook would
- *     do on the South-portal crossing. The same `GhostInstance`
- *     reference now appears in bucket 12 with `consciousness ===
- *     'unconscious'` and a body translation at (0, restingY, 0).
+ *   - A placement-record ghost is filed into bucket 12 as a fresh,
+ *     single-frame `GhostInstance` parked at the room center with
+ *     `consciousness === 'unconscious'` and `originNormalized = 12/24`,
+ *     mirroring the `ACT1_KNOCKOUT_BODY_RECORDING` shape from
+ *     `mountAct1Cinematic`. The original bucket-5 ghost is left
+ *     untouched so the 5:00 timeline still records what happened there
+ *     (the team-up's knockout); the placement-record represents the
+ *     body's NEW presence in the 12:00 timeline as a distinct event,
+ *     not a duplicate of the source-timeline record. F-007 partial
+ *     behavior is the canonical owner of the runtime mechanism that
+ *     produces this placement-record on a real South-portal traversal
+ *     of a carried body and lands in its own follow-up slice.
  *
  * The mirror predicate
  * (`currentTimeline === 12 && carry.kind === 'idle' && ghosts12.some(
@@ -108,12 +112,13 @@ import { nextInstanceId } from "../../src/sim/instanceId.ts";
  *
  * NOT in scope:
  *   - Wiring the F-007 cross-timeline body rehoming hook to fire
- *     automatically on the South portal traversal. The dot description
- *     calls this out explicitly: F-007 partial behavior is the path
- *     used; the full hook is the canonical owner of this rehoming and
- *     lands in its own slice. The integration test models the OUTCOME
- *     (the same `GhostInstance` now lives in bucket 12 with a centered
- *     translation and an unconscious flag), not the mechanism.
+ *     automatically on the South portal traversal. F-007 is the
+ *     canonical owner of the runtime mechanism that files a
+ *     placement-record into bucket 12 on a real South-portal
+ *     traversal of a carried body, and lands in its own slice. The
+ *     integration test models the OUTCOME the predicate cares about
+ *     (bucket 12 carries an unconscious ghost within 1.0 m of the
+ *     room origin), not the mechanism.
  *   - REQ-022 (Act 3 second knockout): a separate slice extends this
  *     same harness pattern to land the final-knockout watermark.
  */
@@ -671,15 +676,46 @@ describe("REQ-021 Act 3 mirror integration", () => {
     expect(droppedPos.z).toBeCloseTo(0, 1);
 
     // -----------------------------------------------------------------
-    // Phase 8: rehome the dragged ghost into bucket 12 (F-007 partial:
-    // the in-flight registry's traversal hook is the canonical owner
-    // of cross-timeline body rehoming; the full hook lands in its own
-    // slice). The same `GhostInstance` reference now appears in
-    // bucket 12 with `consciousness === 'unconscious'` and a centered
-    // body translation. The `add` call leaves the ghost visible since
-    // bucket 12 IS the active timeline post-traversal.
+    // Phase 8: file a placement-record ghost into bucket 12. The
+    // dossier's narrative for this beat is "place the body in the
+    // center of the room (mirroring Act 1)"; the predicate reads
+    // `ghostsFor(12).some(unconscious && distance <= 1.0)`, so the
+    // load-bearing state is bucket 12 carrying a record of an
+    // unconscious body at the room center. The record is built as a
+    // fresh, single-frame `GhostInstance` (mirroring the
+    // `ACT1_KNOCKOUT_BODY_RECORDING` shape from
+    // `mountAct1Cinematic`: a 1-frame all-zero recording stamped at
+    // the 12:00 normalized timeOfDay, flipped to `unconscious`
+    // post-creation). The original bucket-5 ghost is left untouched
+    // so the 5:00 timeline still records what happened there (the
+    // team-up's knockout); F-007 partial behavior covers the runtime
+    // mechanism that produces this placement-record on a real
+    // South-portal traversal of a carried body, and lands in its own
+    // follow-up slice.
+    //
+    // The placement-record ghost is filed AFTER the active-timeline
+    // switched to 12 by the South traversal, so `add` leaves it
+    // visible (the non-active hide path does not fire). Knockout is
+    // applied AFTER `add` because `add` does not call `reset`; the
+    // reset path only fires on a non-trivial `setActiveTimeline`
+    // switch, which has already happened.
     // -----------------------------------------------------------------
-    registry.add(12, targetGhost);
+    const placementRecorder = new InputRecorder();
+    placementRecorder.record(inputState({}), 12 / 24);
+    const placementRecording = placementRecorder.snapshot();
+    const placementInstanceId = nextInstanceId(
+      nextInstanceId(player.instanceId),
+    );
+    const placementGhost = createGhost({
+      recording: placementRecording,
+      originNormalized: 12 / 24,
+      instanceId: placementInstanceId,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    registry.add(12, placementGhost);
+    placementGhost.consciousness = applyKnockout(placementGhost.consciousness);
 
     // -----------------------------------------------------------------
     // Phase 9: build the snapshot and assert the mirror predicate.
