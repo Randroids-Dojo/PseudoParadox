@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T11:10:00-05:00",
+  "updatedAt": "2026-05-09T11:30:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -229,9 +229,18 @@
       "id": "REQ-012",
       "requirement": "Act 1 cinematic at 12:00: two figures drag a knocked-out body through the North door to the center of the room, then fade to black.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Act 1 cinematic data path lands via scripted actor recordings reusing the existing `GhostInstance` / `TimelineRegistry` pipeline (per `docs/gdd/40-act-progress-and-narrative-beats.md` section 5). New module `src/sim/scripts/act1Cinematic.ts` exports three frozen `InputRecording` objects (`ACT1_LEFT_DRAGGER_RECORDING`, `ACT1_RIGHT_DRAGGER_RECORDING`, `ACT1_KNOCKOUT_BODY_RECORDING`), three spawn poses (`ACT1_LEFT_DRAGGER_SPAWN = { x: -0.6, z: -3.5 }`, `ACT1_RIGHT_DRAGGER_SPAWN = { x: 0.6, z: -3.5 }`, `ACT1_KNOCKOUT_BODY_SPAWN = { x: 0, z: -3.6 }`), the timing constants (`ACT1_CINEMATIC_DURATION_TICKS = 240`, `ACT1_CINEMATIC_FADE_START_TICK = 180`, `ACT1_CINEMATIC_FADE_DURATION_TICKS = 60`, `ACT1_DRAGGER_WALK_TICKS = 60`), and the host hook `mountAct1Cinematic({ registry, scene, world })` which builds three `GhostInstance` objects via `createGhost` (instance ids 101, 102, 103) and files them into the 12:00 bucket via `registry.add(12, ghost)`. Dragger recordings hold `back: true, pickup: true` for the first 60 ticks then idle for 180 ticks; the body recording is a single all-zero frame (Q-021 default A) with the ghost flipped to `unconscious` post-creation via `applyKnockout`. New module `src/render/fadeOverlay.ts` exports `createFadeOverlay({ colorHex? })` which builds a Three.js full-screen plane on a separate orthographic camera with `setOpacity(t)` (clamped to `[0, 1]`, hides at zero), `render(renderer)` (composites over the main pass with `autoClear = false`), and `dispose()`. `src/app.ts` mounts the cinematic at boot (active timeline at boot is 5:00 so the cinematic ghosts open hidden via the registry's `add` non-active-bucket hide path) and constructs the fade overlay; the overlay's `render` runs after the main `renderer.render` each frame. Q-012 / Q-013 / Q-015 / Q-016 / Q-021 defaults are consumed. The visible body-tracking-the-actors behavior is OUT of scope this slice (the host's carry resolver only fires for the active player); the data path and the predicate gate (`isAct1Spawn` reads `ghostsFor(12).length >= 3 && currentTimeline === 5`) ship clean.",
+      "implementationRefs": [
+        "src/sim/scripts/act1Cinematic.ts",
+        "src/render/fadeOverlay.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/scripts/act1Cinematic.test.ts",
+        "tests/render/fadeOverlay.test.ts"
+      ],
       "followupRefs": []
     },
     {

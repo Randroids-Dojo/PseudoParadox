@@ -53,6 +53,8 @@ import {
   nextQualitativelyDifferentAction,
   type ThoughtPeekKind,
 } from "./sim/thoughtBubblePeek.ts";
+import { mountAct1Cinematic } from "./sim/scripts/act1Cinematic.ts";
+import { createFadeOverlay } from "./render/fadeOverlay.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -174,6 +176,24 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // traversal the registry hides the leaving timeline's ghosts and resets
   // the entering timeline's ghosts to tick 0 (REQ-001 / REQ-003).
   const registry = createTimelineRegistry({ initialTimeline: ACT_ONE_HOUR });
+
+  // REQ-012: mount the Act 1 cinematic into the 12:00 timeline bucket at
+  // boot. Three scripted ghosts (left dragger, right dragger, unconscious
+  // body) are filed via `registry.add(12, ghost)`. The active timeline at
+  // boot is 5:00, so each cinematic ghost is hidden by `add` and stays
+  // hidden until the active player visits 12:00 (entering the South door
+  // from 5:00). On `setActiveTimeline(12)` the registry resets each ghost
+  // to its tick-0 spawn pose and runs their hand-authored recordings.
+  // See `docs/gdd/40-act-progress-and-narrative-beats.md` section 5.
+  mountAct1Cinematic({ registry, scene: sceneCtx.scene, world });
+
+  // REQ-012 / Q-013: fade-to-black overlay. The overlay primitive lives
+  // here so the cinematic timing can write `setOpacity(t)` once the host
+  // wires the per-tick fade ramp; this slice ships the data path and the
+  // overlay primitive without driving the ramp from the host loop. The
+  // overlay opens at opacity 0 (`visible = false`) so it costs nothing
+  // until a future slice triggers it.
+  const fadeOverlay = createFadeOverlay();
 
   // REQ-009 runtime / REQ-013 / REQ-014 partial / REQ-001 / REQ-003: on a
   // lit-portal `enter`, snapshot the lifetime's recording into a ghost from
@@ -581,6 +601,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // fixed-step loop above, not here, so frame rate cannot affect it.
     sceneCtx.scene.background = interpolateWarmToCool(timeOfDay.normalized());
     renderer.render(sceneCtx.scene, sceneCtx.camera);
+    // REQ-012 / Q-013: composite the fade overlay on top of the main pass.
+    // The overlay short-circuits if its mesh is hidden (opacity rounds to
+    // zero), so this call is free until a future slice triggers the fade.
+    fadeOverlay.render(renderer);
     requestAnimationFrame(frame);
   }
 
