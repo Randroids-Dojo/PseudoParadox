@@ -239,11 +239,13 @@ describe("REQ-005 portal destination fixity property test", () => {
     );
 
     const TICKS = 1000;
+    const touched = new Array<number>(portals.length).fill(0);
     for (let tick = 0; tick < TICKS; tick++) {
       // Pick a random portal each tick and try to mutate its destination
       // and direction. Object.freeze means strict-mode assignment throws;
       // catch and continue so the test exercises the runtime guarantee.
       const idx = Math.floor(rand() * portals.length);
+      touched[idx] += 1;
       const portal = portals[idx];
       const candidate = Math.floor(rand() * 24);
       try {
@@ -280,5 +282,9 @@ describe("REQ-005 portal destination fixity property test", () => {
     );
     expect(portals.map((p) => p.direction)).toEqual(originalDirections);
     expect(portals.map((p) => p.isLit)).toEqual(originalLitFlags);
+    // Coverage guard: a degenerate seed that never lands on one of the
+    // portals would silently weaken the fuzz. Assert every portal was
+    // exercised at least once across the 1000 ticks.
+    expect(touched.every((n) => n > 0)).toBe(true);
   });
 });
