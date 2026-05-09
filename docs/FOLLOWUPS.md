@@ -27,6 +27,14 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Nice To Have
 
+### F-008: Real-browser ship gates (Playwright E2E plus Lighthouse load-time plus 60fps frame budget)
+
+- Priority: nice-to-have
+- Context: REQ-037 / REQ-038 / REQ-039 / REQ-040 shipped (PR #43, the final iteration) with Vitest in-process REGRESSION GUARDS rather than real-browser SLAs. The current gates are: (1) `tests/sim/endToEndCompletability.test.ts` drives the Act 1 to escape sequence in-process and asserts ActStateObserver reaches `'escaped'` plus a determinism gate; (2) `tests/perf/bundleSize.test.ts` asserts `dist/assets/*.js` is under 5 MB raw; (3) `tests/perf/frameTime.test.ts` asserts the simulation's per-step CPU time is under 16.67 ms at the 95th percentile. The proper real-browser gates would be: (a) Playwright E2E against the local dev server that drives keydown/keyup events through Acts 1 to 3 and polls `window.__pseudoParadoxActState` (Q-020 default A); (b) a Playwright smoke against `pseudo-paradox.vercel.app` that hits the live URL and asserts no JS errors (Q-018 default A); (c) Lighthouse-based load-time measurement to pin the literal 10 s budget over a 5 Mbps connection (REQ-038); (d) a real-browser frame-budget measurement to pin 60 fps (REQ-039).
+- Blocker: per RULE 3, Playwright and Lighthouse are core test-infra dependencies that need explicit user approval. The Vitest in-process guards catch sim-side regressions cheaply and the Vercel preview deploy already gates every PR; the real-browser gates would be redundant in CI today and add dev-loop cost.
+- Unblock condition: a spillover release (post-prototype) or explicit user approval to add Playwright plus Lighthouse as devDeps. Then ship four small slices: (1) Playwright E2E against local dev; (2) Playwright live-URL smoke; (3) Lighthouse load-time gate; (4) Real-browser fps measurement.
+- PR / Dot reference (when picked up):
+
 ### F-007: Rehome a thrown body across timelines on portal traversal
 
 - Priority: nice-to-have
