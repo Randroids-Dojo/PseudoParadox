@@ -410,7 +410,7 @@ describe("drag regression (REQ-035): carry survives lit-portal traversal", () =>
 
     // Record one frame so the spawned ghost has something to play.
     lifetime.recorder.record(
-      { forward: false, back: false, left: false, right: false, punch: false, pickup: false },
+      { forward: false, back: false, left: false, right: false, punch: false, pickup: false, throw: false },
       0,
     );
     // Step into the south portal trigger volume.

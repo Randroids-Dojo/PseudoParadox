@@ -62,6 +62,11 @@ import type { Portal } from "./portal.ts";
 import type { PortalTriggerSet } from "./portalTrigger.ts";
 import type { TimelineRegistry } from "./timelineRegistry.ts";
 import type { TimeOfDay } from "./timeOfDay.ts";
+import type {
+  HardResetBodyWorld,
+  InFlightRegistry,
+} from "./bodyTraversal.ts";
+import type { FacingTracker } from "./facing.ts";
 
 /**
  * Minimal subset of `RAPIER.World` the reset needs to remove ghost rigid
@@ -71,6 +76,15 @@ import type { TimeOfDay } from "./timeOfDay.ts";
 export interface HardResetWorldHandle {
   removeRigidBody: RAPIER.World["removeRigidBody"];
 }
+
+/**
+ * Compose-in-place: a world that satisfies BOTH the registry teardown
+ * (`HardResetWorldHandle`) and the in-flight registry teardown
+ * (`HardResetBodyWorld`). The two structural shapes are identical, so a
+ * concrete `RAPIER.World` satisfies both. Declared here so callers can
+ * pass one handle for both arguments.
+ */
+export type HardResetCombinedWorld = HardResetWorldHandle & HardResetBodyWorld;
 
 export interface HardResetOptions {
   /** Active player handle. Body translation, velocity, mesh tint, and
@@ -96,6 +110,21 @@ export interface HardResetOptions {
   /** Edge-triggered portal overlap detector. Per-portal overlap flags are
    * cleared so the next `step` call does not fire a stale event. */
   portalTriggers: PortalTriggerSet;
+  /**
+   * REQ-036: in-flight registry of thrown bodies. Hard reset tears
+   * down every flying body (mesh removed from `scene`, body removed
+   * from `world`, registry cleared). Optional so test harnesses that
+   * do not exercise throw can omit it.
+   */
+  inFlightRegistry?: InFlightRegistry;
+  /**
+   * REQ-036: facing tracker for the active player. Hard reset returns
+   * the facing to `DEFAULT_FACING` (north, Q-007 default) so a
+   * freshly-reset player faces north until they move again, even if
+   * they had been walking south at the moment of reset. Optional so
+   * test harnesses that do not exercise throw can omit it.
+   */
+  facingTracker?: FacingTracker;
 }
 
 /**
@@ -120,6 +149,8 @@ export function hardReset(options: HardResetOptions): void {
     timeOfDay,
     portals,
     portalTriggers,
+    inFlightRegistry,
+    facingTracker,
   } = options;
 
   // 1 / 2. Tear down every ghost in every timeline bucket and reset the
@@ -195,4 +226,24 @@ export function hardReset(options: HardResetOptions): void {
   // event is deferred until the player walks into a trigger after the
   // reset settles.
   portalTriggers.resetOverlapState();
+
+  // 8. REQ-036: tear down every in-flight thrown body. The registry
+  // walks its tracked bodies, removes each body's mesh from `scene`
+  // and rigid body from `world`, and empties the list. This is
+  // separate from `clearAllGhosts` because thrown bodies do NOT spawn
+  // ghosts (dossier section 7), so the registry is its own bucket.
+  // Optional so test harnesses that do not exercise throw can omit
+  // the field.
+  if (inFlightRegistry) {
+    inFlightRegistry.clear(scene, world);
+  }
+
+  // 9. REQ-036: reset the facing tracker to `DEFAULT_FACING` (north,
+  // Q-007 default). A freshly-reset player faces north until they
+  // move again, even if they had been walking south at the moment of
+  // reset. Optional so test harnesses that do not exercise throw can
+  // omit the field.
+  if (facingTracker) {
+    facingTracker.reset();
+  }
 }

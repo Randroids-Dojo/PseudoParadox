@@ -39,6 +39,16 @@ import {
   applyCarryPickup,
   carryTransitionKind,
 } from "./sim/applyCarry.ts";
+import { tryThrow, type ThrowBodyHandle } from "./sim/throw.ts";
+import { createFacingTracker } from "./sim/facing.ts";
+import {
+  createInFlightRegistry,
+  type BodyLitGate,
+} from "./sim/bodyTraversal.ts";
+import {
+  litStateForTimeline,
+} from "./sim/litStateForTimeline.ts";
+import { isLit as portalAuthoredLit } from "./sim/portal.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -116,6 +126,18 @@ export async function startApp(container: HTMLElement): Promise<void> {
   const portalTriggers = createPortalTriggerSet(sceneCtx.portals);
   let portalTick = 0;
 
+  // REQ-036: in-flight registry for thrown bodies. The registry walks
+  // each thrown body's translation against the SAME trigger volumes the
+  // player's detector uses; on a lit-portal enter the body teleports to
+  // the destination spawn pose with its velocity preserved (Q-008
+  // default). Thrown bodies do NOT spawn ghosts (dossier section 7
+  // closed-form decision). A body whose velocity falls below the settle
+  // threshold for `IN_FLIGHT_SETTLE_TICKS` consecutive ticks drops out
+  // of the registry; settled bodies do not re-traverse portals.
+  const inFlightRegistry = createInFlightRegistry({
+    triggers: portalTriggers.triggers,
+  });
+
   // REQ-034: rising-edge detection for the pickup toggle. The recorder
   // captures the raw `pickup` flag each tick, but the carry resolver
   // only fires on the rising edge so a held key does not toggle every
@@ -127,7 +149,18 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // The capsule height for resting drops is derived from the player's
   // capsule dimensions: `cylinderLength / 2 + radius`.
   let previousPickupHeld = false;
+  // REQ-036: rising-edge detection for the throw input. Same model as
+  // pickup. The carrier presses `T` to detach and launch the carried
+  // body along the player's facing.
+  let previousThrowHeld = false;
   const carryRestingY = PLAYER_CAPSULE.cylinderLength / 2 + PLAYER_CAPSULE.radius;
+
+  // REQ-036: the player's facing direction is the last non-zero planar
+  // velocity direction (Q-007 default). The tracker is updated each
+  // fixed step from the player's actual planar velocity (after carry
+  // speed scaling) so a recorded `KeyState` sequence yields a
+  // deterministic facing trajectory on replay.
+  const facingTracker = createFacingTracker();
 
   // Per-timeline ghost bookkeeping. Ghosts are filed against the timeline
   // they were RECORDED IN (not the timeline they were spawned during a
@@ -181,6 +214,8 @@ export async function startApp(container: HTMLElement): Promise<void> {
       timeOfDay,
       portals: sceneCtx.portals,
       portalTriggers,
+      inFlightRegistry,
+      facingTracker,
     });
   };
   window.addEventListener("keydown", onResetKey as EventListener);
@@ -329,7 +364,7 @@ export async function startApp(container: HTMLElement): Promise<void> {
       const knockedOutWhileCarrying =
         player.consciousness === "unconscious" &&
         previousCarry.kind === "carrying";
-      const nextCarry = knockedOutWhileCarrying
+      const carryAfterToggle: typeof previousCarry = knockedOutWhileCarrying
         ? { kind: "idle" as const }
         : resolveCarryToggle(
             previousCarry,
@@ -337,6 +372,35 @@ export async function startApp(container: HTMLElement): Promise<void> {
             carrierActor,
             carryCandidates,
           );
+      // REQ-036: throw resolution. The rising-edge throw input fires only
+      // while the player is conscious and currently carrying. The
+      // `tryThrow` helper resolves the carried body's handle from the
+      // active-ghost list, applies the impulse along the facing
+      // direction, and returns the post-throw carry state (`'idle'` on
+      // a successful throw, unchanged otherwise). On a fire we register
+      // the body in the in-flight registry so its portal-traversal
+      // detector kicks in next tick.
+      const throwRisingEdge =
+        player.consciousness === "conscious" &&
+        keyboard.state.throw &&
+        !previousThrowHeld;
+      const facing = facingTracker.current;
+      let thrownGhostId: number | null = null;
+      const carryAfterThrow = tryThrow({
+        carry: carryAfterToggle,
+        throwRisingEdge,
+        facing,
+        resolveBody: (carriedId): ThrowBodyHandle | null => {
+          for (const ghost of activeGhostsList) {
+            if (ghost.instanceId === carriedId) {
+              thrownGhostId = ghost.instanceId;
+              return ghost.body;
+            }
+          }
+          return null;
+        },
+      });
+      const nextCarry = carryAfterThrow;
       player.carry = nextCarry;
       const transition = carryTransitionKind(previousCarry, nextCarry);
       if (transition === "pickup" && nextCarry.kind === "carrying") {
@@ -350,14 +414,38 @@ export async function startApp(container: HTMLElement): Promise<void> {
         transition === "drop" &&
         previousCarry.kind === "carrying"
       ) {
-        for (const ghost of activeGhostsList) {
-          if (ghost.instanceId === previousCarry.carriedId) {
-            applyCarryDrop(player.body, ghost.body, carryRestingY);
-            break;
+        // REQ-036: a throw fires the same `'carrying' -> 'idle'`
+        // transition the toggle drop fires, but the body has already
+        // been launched by `tryThrow` (impulse applied, dynamic flip
+        // done). We only run `applyCarryDrop` (which snaps the body
+        // to the carrier's planar floor pose with zero velocity) when
+        // the transition was NOT a throw. The thrown-body branch
+        // skips the snap so the impulse actually moves the body.
+        const wasThrow = thrownGhostId !== null;
+        if (!wasThrow) {
+          for (const ghost of activeGhostsList) {
+            if (ghost.instanceId === previousCarry.carriedId) {
+              applyCarryDrop(player.body, ghost.body, carryRestingY);
+              break;
+            }
+          }
+        } else {
+          // REQ-036: register the thrown body in the in-flight registry.
+          // The body's traversal detector starts on the next tick.
+          for (const ghost of activeGhostsList) {
+            if (ghost.instanceId === thrownGhostId) {
+              inFlightRegistry.register({
+                id: ghost.instanceId,
+                body: ghost.body,
+                mesh: ghost.mesh,
+              });
+              break;
+            }
           }
         }
       }
       previousPickupHeld = keyboard.state.pickup;
+      previousThrowHeld = keyboard.state.throw;
 
       // REQ-033 partial: an unconscious player has its keyboard input
       // suppressed before the planar velocity write so the body stops
@@ -371,6 +459,15 @@ export async function startApp(container: HTMLElement): Promise<void> {
           ? inputToVelocity(keyboard.state)
           : { x: 0, z: 0 };
       player.setPlanarVelocity(velocity.x, velocity.z);
+      // REQ-036: feed the facing tracker with the player's intended
+      // planar velocity. Zero ticks do not overwrite the cache (so a
+      // stopped player keeps facing wherever they last walked); first
+      // non-zero tick overrides the default north (`{ x: 0, z: -1 }`)
+      // from Q-007. Using the input-derived velocity rather than the
+      // post-step body velocity keeps the facing deterministic across
+      // replay (the recorded inputs reproduce the same velocity, which
+      // produces the same facing).
+      facingTracker.update(velocity);
 
       // REQ-034: while carrying, write the carrier's translation +
       // CARRY_OFFSET onto the carried body each tick. The body is
@@ -417,6 +514,21 @@ export async function startApp(container: HTMLElement): Promise<void> {
       const playerPos = player.body.translation();
       portalTriggers.step(playerPos.x, playerPos.z, portalTick);
       portalTick += 1;
+      // REQ-036: step the in-flight registry. Each tracked body's
+      // translation is checked against the same trigger volumes the
+      // player uses; on a lit-portal enter the body teleports with
+      // velocity preserved (Q-008 default). The lit gate reads from
+      // the same `litStateForTimeline` table the player's traversal
+      // uses, so a body and the player share one source of truth for
+      // which doors are enterable in the current timeline.
+      const bodyLitGate: BodyLitGate = (portal) => {
+        const state = litStateForTimeline(registry.activeTimeline, {
+          ghosts: registry.ghostsFor(registry.activeTimeline),
+        });
+        if (state) return state[portal.direction];
+        return portalAuthoredLit(portal);
+      };
+      inFlightRegistry.step(bodyLitGate);
       physicsAccumulatorMs -= fixedStepMs;
       steps += 1;
     }

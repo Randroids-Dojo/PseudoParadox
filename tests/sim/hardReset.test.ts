@@ -36,6 +36,7 @@ const NEUTRAL: KeyState = {
   right: false,
   punch: false,
   pickup: false,
+  throw: false,
 };
 
 const buildRecording = (frames: KeyState[]) => {
