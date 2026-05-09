@@ -52,6 +52,7 @@ const NEUTRAL: KeyState = {
   left: false,
   right: false,
   punch: false,
+  pickup: false,
 };
 
 const state = (overrides: Partial<KeyState>): KeyState => ({
@@ -117,6 +118,7 @@ const buildHarness = (): Harness => {
     originNormalized: 0,
     instanceId: 1,
     consciousness: "conscious",
+    carry: { kind: "idle" },
   };
   const lifetime: ActiveLifetime = {
     startPosition: { x: 0, z: 0 },

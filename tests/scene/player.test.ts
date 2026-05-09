@@ -68,3 +68,51 @@ describe("createPlayer consciousness seed (REQ-033 partial)", () => {
     expect(player.consciousness).toBe("conscious");
   });
 });
+
+describe("createPlayer carry seed (REQ-034)", () => {
+  it("seeds the active player at 'idle' carry state", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const player = createPlayer(scene, world);
+    expect(player.carry).toEqual({ kind: "idle" });
+  });
+
+  it("setPlanarVelocity passes through unchanged when carry state is idle", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const player = createPlayer(scene, world);
+
+    player.setPlanarVelocity(4, -3);
+    const linvel = player.body.linvel();
+    expect(linvel.x).toBeCloseTo(4, 6);
+    expect(linvel.z).toBeCloseTo(-3, 6);
+  });
+
+  it("setPlanarVelocity scales by CARRY_SPEED_MULTIPLIER (0.6) when carrying", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const player = createPlayer(scene, world);
+
+    player.carry = { kind: "carrying", carriedId: 2 };
+    player.setPlanarVelocity(4, -3);
+    const linvel = player.body.linvel();
+    // 0.6 * 4 = 2.4; 0.6 * -3 = -1.8.
+    expect(linvel.x).toBeCloseTo(2.4, 6);
+    expect(linvel.z).toBeCloseTo(-1.8, 6);
+  });
+
+  it("setPlanarVelocity preserves Y velocity from gravity when scaling under carry", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const player = createPlayer(scene, world);
+
+    // Pre-set a Y component on the body (e.g., from gravity falling).
+    player.body.setLinvel({ x: 0, y: -5, z: 0 }, true);
+    player.carry = { kind: "carrying", carriedId: 2 };
+    player.setPlanarVelocity(4, 0);
+
+    const linvel = player.body.linvel();
+    expect(linvel.x).toBeCloseTo(2.4, 6);
+    expect(linvel.y).toBeCloseTo(-5, 6);
+  });
+});

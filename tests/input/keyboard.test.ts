@@ -11,6 +11,7 @@ const NEUTRAL: KeyState = {
   left: false,
   right: false,
   punch: false,
+  pickup: false,
 };
 
 const state = (overrides: Partial<KeyState>): KeyState => ({

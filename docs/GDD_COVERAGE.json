@@ -524,9 +524,26 @@
       "id": "REQ-034",
       "requirement": "Unconscious bodies can be picked up by the player.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "updatedAt": "2026-05-08",
+      "note": "Pickup-and-carry of unconscious body (REQ-034; `docs/gdd/30-combat-and-interaction.md` section 5 / section 10 slice 3). New module `src/sim/carryState.ts` exports `PICKUP_RANGE_M = 1.0`, `CARRY_SPEED_MULTIPLIER = 0.6`, `CARRY_OFFSET = { x: 0, y: 1.2, z: 0 }`, `INITIAL_CARRY_STATE = { kind: 'idle' }`, the `CarryState` discriminated union (`idle` | `carrying { carriedId }`) and `Carryable` interface, plus the pure helpers `nearestCarryable`, `applyCarrySpeedScaling`, and `resolveCarryToggle`. New module `src/sim/applyCarry.ts` exports the side-effecting `applyCarryPickup` (kinematic flip + zero linvel), `applyCarryAttachment` (per-tick `setNextKinematicTranslation` to carrier + `CARRY_OFFSET`), `applyCarryDrop` (dynamic flip + snap to floor at carrier's planar position + zero linvel; mesh tilt untouched), `carryTransitionKind` classifier, and `snapCarriedMeshAbove` visual helper. `KeyState` gained a `pickup: boolean` channel (`KeyF` default per Q-002); `replayPickupAtTick` lands as a sibling to `replayPunchAtTick`. `Player` and `ActivePlayerHandle` gained `carry: CarryState`; `Player.setPlanarVelocity` now applies `applyCarrySpeedScaling` against the current carry state so the host's existing call site automatically gets the 0.6 slowdown when carrying. The host loop in `src/app.ts` derives the pickup rising edge as `keyboard.state.pickup && !previousPickupHeld && consciousness === 'conscious'`, builds a `Carryable[]` snapshot from active-timeline ghosts, runs `resolveCarryToggle` (or short-circuits to a forced drop if the player was knocked out this tick while already carrying), classifies the transition, and applies the matching pickup / drop side effects on the carried ghost body. While carrying, `applyCarryAttachment` runs each tick AFTER the velocity write so the carried body's next kinematic translation tracks the carrier's pose. `hardReset` returns `player.carry` to `INITIAL_CARRY_STATE`. Q-002 / Q-004 / Q-005 / Q-006 / Q-011 defaults are consumed; Q-006 ships only the kinematic flip half (the excluded-collision-group belt is documented as a future tightening if jitter appears).",
+      "implementationRefs": [
+        "src/sim/carryState.ts",
+        "src/sim/applyCarry.ts",
+        "src/input/keyboard.ts",
+        "src/sim/inputRecorder.ts",
+        "src/scene/player.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/hardReset.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/carryState.test.ts",
+        "tests/sim/applyCarry.test.ts",
+        "tests/sim/inputRecorder.test.ts",
+        "tests/scene/player.test.ts",
+        "tests/sim/hardReset.test.ts"
+      ],
       "followupRefs": []
     },
     {

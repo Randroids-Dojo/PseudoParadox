@@ -35,6 +35,7 @@ const NEUTRAL: KeyState = {
   left: false,
   right: false,
   punch: false,
+  pickup: false,
 };
 
 const buildRecording = (frames: KeyState[]) => {
@@ -92,6 +93,9 @@ const buildHarness = (initialActiveTimeline = ACT_ONE_HOUR): Harness => {
     // Pre-flipped to unconscious so the reset's "consciousness back to
     // conscious" contract (REQ-033 partial / REQ-025) is observable.
     consciousness: "unconscious",
+    // Pre-set to a 'carrying' state so the reset's "carry back to idle"
+    // contract (REQ-034 / REQ-025) is observable.
+    carry: { kind: "carrying", carriedId: 99 },
   };
 
   const lifetime: ActiveLifetime = {
@@ -464,6 +468,27 @@ describe("hardReset: consciousness reset (REQ-033 partial / REQ-025)", () => {
     });
 
     expect(h.player.consciousness).toBe("conscious");
+  });
+});
+
+describe("hardReset: carry state reset (REQ-034 / REQ-025)", () => {
+  it("returns the active player's carry state to 'idle'", () => {
+    const h = buildHarness();
+    // The harness pre-sets carry to a 'carrying' state.
+    expect(h.player.carry.kind).toBe("carrying");
+
+    hardReset({
+      player: h.player,
+      lifetime: h.lifetime,
+      registry: h.registry,
+      scene: h.scene,
+      world: h.world,
+      timeOfDay: h.timeOfDay,
+      portals: h.portals,
+      portalTriggers: h.portalTriggers,
+    });
+
+    expect(h.player.carry).toEqual({ kind: "idle" });
   });
 });
 

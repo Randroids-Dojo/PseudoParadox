@@ -26,6 +26,19 @@ import {
 import { applyKnockout } from "./sim/knockoutState.ts";
 import { applyKnockoutBodyResponse } from "./sim/applyKnockoutBody.ts";
 import { replayPunchAtTick } from "./sim/inputRecorder.ts";
+import {
+  PLAYER_CAPSULE,
+} from "./scene/player.ts";
+import {
+  resolveCarryToggle,
+  type Carryable,
+} from "./sim/carryState.ts";
+import {
+  applyCarryAttachment,
+  applyCarryDrop,
+  applyCarryPickup,
+  carryTransitionKind,
+} from "./sim/applyCarry.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -102,6 +115,19 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // `wireTraversal` below (REQ-009 runtime half / REQ-010).
   const portalTriggers = createPortalTriggerSet(sceneCtx.portals);
   let portalTick = 0;
+
+  // REQ-034: rising-edge detection for the pickup toggle. The recorder
+  // captures the raw `pickup` flag each tick, but the carry resolver
+  // only fires on the rising edge so a held key does not toggle every
+  // frame. Initial value is false: a player who is holding F at the
+  // start of the simulation does not toggle until they release and
+  // press again. The dossier's Q-004 default keeps this semantic
+  // consistent with replay (a recorded held flag also produces a
+  // single rising edge on the first tick the recording starts true).
+  // The capsule height for resting drops is derived from the player's
+  // capsule dimensions: `cylinderLength / 2 + radius`.
+  let previousPickupHeld = false;
+  const carryRestingY = PLAYER_CAPSULE.cylinderLength / 2 + PLAYER_CAPSULE.radius;
 
   // Per-timeline ghost bookkeeping. Ghosts are filed against the timeline
   // they were RECORDED IN (not the timeline they were spawned during a
@@ -271,6 +297,68 @@ export async function startApp(container: HTMLElement): Promise<void> {
         }
       }
 
+      // REQ-034: per-tick carry resolution. The pickup toggle fires on
+      // the rising edge of `keyboard.state.pickup` (one tap picks up the
+      // nearest in-range unconscious body, another tap drops). Pickup
+      // input is suppressed while the player is unconscious so a
+      // knocked-out player cannot pick up. If the player was knocked
+      // out THIS tick while already carrying (the punch resolver
+      // flipped consciousness above), force a drop transition: the
+      // dossier specifies that the body falls in place at the
+      // carrier's planar position.
+      const pickupRisingEdge =
+        player.consciousness === "conscious" &&
+        keyboard.state.pickup &&
+        !previousPickupHeld;
+      const carrierActor = {
+        id: player.instanceId,
+        position: { x: playerTranslation.x, z: playerTranslation.z },
+      };
+      const carryCandidates: Carryable[] = activeGhostsList.map((ghost) => {
+        const t = ghost.body.translation();
+        return {
+          id: ghost.instanceId,
+          position: { x: t.x, z: t.z },
+          consciousness: ghost.consciousness,
+        };
+      });
+      const previousCarry = player.carry;
+      // If the player was knocked out while carrying, force a drop. The
+      // toggle resolver does not see consciousness, so we short-circuit
+      // here: an unconscious-while-carrying player drops the body.
+      const knockedOutWhileCarrying =
+        player.consciousness === "unconscious" &&
+        previousCarry.kind === "carrying";
+      const nextCarry = knockedOutWhileCarrying
+        ? { kind: "idle" as const }
+        : resolveCarryToggle(
+            previousCarry,
+            pickupRisingEdge,
+            carrierActor,
+            carryCandidates,
+          );
+      player.carry = nextCarry;
+      const transition = carryTransitionKind(previousCarry, nextCarry);
+      if (transition === "pickup" && nextCarry.kind === "carrying") {
+        for (const ghost of activeGhostsList) {
+          if (ghost.instanceId === nextCarry.carriedId) {
+            applyCarryPickup(ghost.body);
+            break;
+          }
+        }
+      } else if (
+        transition === "drop" &&
+        previousCarry.kind === "carrying"
+      ) {
+        for (const ghost of activeGhostsList) {
+          if (ghost.instanceId === previousCarry.carriedId) {
+            applyCarryDrop(player.body, ghost.body, carryRestingY);
+            break;
+          }
+        }
+      }
+      previousPickupHeld = keyboard.state.pickup;
+
       // REQ-033 partial: an unconscious player has its keyboard input
       // suppressed before the planar velocity write so the body stops
       // moving (and its recorded input continues to capture whatever the
@@ -283,6 +371,22 @@ export async function startApp(container: HTMLElement): Promise<void> {
           ? inputToVelocity(keyboard.state)
           : { x: 0, z: 0 };
       player.setPlanarVelocity(velocity.x, velocity.z);
+
+      // REQ-034: while carrying, write the carrier's translation +
+      // CARRY_OFFSET onto the carried body each tick. The body is
+      // kinematic for the duration of the carry, so this is the only
+      // path its translation moves. Done AFTER the carrier's velocity
+      // write so the carrier's intended motion is what the body
+      // follows on the next world.step().
+      if (player.carry.kind === "carrying") {
+        const carriedId = player.carry.carriedId;
+        for (const ghost of activeGhostsList) {
+          if (ghost.instanceId === carriedId) {
+            applyCarryAttachment(player.body, ghost.body);
+            break;
+          }
+        }
+      }
       // Advance every ACTIVE ghost (those filed into the timeline the
       // player is currently in) by one tick BEFORE stepping the world so
       // each ghost's planar velocity is written into the same `world.step()`
