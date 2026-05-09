@@ -110,6 +110,124 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
 - Status: open
 - Resolution:
 
+### Q-022: REQ-024 dependency enforcement model
+
+- Context: REQ-024 says acts cannot be executed out of order. The act-progress observer is monotonic via a watermark, but the question is whether the observer should also REFUSE player actions that would skip a beat (e.g., teleport the player back to 5:00 if they try to enter the North door at 12:00 before reaching the final-knockout watermark) or whether the observer only OBSERVES.
+- Options:
+  - A. Observer-only: the observer reports the highest reachable state but never refuses player actions. The world is the only enforcement layer (the North door at 12:00 is only lit once the cinematic actors complete; the player physically cannot enter it earlier).
+  - B. Hard-fail: the observer refuses transitions that skip a state. Adds a coupling between the observer and the host's input-routing layer.
+  - C. Sliding-window: a hybrid where some beats are watermarked and some are window-based.
+- Recommended default: A. The world ALREADY enforces beat order via lit/dark gates and the carry-then-drop physical sequence. The observer is a read-only oracle; tests can drive the observer through valid sequences and assert monotonicity, which is sufficient for REQ-024.
+- Status: open
+- Resolution:
+
+### Q-021: How does Act 1's cinematic record the knocked-out body?
+
+- Context: REQ-012's cinematic has three "actors" at 12:00: two figures dragging a body. The body itself is unconscious and immobile during the drag. The dossier needs a representation that fits the existing ghost pipeline.
+- Options:
+  - A. A 1-frame `unconscious` ghost in the 12:00 bucket whose recording is `[{ tick: 0, keys: <all-zero KeyState>, timeOfDay: 12/24 }]`. The body is dragged kinematically by the actors using the existing carry attachment.
+  - B. A non-ghost body, separately tracked. Adds a parallel render path the rest of the system does not use.
+  - C. A real `GhostInstance` with a hand-authored dragged trajectory baked into its recording's velocity track. The actors then do not need to carry it; the body moves on its own per its recording.
+- Recommended default: A. Reuses the existing pipeline and matches the ACTUAL gameplay model (the body is unconscious; the actors drag it; the body's trajectory is a deterministic consequence of the actors' carry inputs).
+- Status: open
+- Resolution:
+
+### Q-020: REQ-040 end-to-end test runtime
+
+- Context: REQ-040 is the single most load-bearing test. The test needs to drive the player through Acts 1 to 3 and assert `ActState === 'escaped'`. The runtime decision is Playwright vs Vitest plus jsdom.
+- Options:
+  - A. Playwright against the local dev server. Real browser, real WebGL, real Rapier3D WASM, real key events. Slow (several seconds startup) but the only environment that exercises the full stack.
+  - B. Vitest plus jsdom plus a Three.js mock plus a Rapier mock. Fast but requires writing two non-trivial mocks; a passing test does not prove the live build works.
+- Recommended default: A. The test fires once per CI run; the slowness is acceptable. Mocks would build a parallel system that drifts from production.
+- Status: open
+- Resolution:
+
+### Q-019: REQ-039 frame-time threshold reading
+
+- Context: REQ-039 says 60 fps on a 2020-era laptop. 60 fps = 16.67 ms / frame, but a single dropped frame is acceptable jank. The question is whether to assert the mean, the median, or a percentile.
+- Options:
+  - A. 95th-percentile. A single 30 ms frame is fine; sustained > 16.67 ms 95th-percentile fails.
+  - B. Mean. Smoothes over jank but penalizes stable runs with one bad outlier.
+  - C. Maximum. Strict; would fail on any single dropped frame.
+- Recommended default: A (95th-percentile). Standard performance-engineering reading; matches the player's perception of "feels smooth."
+- Status: open
+- Resolution:
+
+### Q-018: REQ-037 ship smoke runtime
+
+- Context: REQ-037 is functionally satisfied by the live Vercel deploy at `pseudo-paradox.vercel.app`. The slice's question is whether to add a Playwright smoke to CI or to verify once and document.
+- Options:
+  - A. Verify once at slice time with a single Playwright run; do NOT add to CI. Vercel's preview deploy already proves the build is shippable.
+  - B. Add a recurring smoke to CI. Catches regressions but adds cost to every PR.
+- Recommended default: A. The Vercel preview deploy is the de-facto smoke; doubling it in CI is redundant.
+- Status: open
+- Resolution:
+
+### Q-017: PRNG seed strategy for no-paradox property tests
+
+- Context: REQ-004's property tests need a deterministic PRNG to drive randomized input sequences. The choice is between using a third-party library (which the stack constraint forbids unless approved) and writing a small generator.
+- Options:
+  - A. A 30-line hand-rolled LCG seeded from the test name (hash the test description string into a 32-bit seed).
+  - B. Pull in `seedrandom` or similar.
+  - C. Use Math.random with a fixed `Math.random` override for the test duration.
+- Recommended default: A. Stack constraints forbid speculative dependencies; a 30-line LCG is sufficient for these tests' randomness needs.
+- Status: open
+- Resolution:
+
+### Q-016: Player input during the Act 1 cinematic
+
+- Context: REQ-012 plays a cinematic at 12:00. The active player either does not exist yet (cinematic plays first, then spawns at 5:00) or exists but should not be able to move during the cinematic. The simplest model is to read KeyState but ignore it for the duration of the cinematic.
+- Options:
+  - A. KeyState read but ignored: the keyboard layer keeps recording, but `inputToVelocity` is gated behind a "cinematic active" flag that returns zero during the cinematic.
+  - B. KeyState not read: the keyboard listener is unsubscribed for the duration of the cinematic.
+  - C. Active player does not exist yet: the cinematic plays without an active player, then the player spawns post-fade at 5:00.
+- Recommended default: C. Cleanest separation; the cinematic ghosts are the only inhabitants of the 12:00 bucket during the cinematic, and the active player spawns once the fade resolves at 5:00. (Combined with Q-015's "non-recordable" default this is fully consistent.)
+- Status: open
+- Resolution:
+
+### Q-015: Are the player's actions during the Act 1 cinematic recordable?
+
+- Context: REQ-012's cinematic happens at 12:00. If the active player exists during the cinematic and an `InputRecorder` is open, then any input (or even idle) gets recorded into the 12:00 bucket and competes with the scripted-actor recordings.
+- Options:
+  - A. NOT recordable. The active player either does not exist yet or has no recorder open during the cinematic.
+  - B. Recordable. The active player owns a recorder that captures whatever happens during the cinematic; this becomes a fourth ghost in the 12:00 bucket on later visits.
+- Recommended default: A. Pillar 4 (logical puzzles) is preserved by keeping the cinematic outside the recording surface; the cinematic is the WORLD telling the player something, not the player acting.
+- Status: open
+- Resolution:
+
+### Q-014: Drop-center radius for Act 3 mirror beat predicate
+
+- Context: REQ-021 (Act 3 mirror beat) requires the player to drop the unconscious 5:00 instance "in the center of the room" at 12:00. The predicate uses a tolerance radius around the room origin.
+- Options:
+  - A. 1.0 m. Tight enough that "dropped near a wall" does not satisfy; loose enough that the player does not need to drop at exactly the origin.
+  - B. 0.5 m. Tighter; risks frustration if the player drops slightly off-center.
+  - C. 2.0 m. Loose; the puzzle's mirroring of Act 1 reads less precisely.
+- Recommended default: A (1.0 m). Balances precision against player frustration.
+- Status: open
+- Resolution:
+
+### Q-013: Fade-to-black implementation for the Act 1 cinematic
+
+- Context: REQ-012's cinematic ends with a fade-to-black before the 5:00 spawn. The fade can live in CSS (an HTML overlay above the canvas) or in Three.js (a full-screen plane on a separate orthographic camera).
+- Options:
+  - A. Three.js full-screen plane on a separate `OrthographicCamera` overlay. Co-located with the existing render pass; opacity is animated by writing the material's alpha.
+  - B. CSS overlay above the canvas. Simpler markup; opacity animated via `style.opacity`.
+  - C. Per-pixel post-process pass. Heavier; not necessary for a simple uniform fade.
+- Recommended default: A. Keeps the cinematic fully inside the renderer (no `index.html` edits, no DOM coupling); deterministic per-tick opacity changes are trivial.
+- Status: open
+- Resolution:
+
+### Q-012: Where do scripted Act-1-cinematic recordings live?
+
+- Context: REQ-012 needs three pre-authored `InputRecording` data files (two draggers plus a knocked-out body). They are gameplay-system data, but they are also data files (not code in the running-game sense).
+- Options:
+  - A. `src/sim/scripts/`. Co-located with the rest of the simulation code; imported by `src/app.ts` directly.
+  - B. `src/data/`. A separate top-level data directory; cleaner conceptual separation.
+  - C. `public/scripts/`. Fetched at runtime as JSON; defers loading to network time.
+- Recommended default: A (`src/sim/scripts/`). The recordings are simulation-system data; they import existing types from `src/sim/inputRecorder.ts` and are bundled with the rest of the sim. C is slower (network round-trip) and B introduces a new top-level directory for one feature.
+- Status: open
+- Resolution:
+
 ### Q-011: Carried body's relationship to the carrier's recording
 
 - Context: REQ-034 / REQ-036 ask whether a carried body's trajectory while held is part of the carrier's recording or has its own independent recording.
