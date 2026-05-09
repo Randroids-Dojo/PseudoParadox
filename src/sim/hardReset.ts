@@ -51,6 +51,7 @@ import { InputRecorder } from "./inputRecorder.ts";
 import { INITIAL_INSTANCE_ID } from "./instanceId.ts";
 import { INITIAL_CONSCIOUSNESS } from "./knockoutState.ts";
 import { clearKnockoutBodyResponse } from "./applyKnockoutBody.ts";
+import { INITIAL_CARRY_STATE } from "./carryState.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import {
   repaintDoorsForHour,
@@ -162,6 +163,14 @@ export function hardReset(options: HardResetOptions): void {
   // curve. Total and idempotent: a player who was never knocked out
   // sees no observable change.
   clearKnockoutBodyResponse(player.body, player.mesh);
+
+  // REQ-034: hard reset returns the active player's carry state to
+  // `'idle'`. Any carried ghost has already been removed from the
+  // scene + world by `clearAllGhosts` above, so there is no body to
+  // unattach; the player simply forgets it was carrying. A future
+  // pickup after the reset opens a fresh `'idle'` -> `'carrying'`
+  // transition.
+  player.carry = INITIAL_CARRY_STATE;
 
   // 4. Open a fresh lifetime at the Act 1 anchor: a new recorder (so no
   // recorded frames from the just-cleared run leak into a future ghost

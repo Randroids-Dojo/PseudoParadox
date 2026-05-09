@@ -139,3 +139,23 @@ export function replayPunchAtTick(recording: InputRecording, tick: number): bool
   }
   return recording.frames[tick].keys.punch;
 }
+
+/**
+ * Recorded pickup flag at a tick (REQ-034). Returns `false` for ticks past
+ * the end of the recording or for negative tick indices, matching the
+ * past-end semantics of `replayAtTick` and `replayPunchAtTick`. The flag is
+ * read directly from `KeyState.pickup`. The carry resolver in
+ * `src/sim/carryState.ts` interprets a sequence of recorded pickup flags as
+ * a toggle: the host derives the rising edge by comparing tick T's flag
+ * with tick T-1's flag.
+ *
+ * Sibling helper to `replayPunchAtTick` rather than a combined return so
+ * existing call sites that only need the planar velocity stay unchanged
+ * (slice discipline: no drive-by signature edits).
+ */
+export function replayPickupAtTick(recording: InputRecording, tick: number): boolean {
+  if (tick < 0 || tick >= recording.length) {
+    return false;
+  }
+  return recording.frames[tick].keys.pickup;
+}

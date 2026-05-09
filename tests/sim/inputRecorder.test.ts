@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   InputRecorder,
   replayAtTick,
+  replayPickupAtTick,
   replayPunchAtTick,
 } from "../../src/sim/inputRecorder.ts";
 import { PLAYER_SPEED_MPS, type KeyState } from "../../src/input/keyboard.ts";
@@ -12,6 +13,7 @@ const NEUTRAL: KeyState = {
   left: false,
   right: false,
   punch: false,
+  pickup: false,
 };
 
 const state = (overrides: Partial<KeyState>): KeyState => ({
@@ -189,5 +191,61 @@ describe("replayPunchAtTick (REQ-033 partial)", () => {
     live.punch = false;
     const snap = r.snapshot();
     expect(replayPunchAtTick(snap, 0)).toBe(true);
+  });
+});
+
+describe("replayPickupAtTick (REQ-034)", () => {
+  it("returns the recorded pickup flag for a tick mid-recording", () => {
+    const r = new InputRecorder();
+    r.record(state({ pickup: false }), 0);
+    r.record(state({ pickup: true }), 0);
+    r.record(state({ pickup: false }), 0);
+    const snap = r.snapshot();
+
+    expect(replayPickupAtTick(snap, 0)).toBe(false);
+    expect(replayPickupAtTick(snap, 1)).toBe(true);
+    expect(replayPickupAtTick(snap, 2)).toBe(false);
+  });
+
+  it("returns false for ticks past the end of the recording", () => {
+    const r = new InputRecorder();
+    r.record(state({ pickup: true }), 0);
+    const snap = r.snapshot();
+
+    expect(replayPickupAtTick(snap, 1)).toBe(false);
+    expect(replayPickupAtTick(snap, 1000)).toBe(false);
+  });
+
+  it("returns false for negative tick indices", () => {
+    const r = new InputRecorder();
+    r.record(state({ pickup: true }), 0);
+    const snap = r.snapshot();
+    expect(replayPickupAtTick(snap, -1)).toBe(false);
+  });
+
+  it("returns false for an empty recording at any tick", () => {
+    const snap = new InputRecorder().snapshot();
+    expect(replayPickupAtTick(snap, 0)).toBe(false);
+    expect(replayPickupAtTick(snap, 5)).toBe(false);
+  });
+
+  it("captures pickup alongside punch and the movement axes in the same frame", () => {
+    const r = new InputRecorder();
+    r.record(
+      state({ forward: true, punch: true, pickup: true }),
+      0,
+    );
+    const snap = r.snapshot();
+    expect(replayPunchAtTick(snap, 0)).toBe(true);
+    expect(replayPickupAtTick(snap, 0)).toBe(true);
+  });
+
+  it("defensively copies KeyState so later mutation of pickup does not rewrite history", () => {
+    const r = new InputRecorder();
+    const live: KeyState = { ...NEUTRAL, pickup: true };
+    r.record(live, 0);
+    live.pickup = false;
+    const snap = r.snapshot();
+    expect(replayPickupAtTick(snap, 0)).toBe(true);
   });
 });

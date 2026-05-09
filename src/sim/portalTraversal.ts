@@ -19,6 +19,7 @@ import { litStateForTimeline } from "./litStateForTimeline.ts";
 import { isLit as portalAuthoredLit } from "./portal.ts";
 import { nextInstanceId, type InstanceId } from "./instanceId.ts";
 import type { Consciousness } from "./knockoutState.ts";
+import type { CarryState } from "./carryState.ts";
 
 /**
  * Portal traversal teleport (REQ-009 runtime half / REQ-013 / REQ-014 partial).
@@ -123,6 +124,15 @@ export interface ActivePlayerHandle {
    * unreachable.
    */
   consciousness: Consciousness;
+  /**
+   * Pickup-and-carry state (REQ-034). Mutated by the host's per-tick
+   * carry resolver in `src/app.ts`; reset to `'idle'` by `hardReset`.
+   * Traversal does not branch on this flag in the current slice (the
+   * carried body comes along with the carrier through a lit portal per
+   * the dossier section 5 edge case 2; the next slice's throw mechanic
+   * is the only path that DETACHES a body during traversal).
+   */
+  carry: CarryState;
 }
 
 /**

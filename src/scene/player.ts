@@ -6,6 +6,11 @@ import {
   INITIAL_CONSCIOUSNESS,
   type Consciousness,
 } from "../sim/knockoutState.ts";
+import {
+  INITIAL_CARRY_STATE,
+  applyCarrySpeedScaling,
+  type CarryState,
+} from "../sim/carryState.ts";
 
 /**
  * Player capsule dimensions for the prototype (REQ-026).
@@ -60,10 +65,26 @@ export interface Player {
    */
   consciousness: Consciousness;
   /**
+   * Pickup-and-carry state (REQ-034). The active player opens at
+   * `'idle'`. Toggling pickup with an unconscious body in range
+   * transitions to `'carrying'`; toggling again drops. Mutated by the
+   * host's per-tick carry resolver in `src/app.ts`. Hard reset returns
+   * this to `'idle'` (`src/sim/hardReset.ts`).
+   */
+  carry: CarryState;
+  /**
    * Sets the desired planar (world-XZ) velocity on the body, preserving
    * vertical velocity from gravity. Call this once per fixed physics step
    * (from the physics update loop), not once per render frame, so the
    * target velocity reacts at the simulation rate.
+   *
+   * The setter applies `applyCarrySpeedScaling` against the player's
+   * current `carry` state before writing to Rapier (REQ-034 / Q-005):
+   * while carrying, the input velocity is multiplied by
+   * `CARRY_SPEED_MULTIPLIER = 0.6` so the carrier visibly slows down.
+   * Idle state passes the velocity through unchanged. The host's
+   * `inputToVelocity` call site does NOT need to know about carry
+   * state; the scaling is encapsulated here.
    */
   setPlanarVelocity: (vx: number, vz: number) => void;
   /**
@@ -136,9 +157,22 @@ export function createPlayer(
   ).setFriction(0.5);
   world.createCollider(colliderDesc, body);
 
+  // REQ-034: per-active-player carry state. Mutable behind a getter /
+  // setter on the returned object so the host can flip `idle` <-> `carrying`
+  // and `setPlanarVelocity` reads the current value through the closure
+  // (the speed-multiplier path stays encapsulated in this module). Hard
+  // reset returns this to `INITIAL_CARRY_STATE` by writing through the
+  // setter.
+  let carry: CarryState = INITIAL_CARRY_STATE;
+
   const setPlanarVelocity = (vx: number, vz: number): void => {
+    // REQ-034 / Q-005: scale the input velocity by `CARRY_SPEED_MULTIPLIER`
+    // when carrying. Idle passes through unchanged. The scaling is applied
+    // here so every call site (input-driven, replay-driven, future
+    // facing-aware) gets the slowdown for free.
+    const scaled = applyCarrySpeedScaling(carry, { x: vx, z: vz });
     const current = body.linvel();
-    body.setLinvel({ x: vx, y: current.y, z: vz }, true);
+    body.setLinvel({ x: scaled.x, y: current.y, z: scaled.z }, true);
   };
 
   const syncMeshFromBody = (): void => {
@@ -162,6 +196,12 @@ export function createPlayer(
     // flag is mutated by the punch resolver in `src/app.ts` and reset to
     // `'conscious'` by `hardReset`.
     consciousness: INITIAL_CONSCIOUSNESS,
+    get carry(): CarryState {
+      return carry;
+    },
+    set carry(next: CarryState) {
+      carry = next;
+    },
     setPlanarVelocity,
     syncMeshFromBody,
   };

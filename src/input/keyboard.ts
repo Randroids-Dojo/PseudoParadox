@@ -30,6 +30,21 @@ export interface KeyState {
    * future hold-to-charge variant can read the flag directly.
    */
   punch: boolean;
+  /**
+   * Pickup input (REQ-034). Captured as a per-tick boolean alongside the
+   * other channels so the recorder snapshots it identically to `punch`.
+   * Default key binding is `F` (Q-002 default). The carry layer
+   * (`src/sim/carryState.ts`) is a TOGGLE (Q-004 default): one rising
+   * edge picks up the nearest in-range unconscious body, another rising
+   * edge drops it. Rising-edge detection itself is NOT applied here; the
+   * recorder stores the raw key state and the host (`src/app.ts`) tracks
+   * the previous tick's value to derive the edge. This mirrors the
+   * `punch` model: per-tick boolean here, semantic interpretation in the
+   * resolver. On replay a ghost's recorded pickup flag flows through the
+   * same edge-detection path so a recorded pickup at tick T fires once,
+   * not on every subsequent tick the recording keeps the flag held.
+   */
+  pickup: boolean;
 }
 
 export interface PlanarVelocity {
@@ -96,6 +111,7 @@ export function createKeyboardState(
     left: false,
     right: false,
     punch: false,
+    pickup: false,
   };
 
   const setKey = (code: string, down: boolean): void => {
@@ -120,6 +136,13 @@ export function createKeyboardState(
       // movement keys ignore Space, so there is no input collision.
       case "Space":
         state.punch = down;
+        break;
+      // Q-002 default: F binds to the pickup input (REQ-034). The
+      // movement keys ignore F, so there is no input collision. The
+      // toggle semantics live in `src/sim/carryState.ts`; this layer
+      // captures only the raw key state.
+      case "KeyF":
+        state.pickup = down;
         break;
       default:
         break;
