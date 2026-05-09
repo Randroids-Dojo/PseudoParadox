@@ -228,6 +228,17 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
 - Status: open
 - Resolution:
 
+### Q-023: How does the Act 2 second loop's "wait for another instance to wake up" beat resolve under v1's permanent-unconsciousness rule?
+
+- Context: REQ-017 (Act 2 second loop) per `docs/gdd/03-story-acts-1-3.md` says "Drag the body through the East door to 6:00. Wait for another instance to wake up. That instance (You-2) knocks You1 out." Per REQ-033 done, unconsciousness is permanent in v1: the dossier explicitly forbids the unconscious to conscious transition (`docs/gdd/30-combat-and-interaction.md` section 4: "There is no recovery in v1: once unconscious, the capsule stays tilted until pickup or hard reset"). The literal "wait for the body to wake up" beat is therefore mechanically unstageable in one play session. The integration test for REQ-017 needs a substitute reading of the GDD's intent.
+- Options:
+  - A. Treat "wake up" as the recorded punch tick firing. The GDD beat is not actually about the body waking but about another instance's recorded sequence playing back a punch against You1 at 6:00. Under REQ-001 / REQ-002 the recording substrate gives this for free on the next loop iteration: any future visit to 6:00 replays this very sequence including the punch. The integration test can model the outcome (You1 goes down at 6:00) by directly applying `applyKnockout` to the active player at 6:00, simulating the recorded punch landing. The carry-then-East-traverse data path is exercised end-to-end; only the punch-replay is short-circuited.
+  - B. Add a wake-up transition to the prototype. Contradicts REQ-033 done and the dossier's explicit prohibition.
+  - C. Defer REQ-017 until a multi-loop integration harness exists that can stage two iterations of the loop in one test. Higher cost; same final state.
+- Recommended default: A. Matches the GDD's intent (the load-bearing beat is "You1 goes down at 6:00 from another instance's punch"; the wake mechanic is narrative dressing under v1). The recording substrate of REQ-001 makes the literal version work on the next loop, and the integration test can pin the outcome state directly without modelling the unstaged literal mechanic.
+- Status: open
+- Resolution:
+
 ### Q-011: Carried body's relationship to the carrier's recording
 
 - Context: REQ-034 / REQ-036 ask whether a carried body's trajectory while held is part of the carrier's recording or has its own independent recording.

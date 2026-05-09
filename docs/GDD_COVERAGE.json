@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T11:55:00-05:00",
+  "updatedAt": "2026-05-09T12:05:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -336,9 +336,26 @@
       "id": "REQ-017",
       "requirement": "Act 2 second loop: knocking out You-1 on return to 5:00 and dragging the body East to 6:00 produces a You-2 instance who wakes and knocks out You1.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-2-meet-yourself",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Integration test in `tests/sim/act2Loop2.test.ts` drives the existing primitives (recorder, traversal, registry, ghost, knockout, carry) through the GDD's scripted Act 2 second-loop sequence. Phase 1+2 reuses the loop-1 sequence (a helper `runLoopOne` walks East 5 to 6 then West 6 to 5, leaving ghost-A in bucket 5 and ghost-B in bucket 6, active timeline 5, ghost-A replayed to exhaustion). Phase 3a positions the active player adjacent to ghost-A and applies the same side effects the host's punch resolver does (`applyKnockout` flips ghost-A to unconscious; `applyKnockoutBodyResponse` writes the impulse plus mesh tilt). Phase 3b drives `resolveCarryToggle` on a one-tick rising edge and asserts the resulting state is `{ kind: 'carrying', carriedId: ghostA.instanceId }`; `applyCarryPickup` flips ghost-A's body to KinematicPositionBased. Phase 3c records four input frames (right + pickup) and runs `applyCarryAttachment` per tick; `detector.step` then crosses the East trigger at 5:00 (East lit per `DOOR_STATE_BY_HOUR`), and the lit-portal traversal handler files the carrying-East lifetime as a fresh ghost in bucket 5 (so bucket 5 ends with at least 2 ghosts: the original unconscious ghost-A plus the dragging-East ghost-C), switches active timeline to 6, and the carry state passes through unchanged (`wireTraversal` does not branch on `player.carry`). Phase 3d asserts post-traversal: active=6, player.carry preserved, bucket 5 has an unconscious ghost (ghost-A retained its flag because `setActiveTimeline` only HIDES the leaving bucket; reset only fires on entering-bucket re-entry), bucket 6 still holds ghost-B. Phase 4 resolves the GDD's 'wait for another instance to wake up' beat per Q-023 default A: the test directly applies `applyKnockout(player.consciousness)` plus `applyKnockoutBodyResponse(player.body, player.mesh, ...)`, modelling the outcome of a recorded punch tick from a future loop iteration (the GDD's load-bearing state change is You1 going down at 6:00; the wake mechanic is narrative dressing under v1's permanent-unconsciousness rule). Phase 5 builds the snapshot and asserts `isAct2Loop2` returns true plus the observer (already advanced to `act-2-loop-1` mid-test via an explicit update at the end of Phase 1+2) walks to `act-2-loop-2`. A second case pins the four conjunctions of `isAct2Loop2` (currentTimeline === 6, activePlayer.consciousness === 'unconscious', ghosts5 has at least one unconscious, ghosts6 non-empty) by satisfying the full state then dropping each conjunction in turn and asserting `isAct2Loop2` returns false. NO production code touched: the existing `isAct2Loop2` predicate from PR #30 fires correctly on the live-state snapshot.",
+      "implementationRefs": [
+        "src/sim/actState.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/timelineRegistry.ts",
+        "src/sim/ghostInstance.ts",
+        "src/sim/inputRecorder.ts",
+        "src/sim/knockoutState.ts",
+        "src/sim/applyKnockoutBody.ts",
+        "src/sim/carryState.ts",
+        "src/sim/applyCarry.ts"
+      ],
+      "testRefs": [
+        "tests/sim/act2Loop2.test.ts",
+        "tests/sim/act2Loop1.test.ts",
+        "tests/sim/actState.test.ts",
+        "tests/sim/dragRegression.test.ts"
+      ],
       "followupRefs": []
     },
     {
