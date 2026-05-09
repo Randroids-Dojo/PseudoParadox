@@ -782,20 +782,22 @@ describe("REQ-022 Act 3 final knockout integration", () => {
     expect(isAct3FinalKnockout(wrongTimeline)).toBe(false);
 
     // Drop conjunction 2 (variant a): only one unconscious ghost in
-    // bucket 12 (the second is conscious).
+    // bucket 12 (the second is conscious). Key off the stable instanceId
+    // so the variant remains correct if bucket ordering changes (the
+    // registry's `add` does not pin a deterministic index, and Act 1
+    // cinematic ghosts from `mountAct1Cinematic` already share bucket
+    // 12 with the synthesized fixtures).
     const oneUnconscious: ActStateSnapshot = {
       ...baseSnapshot,
       registry: {
         activeTimeline: 12,
         ghostsFor: (timeline) =>
           timeline === 12
-            ? baseSnapshot.registry
-                .ghostsFor(12)
-                .map((g, i) =>
-                  i === 0
-                    ? g
-                    : { ...g, consciousness: "conscious" as const },
-                )
+            ? baseSnapshot.registry.ghostsFor(12).map((g) =>
+                g.id === ghost2.instanceId
+                  ? { ...g, consciousness: "conscious" as const }
+                  : g,
+              )
             : baseSnapshot.registry.ghostsFor(timeline),
       },
     };
