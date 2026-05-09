@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-09, REQ-028 Visual Lit/Dark Verification (REQ-028 done)
+
+- Branch: `feature/req-028-visual-lit-dark-20260509-105547`
+- PR: #32
+- Changed: Added `tests/scene/doorVisualLit.test.ts`, the regression that pins the visual half of REQ-011. The test walks the four cardinals at hours 5, 6, and 12 and asserts the painted door material color matches the boolean returned by `litStateForTimeline(hour, { ghosts: [] })`. Hour 5 reads through `buildRoom()` (the construction-time paint path); hour 6 reads through `repaintDoorsForHour(portals, 6)` (the per-traversal repaint); hour 12 confirms both halves agree on "unauthored" by asserting `litStateForTimeline(12, ...)` is `null` and `repaintDoorsForHour(..., 12)` throws (12:00 seed lands with REQ-012). A fourth case exercises the arrivals seam: a `BlockedByArrivals` body that blocks the East door at 5:00 flips `litStateForTimeline(5, ...).east` to `false`, and a paint pass driven by the predicate's output flips the East door's material color in place via `applyDoorLitState`. This pins "door material updates when the predicate changes," not just at construction. Slice does NOT unify the paint path through `litStateForTimeline` (that is F-006); it only verifies the current paint matches the gate.
+- Verification: 465 tests across 34 suites green (was 461 / 33). New file `tests/scene/doorVisualLit.test.ts` adds 4 cases. `npm run build` clean. Em-dash sweep clean. `git diff --check` clean.
+- Assumptions: Hour 12 is reachable via the South portal at 5:00 but its lit/dark seed is intentionally unauthored today; the regression encodes that as the predicate returning `null` and the paint path throwing in lockstep, which is the correctness contract until REQ-012 ships the cinematic actors and the 12:00 seed alongside.
+- GDD coverage: REQ-028 flips from `not_started` to `done`. Build log entry appended to `docs/gdd/23-prototype-scope.md` (REQ-028 lives in the prototype-scope success-criteria neighborhood per the existing `gddRef`).
+- Followups: F-006 unchanged (still tracks the paint-path unification through `litStateForTimeline`).
+
 ## 2026-05-09, Five-Partials Regression Bundle (REQ-005, REQ-010, REQ-026, REQ-027, REQ-030 done)
 
 - Branch: `feature/regression-coverage-partials-20260509-010540`
