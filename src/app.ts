@@ -15,6 +15,7 @@ import {
   repaintDoorsForHour,
   snapClockToHour,
 } from "./sim/timelineRoom.ts";
+import { hardReset } from "./sim/hardReset.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -121,6 +122,27 @@ export async function startApp(container: HTMLElement): Promise<void> {
       snapClockToHour(timeOfDay, destinationHour);
     },
   });
+
+  // REQ-025: hard reset on `r` keydown. The pause-menu UI is out of scope
+  // for this slice; a single key binding is enough to return the simulation
+  // to a clean Act 1 state when the player gets stuck. The handler is bound
+  // to `window` (the same target the keyboard movement listeners use) and
+  // is intentionally edge-triggered on `keydown` so holding `r` does not
+  // continuously re-reset the simulation.
+  const onResetKey = (event: KeyboardEvent): void => {
+    if (event.code !== "KeyR") return;
+    hardReset({
+      player,
+      lifetime,
+      registry,
+      scene: sceneCtx.scene,
+      world,
+      timeOfDay,
+      portals: sceneCtx.portals,
+      portalTriggers,
+    });
+  };
+  window.addEventListener("keydown", onResetKey as EventListener);
 
   // Track the most recent frame time so the physics integrator can use
   // a stable fixed step independent of the browser's vsync jitter.

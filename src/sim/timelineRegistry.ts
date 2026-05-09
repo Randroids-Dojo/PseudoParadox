@@ -38,8 +38,19 @@
  *     ghost counts because the puzzle resolves in Acts 2 / 3).
  */
 
+import * as THREE from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
 import { HOURS_PER_DAY } from "./actOneAnchor.ts";
 import type { GhostInstance } from "./ghostInstance.ts";
+
+/**
+ * Minimal subset of `RAPIER.World` the registry needs for `clearAllGhosts`.
+ * Defined as a structural interface so tests can pass either a real world
+ * or a stub (mirrors `GhostWorldHandle` in `ghostInstance.ts`).
+ */
+export interface RegistryWorldHandle {
+  removeRigidBody: RAPIER.World["removeRigidBody"];
+}
 
 /**
  * Identifier for a single timeline. The prototype keys on the integer hour
@@ -106,6 +117,21 @@ export interface TimelineRegistry {
    * into the loop without touching every call site.
    */
   activeGhosts: () => readonly GhostInstance[];
+  /**
+   * Tear down every ghost in every timeline bucket: remove each ghost's
+   * mesh from `scene`, remove its rigid body (and its colliders) from
+   * `world`, and clear every bucket so subsequent `ghostsFor` /
+   * `activeGhosts` calls return empty lists. Resets the registry's active
+   * timeline to `nextActiveTimeline` (typically the Act 1 anchor) without
+   * firing the leaving / entering visibility passes that
+   * `setActiveTimeline` runs (there are no ghosts left to hide or reset).
+   * Used by REQ-025 hard reset; safe to call when the registry is empty.
+   */
+  clearAllGhosts: (
+    scene: THREE.Scene,
+    world: RegistryWorldHandle,
+    nextActiveTimeline: TimelineId,
+  ) => void;
 }
 
 export interface CreateTimelineRegistryOptions {
@@ -196,6 +222,36 @@ export function createTimelineRegistry(
     return bucket.ghosts;
   };
 
+  const clearAllGhosts: TimelineRegistry["clearAllGhosts"] = (
+    scene,
+    world,
+    nextActiveTimeline,
+  ) => {
+    if (!Number.isInteger(nextActiveTimeline)) {
+      throw new Error(
+        `clearAllGhosts: nextActiveTimeline must be an integer, got ${nextActiveTimeline}`,
+      );
+    }
+    if (
+      nextActiveTimeline < 0 ||
+      nextActiveTimeline >= HOURS_PER_DAY
+    ) {
+      throw new Error(
+        `clearAllGhosts: nextActiveTimeline must be in [0, ${HOURS_PER_DAY}), got ${nextActiveTimeline}`,
+      );
+    }
+    for (const bucket of buckets.values()) {
+      for (const ghost of bucket.ghosts) {
+        scene.remove(ghost.mesh);
+        // Rapier removes the body's colliders alongside the body itself,
+        // so an explicit `removeCollider` per ghost is unnecessary.
+        world.removeRigidBody(ghost.body);
+      }
+      bucket.ghosts.length = 0;
+    }
+    activeTimeline = nextActiveTimeline;
+  };
+
   return {
     get activeTimeline(): TimelineId {
       return activeTimeline;
@@ -204,5 +260,6 @@ export function createTimelineRegistry(
     add,
     setActiveTimeline,
     activeGhosts,
+    clearAllGhosts,
   };
 }
