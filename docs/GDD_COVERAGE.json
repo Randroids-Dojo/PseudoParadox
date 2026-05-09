@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T01:11:00-05:00",
+  "updatedAt": "2026-05-09T10:58:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -434,10 +434,23 @@
       "id": "REQ-028",
       "requirement": "Lit-versus-dark visual state of each door correctly reflects portal availability per the time travel rules.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
-      "followupRefs": []
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Visual paint matches the lit/dark predicate at every reachable hour. `tests/scene/doorVisualLit.test.ts` walks the four cardinals at hours 5, 6, and 12 and asserts the painted door material color matches `litStateForTimeline(hour, { ghosts: [] })`. Hour 5 reads through `buildRoom()` (construction paint); hour 6 reads through `repaintDoorsForHour(portals, 6)` (per-traversal repaint); hour 12 pins that both halves agree on 'unauthored' by asserting the predicate is `null` and `repaintDoorsForHour(..., 12)` throws. A fourth case exercises the `BlockedByArrivals` seam: blocking East at 5:00 flips `litStateForTimeline(5, ...).east` to `false`, and a paint pass driven by the predicate's output flips the East door's material color in place via `applyDoorLitState` (proving the visual reacts to predicate state changes, not just to construction-time inputs). Slice does NOT unify the paint path through `litStateForTimeline`; F-006 still tracks that.",
+      "implementationRefs": [
+        "src/scene/door.ts",
+        "src/scene/room.ts",
+        "src/sim/timelineRoom.ts",
+        "src/sim/litStateForTimeline.ts",
+        "src/sim/doorStateAtTime.ts"
+      ],
+      "testRefs": [
+        "tests/scene/doorVisualLit.test.ts",
+        "tests/scene/room.test.ts",
+        "tests/sim/timelineRoom.test.ts",
+        "tests/sim/litStateForTimeline.test.ts"
+      ],
+      "followupRefs": ["F-006"]
     },
     {
       "id": "REQ-029",
