@@ -50,6 +50,7 @@ import {
 import { InputRecorder } from "./inputRecorder.ts";
 import { INITIAL_INSTANCE_ID } from "./instanceId.ts";
 import { INITIAL_CONSCIOUSNESS } from "./knockoutState.ts";
+import { clearKnockoutBodyResponse } from "./applyKnockoutBody.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import {
   repaintDoorsForHour,
@@ -154,6 +155,13 @@ export function hardReset(options: HardResetOptions): void {
   // cleared by `clearAllGhosts` above (every ghost is removed from every
   // bucket; the next spawn opens at `INITIAL_CONSCIOUSNESS`).
   player.consciousness = INITIAL_CONSCIOUSNESS;
+
+  // REQ-033 finishing pass: clear the visible body response (mesh tilt
+  // back to identity, linear damping restored to the conscious value)
+  // so the post-reset capsule reads upright with the active response
+  // curve. Total and idempotent: a player who was never knocked out
+  // sees no observable change.
+  clearKnockoutBodyResponse(player.body, player.mesh);
 
   // 4. Open a fresh lifetime at the Act 1 anchor: a new recorder (so no
   // recorded frames from the just-cleared run leak into a future ghost

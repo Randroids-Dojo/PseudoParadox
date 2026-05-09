@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T22:45:00-05:00",
+  "updatedAt": "2026-05-08T23:00:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -495,11 +495,12 @@
       "id": "REQ-033",
       "requirement": "Knockouts produce ragdoll physics on the receiving instance.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "partial",
-      "note": "Punch input channel + knockout state machine landed (the data and rules half of REQ-033 per `docs/gdd/30-combat-and-interaction.md` section 4 / section 10 slice 1). `KeyState.punch` extends the recorded input alongside the movement axes and `Space` is bound to it (Q-002 default); `replayPunchAtTick(recording, tick)` is a sibling helper to `replayAtTick` returning `false` past the end. `Consciousness` (`'conscious' | 'unconscious'`) lands on every player and ghost; `applyKnockout` is the pure idempotent flip; `INITIAL_CONSCIOUSNESS = 'conscious'`. The per-tick punch resolver (`src/sim/punch.ts`) takes a snapshot of every actor's id, position, punch flag, and consciousness and returns `(attackerId, targetId)` pairs: each conscious puncher hits its single closest conscious target within `PUNCH_RANGE_M = 1.2` (Q-003 default); ties broken by smallest `instanceId`; simultaneous mutual punches both land. `suppressUnconsciousPunches` is the canonical helper to flip an unconscious actor's `punching` flag false before the resolver runs. The host loop in `src/app.ts` drives the resolver each fixed step, building the actor list from the active player and every active-timeline ghost; movement is gated on consciousness for the player (zero velocity write while unconscious) and for ghosts (planar velocity zeroed after `advanceTick` while unconscious). `hardReset` returns the active player's consciousness to `INITIAL_CONSCIOUSNESS`; ghost consciousness is cleared by `clearAllGhosts`. NOT yet shipped: bump impulse, damping reduction, rotation lock relaxation, the visible 'tipped over' pose. Those land in the REQ-033 finishing pass.",
+      "status": "done",
+      "note": "Knockout body response (REQ-033 finishing pass; `docs/gdd/30-combat-and-interaction.md` section 4 / section 10 slice 2) lands on top of the prior data + rules slice. New module `src/sim/applyKnockoutBody.ts` exports the response constants `KNOCKOUT_IMPULSE_N = 6`, `KNOCKOUT_UP_IMPULSE_N = 2`, `UNCONSCIOUS_LINEAR_DAMPING = 0.5`, `ACTIVE_LINEAR_DAMPING = 8.0`, `KNOCKOUT_MESH_TILT_Z = Math.PI / 2`, `KNOCKOUT_FALLBACK_DIRECTION = { x: 1, z: 0 }`, the pure helper `knockoutBodyResponse(direction)` that returns the impulse vector + mesh rotation given an unnormalized incoming direction, and the side-effecting `applyKnockoutBodyResponse(body, mesh, direction)` / `clearKnockoutBodyResponse(body, mesh)`. The host loop in `src/app.ts` now computes the incoming direction (recipient body translation minus attacker body translation, projected XZ) per resolution and applies the response when flipping consciousness, so each knockout produces a one-shot bump impulse plus an upward bump, drops linear damping to 0.5 so the body slides briefly before settling, and tilts the visual mesh `Math.PI / 2` on its local Z axis so the capsule reads as 'knocked over.' The seam (body upright in physics, mesh tipped visually) is documented in the new module's docstring: collisions remain capsule-shaped so door / wall interactions are unchanged. The unconscious-ghost movement gate now preserves the body's pre-`advanceTick` linvel and writes it back after the recorded velocity gets stamped on, so ghosts slide under the impulse + damping rather than snapping back to the recorded path. Hard reset clears the response (mesh rotation back to identity, damping restored to `ACTIVE_LINEAR_DAMPING`) so a knocked-out player walks out of the reset upright with the conscious response curve. There is no recovery in v1: once unconscious, the capsule stays tilted until pickup (REQ-034) or hard reset (REQ-025) fires; the dossier explicitly forbids the reverse transition.",
       "implementationRefs": [
         "src/sim/knockoutState.ts",
         "src/sim/punch.ts",
+        "src/sim/applyKnockoutBody.ts",
         "src/input/keyboard.ts",
         "src/sim/inputRecorder.ts",
         "src/scene/player.ts",
@@ -511,6 +512,7 @@
       "testRefs": [
         "tests/sim/knockoutState.test.ts",
         "tests/sim/punch.test.ts",
+        "tests/sim/applyKnockoutBody.test.ts",
         "tests/sim/inputRecorder.test.ts",
         "tests/sim/ghostInstance.test.ts",
         "tests/scene/player.test.ts",

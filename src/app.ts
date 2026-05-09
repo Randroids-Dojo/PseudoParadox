@@ -24,6 +24,7 @@ import {
   type PunchActor,
 } from "./sim/punch.ts";
 import { applyKnockout } from "./sim/knockoutState.ts";
+import { applyKnockoutBodyResponse } from "./sim/applyKnockoutBody.ts";
 import { replayPunchAtTick } from "./sim/inputRecorder.ts";
 
 /**
@@ -236,14 +237,34 @@ export async function startApp(container: HTMLElement): Promise<void> {
       const sanitizedActors = suppressUnconsciousPunches(punchActors);
       const resolutions = resolvePunches(sanitizedActors, PUNCH_RANGE_M);
       if (resolutions.length > 0) {
-        for (const { targetId } of resolutions) {
+        // REQ-033 finishing pass: each resolution flips the target's
+        // consciousness AND applies the body response (bump impulse +
+        // damping reduction + mesh tilt). The incoming direction is the
+        // planar XZ vector from the attacker's body to the target's, so
+        // the recipient is shoved away from the puncher. Helper closures
+        // resolve the actor snapshot for direction computation; the
+        // resolver already filtered to conscious targets, so each pair
+        // here is a fresh knockout (idempotence holds at the resolver).
+        const actorById = new Map(sanitizedActors.map((a) => [a.id, a]));
+        for (const { attackerId, targetId } of resolutions) {
+          const attacker = actorById.get(attackerId);
+          const target = actorById.get(targetId);
+          const direction =
+            attacker !== undefined && target !== undefined
+              ? {
+                  x: target.position.x - attacker.position.x,
+                  z: target.position.z - attacker.position.z,
+                }
+              : { x: 0, z: 0 };
           if (targetId === player.instanceId) {
             player.consciousness = applyKnockout(player.consciousness);
+            applyKnockoutBodyResponse(player.body, player.mesh, direction);
             continue;
           }
           for (const ghost of activeGhostsList) {
             if (ghost.instanceId === targetId) {
               ghost.consciousness = applyKnockout(ghost.consciousness);
+              applyKnockoutBodyResponse(ghost.body, ghost.mesh, direction);
               break;
             }
           }
@@ -270,14 +291,19 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // they neither tick nor render until the player returns to their
       // timeline (REQ-001 / REQ-003 / REQ-006).
       for (const ghost of activeGhostsList) {
+        // REQ-033 finishing pass: an unconscious ghost stops accepting
+        // recorded velocity. `advanceTick` writes the recording's
+        // velocity onto the body; for unconscious ghosts we capture the
+        // pre-tick linvel (the post-impulse, post-damping value from
+        // the last world.step), let advanceTick run for tick-counter
+        // bookkeeping, and restore the captured velocity. The result is
+        // a body that slides under the bump impulse and damping rather
+        // than snapping back to the recorded path.
+        const wasUnconscious = ghost.consciousness === "unconscious";
+        const preAdvanceLinvel = wasUnconscious ? ghost.body.linvel() : null;
         ghost.advanceTick();
-        // REQ-033 partial: an unconscious ghost stops moving. The body
-        // response (bump impulse, damping) lands in the next slice; for
-        // now we just zero the planar velocity AFTER advanceTick wrote
-        // the recorded value.
-        if (ghost.consciousness === "unconscious") {
-          const current = ghost.body.linvel();
-          ghost.body.setLinvel({ x: 0, y: current.y, z: 0 }, true);
+        if (preAdvanceLinvel !== null) {
+          ghost.body.setLinvel(preAdvanceLinvel, true);
         }
       }
       world.step();
