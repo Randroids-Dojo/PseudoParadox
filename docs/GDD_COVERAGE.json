@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T12:30:00-05:00",
+  "updatedAt": "2026-05-09T12:40:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -409,9 +409,11 @@
       "id": "REQ-020",
       "requirement": "Act 3 team-up beat: the two instances at 5:00 coordinate to knock out the 5:00 instance.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
-      "status": "not_started",
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Integration test in `tests/sim/act3TeamUp.test.ts` drives the dossier-prescribed Act 3 team-up beat: Phases 1+2+3 reuse the chase setup (Act 2 loops 1+2 via `runLoopOne`+`runLoopTwo`, the implicit Act 2 to Act 3 fade boundary via `beginNewLifetimeAt5`, then the chase via `runChaseToActive5` which walks East from 5:00 to 6:00, files a chasing ghost into bucket 6, drives both bodies through the West portal trigger, and traverses the active player back to active=5 with two distinct West-entry events recorded on the observer). After Phase 3 the observer's watermark sits at `act-3-chase` and bucket 5 holds at least the loop-1 East-bound ghost-A and the loop-2 dragging-East ghost-C, both with `originNormalized = 5/24` and reset to tick 0 conscious by `setActiveTimeline(5)`. Phase 4 finds one of those 5:00-origin ghosts in bucket 5 and applies the same side effects the host's punch resolver applies (`applyKnockout(targetGhost.consciousness)` flips to `'unconscious'`; `applyKnockoutBodyResponse(...)` writes the impulse plus the mesh tilt) modelling the team-up's load-bearing state change (the GDD places the 6:00-arrival ghost coordinating on the same beat per Q-023, but the predicate reads only the OUTCOME, not the mechanism). Phase 5 builds the snapshot and asserts `isAct3TeamUp(snapshot) === true` plus `observer.update(snapshot)` walks from `act-3-chase` to `act-3-team-up`. A second case pins the predicate's two conjunctions (currentTimeline === 5; bucket 5 has at least one unconscious ghost whose origin timeline is 5) as load-bearing by satisfying the full state then dropping each conjunction in turn (currentTimeline switched to 6 via a synthesized snapshot; the bucket-5 ghost remapped to `'conscious'`; the unconscious ghost's `originNormalized` remapped to 6/24 so `timelineIdFromNormalized` returns 6). NO production code touched: the existing `isAct3TeamUp` predicate from PR #30 fires correctly on the live-state snapshot, confirming the dossier's pseudocode mapping is correct.",
       "implementationRefs": [],
-      "testRefs": [],
+      "testRefs": ["tests/sim/act3TeamUp.test.ts"],
       "followupRefs": []
     },
     {
