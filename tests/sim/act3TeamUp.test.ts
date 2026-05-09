@@ -304,6 +304,14 @@ const runLoopTwo = (
     },
   };
   player.carry = resolveCarryToggle(player.carry, true, carrier, carryables);
+  if (
+    player.carry.kind !== "carrying" ||
+    player.carry.carriedId !== ghostA.instanceId
+  ) {
+    throw new Error(
+      "REQ-020 test harness: expected ghost-A to be selected for carry",
+    );
+  }
   applyCarryPickup(ghostA.body);
 
   // Phase 3c: walk East with the body carried, then traverse East trigger.
@@ -317,7 +325,9 @@ const runLoopTwo = (
       inputState({ right: true, pickup: true }),
       5 / 24,
     );
-    applyCarryAttachment(player.body, ghostA.body);
+    if (player.carry.kind === "carrying") {
+      applyCarryAttachment(player.body, ghostA.body);
+    }
   }
   detector.step(HALF_WIDTH - 0.4, 0, tick++);
 
