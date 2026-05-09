@@ -96,7 +96,12 @@ describe("act1Cinematic recording shapes", () => {
       expect(left.punch).toBe(false);
       expect(left.throw).toBe(false);
       expect(right.back).toBe(false);
+      expect(right.forward).toBe(false);
+      expect(right.left).toBe(false);
+      expect(right.right).toBe(false);
       expect(right.pickup).toBe(false);
+      expect(right.punch).toBe(false);
+      expect(right.throw).toBe(false);
     }
   });
 

@@ -127,7 +127,12 @@ export function createFadeOverlay(
   scene.add(mesh);
 
   const setOpacity = (next: number): void => {
-    const clamped = Math.max(0, Math.min(1, next));
+    // Treat non-finite inputs (NaN, Infinity) as 0 before clamping. The
+    // host writes the per-tick opacity from a ramp computation that could
+    // in principle produce a NaN if a divisor lands at zero; defaulting to
+    // a fully-transparent overlay is the safer fallback.
+    const safe = Number.isFinite(next) ? next : 0;
+    const clamped = Math.max(0, Math.min(1, safe));
     material.opacity = clamped;
     mesh.visible = clamped > 0;
   };
