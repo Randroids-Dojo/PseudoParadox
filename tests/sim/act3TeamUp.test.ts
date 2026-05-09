@@ -424,7 +424,11 @@ const runChaseToActive5 = (
     chaserRecorder.record(inputState({ left: true }), 6 / 24);
   }
   const chaserRecording = chaserRecorder.snapshot();
-  const chaserInstanceId = nextInstanceId(player.instanceId);
+  // Reserve an id past the upcoming West traversal: the active player will
+  // be promoted to `nextInstanceId(player.instanceId)` on the lit-portal
+  // entry, so the chaser takes the id one step beyond that to avoid a
+  // collision in the post-chase snapshot.
+  const chaserInstanceId = nextInstanceId(nextInstanceId(player.instanceId));
   const chaser = createGhost({
     recording: chaserRecording,
     originNormalized: 6 / 24,
