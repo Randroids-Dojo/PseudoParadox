@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T12:15:00-05:00",
+  "updatedAt": "2026-05-09T12:30:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -389,9 +389,20 @@
       "id": "REQ-019",
       "requirement": "Act 3 chase beat: running toward the West door while another instance chases pulls both instances through to 5:00 in the same frame.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-3-escape",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Integration test in `tests/sim/act3Chase.test.ts` drives the dossier-prescribed Act 3 chase: Phase 1 reuses the loop-1 plus loop-2 helpers (`runLoopOne`, `runLoopTwo`) to land at active=6 with the player unconscious at 6:00. Phase 2's `beginNewLifetimeAt5` files the prior unconscious lifetime as a ghost in bucket 6 and opens a fresh conscious lifetime at 5:00, transitioning the observer from `act-2-loop-2` to `act-3-setup`. Phase 3 walks East to traverse to 6:00 (East lit at 5:00 per `DOOR_STATE_BY_HOUR`). Phase 4 authors a chasing ghost via `createGhost` with a 5-frame West-bound recording and files it into bucket 6. Phase 5 positions both bodies a hair East of the West trigger's East face (with non-overlapping Z offsets so the capsules do not collide) and drives them West each tick: the chaser via `advanceTick` (recording-driven for 5 frames, then a direct West-bound velocity write so the body keeps crossing under linear damping), the active player via `setLinvel({x:-4, ...})` mirroring the host's input-to-velocity. After each `world.step()` both bodies are tested against the West portal trigger via the pure `pointInsideTrigger` predicate; on a false-to-true edge, `observer.recordWestEntry({instanceId, tick})` fires for that instance. The active player's position is also fed to `detector.step(x, z, tick)` so the production lit-portal traversal handler runs (snapshotting the lifetime, teleporting to 5:00, switching active timeline to 5). Phase 6 asserts the buffer captured two distinct instance ids within `CHASE_WINDOW_TICKS` of each other and that the active player's traversal landed at active=5. Phase 7 builds the snapshot with `recentWestEntries: observer.recentWestEntries()` and asserts `isAct3Chase(snapshot) === true` plus the observer transitions from `act-3-setup` to `act-3-chase`. A second case pins the predicate's two conjunctions (currentTimeline === 5; two distinct instance ids in the buffer within CHASE_WINDOW_TICKS) as load-bearing by satisfying the full state and dropping each conjunction in turn (currentTimeline switched to 6; two entries with the same id; two distinct ids outside the 2-tick window). NO production code touched: the `recentWestEntries` ring buffer, `recordWestEntry`, `hardReset` clearing of the buffer, the `RECENT_WEST_ENTRIES_CAPACITY` cap, and the `isAct3Chase` predicate all landed with the PR #30 actState observer slice; this test confirms the dossier-pseudocode mapping is correct end-to-end.",
+      "implementationRefs": [
+        "src/sim/actState.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/portalTrigger.ts",
+        "src/sim/timelineRegistry.ts",
+        "src/sim/ghostInstance.ts"
+      ],
+      "testRefs": [
+        "tests/sim/act3Chase.test.ts",
+        "tests/sim/actState.test.ts"
+      ],
       "followupRefs": []
     },
     {
