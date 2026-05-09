@@ -14,10 +14,11 @@
  *      in either case the snapshot's observable state is unchanged.
  *
  *   2. Timeline registry entries do not lose ghosts during the simulation
- *      lifecycle. Across a 1000-tick randomized traversal sequence the total
- *      ghost count across all buckets is monotonically non-decreasing, except
- *      across `clearAllGhosts` (the registry's hard-reset path), after which
- *      the count is zero.
+ *      lifecycle. Across 100 trials, each running a 50-operation randomized
+ *      sequence (70% `add`, 30% `setActiveTimeline`), the total ghost count
+ *      across all buckets is monotonically non-decreasing, except across
+ *      `clearAllGhosts` (the registry's hard-reset path), after which the
+ *      count is zero.
  *
  *   3. A ghost's recorded behavior at tick K does not depend on any input
  *      made AFTER tick K. A ghost built from a snapshot taken at tick K
