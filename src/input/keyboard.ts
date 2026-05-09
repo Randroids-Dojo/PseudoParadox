@@ -45,6 +45,20 @@ export interface KeyState {
    * not on every subsequent tick the recording keeps the flag held.
    */
   pickup: boolean;
+  /**
+   * Throw input (REQ-036). Per-tick boolean captured alongside the
+   * other channels. Default key binding is `T` (Q-002 default). The
+   * throw resolver (`src/sim/throw.ts`) fires on the rising edge while
+   * the player is carrying: the carried body returns to dynamic and an
+   * impulse is applied along the player's facing (Q-007 default
+   * heuristic, last non-zero movement direction). Thrown bodies do
+   * NOT spawn ghosts (dossier section 7 closed-form decision); the
+   * throw input is part of the carrier's recording, so a replay
+   * re-evaluates the throw against the replay world's carry state and
+   * produces the same trajectory under Rapier's deterministic step
+   * (Q-009 default).
+   */
+  throw: boolean;
 }
 
 export interface PlanarVelocity {
@@ -112,6 +126,7 @@ export function createKeyboardState(
     right: false,
     punch: false,
     pickup: false,
+    throw: false,
   };
 
   const setKey = (code: string, down: boolean): void => {
@@ -143,6 +158,13 @@ export function createKeyboardState(
       // captures only the raw key state.
       case "KeyF":
         state.pickup = down;
+        break;
+      // Q-002 default: T binds to the throw input (REQ-036). The
+      // movement keys ignore T, so there is no input collision. The
+      // rising-edge gate plus the carrying-state gate live in
+      // `src/sim/throw.ts`; this layer captures only the raw key state.
+      case "KeyT":
+        state.throw = down;
         break;
       default:
         break;

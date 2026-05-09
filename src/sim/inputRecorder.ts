@@ -159,3 +159,26 @@ export function replayPickupAtTick(recording: InputRecording, tick: number): boo
   }
   return recording.frames[tick].keys.pickup;
 }
+
+/**
+ * Recorded throw flag at a tick (REQ-036). Returns `false` for ticks
+ * past the end of the recording or for negative tick indices, matching
+ * the past-end semantics of `replayAtTick`, `replayPunchAtTick`, and
+ * `replayPickupAtTick`. The flag is read directly from `KeyState.throw`.
+ *
+ * The host derives the rising edge by comparing tick T's flag with tick
+ * T-1's flag; the throw resolver in `src/sim/throw.ts` fires on the
+ * rising edge while carrying. A held throw key produces exactly one
+ * rising edge on press, mirroring the pickup toggle's edge-detection
+ * model.
+ *
+ * Sibling helper to the other replay-flag helpers, kept as its own
+ * function so existing call sites that only need the planar velocity
+ * stay unchanged (slice discipline: no drive-by signature edits).
+ */
+export function replayThrowAtTick(recording: InputRecording, tick: number): boolean {
+  if (tick < 0 || tick >= recording.length) {
+    return false;
+  }
+  return recording.frames[tick].keys.throw;
+}

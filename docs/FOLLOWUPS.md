@@ -27,6 +27,14 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Nice To Have
 
+### F-007: Rehome a thrown body across timelines on portal traversal
+
+- Priority: nice-to-have
+- Context: REQ-036 (PR #27) ships throw with portal traversal. The in-flight registry teleports the body's translation and preserves velocity on a lit-portal enter, but the body remains a `GhostInstance` filed in its source `TimelineRegistry` bucket. Concretely: a thrown body launched at 5:00 across the south door teleports to the room-center spawn pose at 12:00, but the underlying ghost is still bookkept in the 5:00 timeline. When the player switches timelines, the ghost is hidden by `setActiveTimeline`; on return to 5:00 the ghost's `reset()` call snaps it back to the 5:00 spawn position, erasing the thrown trajectory's destination state. The thrown body is therefore not visible in the 12:00 timeline at all. CodeRabbit flagged this on PR #27 as the "Surface timeline transfer when a thrown body traverses" review.
+- Blocker: cross-timeline rehoming for a body that is itself a ghost is heavier than the slice scope (the carry layer files thrown bodies as ghost-body references; the in-flight registry would need to either own its own non-ghost flying-body type or call back into the host so the host can rehome the ghost between TimelineRegistry buckets). The thrown-body persistence at the destination timeline is also a gameplay decision: the dossier section 7 says the body "is IN the 12:00 timeline as a body" but does not specify whether subsequent visits to 5:00 still see the body in flight or settled at its destination.
+- Unblock condition: dossier amendment specifying the thrown body's persistence semantics across timeline visits (does the destination timeline see the body settle? does the source timeline see the body absent? do both timelines see it depending on when the player visits?), then a slice that either splits in-flight bodies into a new dedicated entity type or wires the in-flight registry's lit-traversal events through to the host's TimelineRegistry for rehoming.
+- PR / Dot reference (when picked up):
+
 ### F-006: Unify the door-paint path through `litStateForTimeline`
 
 - Priority: nice-to-have
