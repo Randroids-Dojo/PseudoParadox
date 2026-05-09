@@ -4,6 +4,10 @@ import { PLAYER_CAPSULE } from "../scene/player.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import { replayAtTick, type InputRecording } from "./inputRecorder.ts";
 import type { InstanceId } from "./instanceId.ts";
+import {
+  INITIAL_CONSCIOUSNESS,
+  type Consciousness,
+} from "./knockoutState.ts";
 
 /**
  * Ghost-replay capsule (REQ-001 / REQ-002 deepening).
@@ -51,6 +55,25 @@ export interface GhostInstance {
    * the ghost via `formatInstanceId`. The label is data only this slice.
    */
   readonly instanceId: InstanceId;
+  /**
+   * Frozen input recording driving this ghost's playback. Exposed so the
+   * host can read the punch flag at the ghost's current tick via
+   * `replayPunchAtTick(recording, tickIndex)` for the per-tick punch
+   * resolver (REQ-033 partial). The recording is deeply frozen at
+   * snapshot time (`InputRecorder.snapshot`) so reading it is safe; the
+   * recorder cannot mutate it after capture.
+   */
+  readonly recording: InputRecording;
+  /**
+   * Two-state consciousness flag (REQ-033 partial). A ghost opens at
+   * `'conscious'` regardless of how its recording resolved in the source
+   * timeline; the per-tick punch resolver in the host can flip this to
+   * `'unconscious'` if a punch lands on this ghost in the active timeline.
+   * On `reset()` the flag returns to `'conscious'` so each timeline visit
+   * is a fresh playback (a previously knocked-out ghost is conscious
+   * again on re-entry).
+   */
+  consciousness: Consciousness;
   /** Number of `advanceTick` calls applied so far. Starts at 0. */
   readonly tickIndex: number;
   /**
@@ -146,6 +169,10 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
   // is observable but not externally writable. `advanceTick` is the only
   // mutation site, which makes ordering of replay calls verifiable.
   let tickIndex = 0;
+  // REQ-033 partial: ghosts open conscious. The host's punch resolver
+  // mutates this through the returned object; `reset()` returns it to the
+  // seed so each timeline visit is a fresh playback.
+  let consciousness: Consciousness = INITIAL_CONSCIOUSNESS;
 
   const advanceTick = (): void => {
     const velocity = replayAtTick(recording, tickIndex);
@@ -161,6 +188,10 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
 
   const reset = (): void => {
     tickIndex = 0;
+    // REQ-033 partial: re-entering a timeline is a fresh playback (REQ-001 /
+    // REQ-003). Reset consciousness to the seed so a ghost that was knocked
+    // out during a prior visit is conscious again on return.
+    consciousness = INITIAL_CONSCIOUSNESS;
     body.setTranslation(
       { x: startPosition.x, y: restY, z: startPosition.z },
       true,
@@ -176,8 +207,15 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     body,
     originNormalized,
     instanceId,
+    recording,
     get tickIndex(): number {
       return tickIndex;
+    },
+    get consciousness(): Consciousness {
+      return consciousness;
+    },
+    set consciousness(next: Consciousness) {
+      consciousness = next;
     },
     advanceTick,
     syncMeshFromBody,

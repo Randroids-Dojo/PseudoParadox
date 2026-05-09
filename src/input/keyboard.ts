@@ -19,6 +19,17 @@ export interface KeyState {
   back: boolean;
   left: boolean;
   right: boolean;
+  /**
+   * Punch input (REQ-033 partial). Captured as a per-tick boolean so the
+   * recorder writes one frame's punch flag alongside the movement axes and
+   * `replayAtTick` consumers can read it back. The default key binding is
+   * `Space` (Q-002 default). The flag is sticky for the duration of the key
+   * being held; the per-tick punch resolver in `src/sim/punch.ts` is
+   * responsible for treating each frame's flag as the puncher's intent at
+   * that tick. Edge-triggering (rising-edge only) is NOT applied here so a
+   * future hold-to-charge variant can read the flag directly.
+   */
+  punch: boolean;
 }
 
 export interface PlanarVelocity {
@@ -84,6 +95,7 @@ export function createKeyboardState(
     back: false,
     left: false,
     right: false,
+    punch: false,
   };
 
   const setKey = (code: string, down: boolean): void => {
@@ -103,6 +115,11 @@ export function createKeyboardState(
       case "KeyD":
       case "ArrowRight":
         state.right = down;
+        break;
+      // Q-002 default: Space binds to the punch input (REQ-033). The
+      // movement keys ignore Space, so there is no input collision.
+      case "Space":
+        state.punch = down;
         break;
       default:
         break;

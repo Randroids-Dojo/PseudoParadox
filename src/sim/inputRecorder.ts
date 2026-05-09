@@ -121,3 +121,21 @@ export function replayAtTick(recording: InputRecording, tick: number): PlanarVel
   const frame = recording.frames[tick];
   return inputToVelocity(frame.keys);
 }
+
+/**
+ * Recorded punch flag at a tick. Returns `false` for ticks past the end of
+ * the recording or for negative tick indices, matching the past-end semantics
+ * of `replayAtTick` (a ghost that has exhausted its recording stops moving
+ * AND stops punching). The flag is read directly from the recorded
+ * `KeyState.punch` so any future change to the input mapping flows through.
+ *
+ * Kept as a sibling helper to `replayAtTick` rather than a combined return so
+ * existing call sites that only need the planar velocity stay unchanged
+ * (slice discipline: no drive-by signature edits).
+ */
+export function replayPunchAtTick(recording: InputRecording, tick: number): boolean {
+  if (tick < 0 || tick >= recording.length) {
+    return false;
+  }
+  return recording.frames[tick].keys.punch;
+}

@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T22:10:00-05:00",
+  "updatedAt": "2026-05-08T22:45:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -495,9 +495,27 @@
       "id": "REQ-033",
       "requirement": "Knockouts produce ragdoll physics on the receiving instance.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "partial",
+      "note": "Punch input channel + knockout state machine landed (the data and rules half of REQ-033 per `docs/gdd/30-combat-and-interaction.md` section 4 / section 10 slice 1). `KeyState.punch` extends the recorded input alongside the movement axes and `Space` is bound to it (Q-002 default); `replayPunchAtTick(recording, tick)` is a sibling helper to `replayAtTick` returning `false` past the end. `Consciousness` (`'conscious' | 'unconscious'`) lands on every player and ghost; `applyKnockout` is the pure idempotent flip; `INITIAL_CONSCIOUSNESS = 'conscious'`. The per-tick punch resolver (`src/sim/punch.ts`) takes a snapshot of every actor's id, position, punch flag, and consciousness and returns `(attackerId, targetId)` pairs: each conscious puncher hits its single closest conscious target within `PUNCH_RANGE_M = 1.2` (Q-003 default); ties broken by smallest `instanceId`; simultaneous mutual punches both land. `suppressUnconsciousPunches` is the canonical helper to flip an unconscious actor's `punching` flag false before the resolver runs. The host loop in `src/app.ts` drives the resolver each fixed step, building the actor list from the active player and every active-timeline ghost; movement is gated on consciousness for the player (zero velocity write while unconscious) and for ghosts (planar velocity zeroed after `advanceTick` while unconscious). `hardReset` returns the active player's consciousness to `INITIAL_CONSCIOUSNESS`; ghost consciousness is cleared by `clearAllGhosts`. NOT yet shipped: bump impulse, damping reduction, rotation lock relaxation, the visible 'tipped over' pose. Those land in the REQ-033 finishing pass.",
+      "implementationRefs": [
+        "src/sim/knockoutState.ts",
+        "src/sim/punch.ts",
+        "src/input/keyboard.ts",
+        "src/sim/inputRecorder.ts",
+        "src/scene/player.ts",
+        "src/sim/ghostInstance.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/hardReset.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/knockoutState.test.ts",
+        "tests/sim/punch.test.ts",
+        "tests/sim/inputRecorder.test.ts",
+        "tests/sim/ghostInstance.test.ts",
+        "tests/scene/player.test.ts",
+        "tests/sim/hardReset.test.ts"
+      ],
       "followupRefs": []
     },
     {
