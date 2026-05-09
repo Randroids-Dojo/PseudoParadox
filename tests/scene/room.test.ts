@@ -53,6 +53,20 @@ describe("room", () => {
     expect(colorByDirection.get("west")).toBe(DOOR_DARK_COLOR_HEX);
   });
 
+  it("REQ-027 regression: room.group contains exactly four Door meshes, one per cardinal", () => {
+    // Dossier section 11 asks for a single rendering test that confirms
+    // four Door meshes exist post-construction. The door meshes are named
+    // `door-<cardinal>` by `createDoor`; filter the group's children on
+    // that prefix and assert the exact set.
+    const room = buildRoom();
+    const doorMeshes = room.group.children.filter(
+      (c): c is THREE.Mesh => c instanceof THREE.Mesh && c.name.startsWith("door-"),
+    );
+    expect(doorMeshes).toHaveLength(4);
+    const directions = doorMeshes.map((m) => m.name.replace("door-", "")).sort();
+    expect(directions).toEqual(["east", "north", "south", "west"]);
+  });
+
   it("door painting flows through doorLitStateAtHour(ACT_ONE_HOUR)", () => {
     // End-to-end check that the room build's lit/dark stamping reads from
     // the same canonical table tested in `tests/sim/doorStateAtTime.test.ts`.

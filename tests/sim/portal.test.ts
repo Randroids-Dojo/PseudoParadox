@@ -197,3 +197,94 @@ describe("Act 1 canonical portal table", () => {
     expect(() => createActOnePortals(doors)).toThrow(/duplicate/);
   });
 });
+
+/**
+ * REQ-005 portal fixity property test (dossier section 11). Builds the four
+ * canonical Act 1 portals, then runs a 1000-tick randomized simulation that
+ * "advances" by reading and re-reading each portal's destination per tick.
+ * The randomization is a 30-line LCG seeded from the test description (Q-017
+ * default: hand-rolled, no third-party PRNG) so the sequence is deterministic
+ * across machines. The test asserts that after every tick `portal.destination`
+ * Hours and `portal.direction` are unchanged from the values captured at
+ * construction. TypeScript readonly already prevents the mutation at compile
+ * time; this test gives runtime confirmation that nothing in the fuzzer
+ * sequence (including the explicit assignment attempts under each tick) can
+ * mutate the frozen field.
+ */
+function lcgFromString(seed: string): () => number {
+  let state = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    state = Math.imul(state ^ seed.charCodeAt(i), 0x01000193) >>> 0;
+  }
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+describe("REQ-005 portal destination fixity property test", () => {
+  it("destinationHours and direction are unchanged across a 1000-tick fuzz", () => {
+    const doors = createFourDoors(
+      ROOM_DIMENSIONS.width,
+      ROOM_DIMENSIONS.depth,
+    );
+    const portals = createActOnePortals(doors);
+
+    const originalDestinations = portals.map((p) => p.destinationHours);
+    const originalDirections = portals.map((p) => p.direction);
+    const originalLitFlags = portals.map((p) => p.isLit);
+
+    const rand = lcgFromString(
+      "REQ-005 portal destination fixity property test",
+    );
+
+    const TICKS = 1000;
+    const touched = new Array<number>(portals.length).fill(0);
+    for (let tick = 0; tick < TICKS; tick++) {
+      // Pick a random portal each tick and try to mutate its destination
+      // and direction. Object.freeze means strict-mode assignment throws;
+      // catch and continue so the test exercises the runtime guarantee.
+      const idx = Math.floor(rand() * portals.length);
+      touched[idx] += 1;
+      const portal = portals[idx];
+      const candidate = Math.floor(rand() * 24);
+      try {
+        // @ts-expect-error: deliberately attempting a runtime mutation
+        portal.destinationHours = candidate;
+      } catch {
+        // Expected: frozen object rejects the write in strict mode.
+      }
+      try {
+        // @ts-expect-error: deliberately attempting a runtime mutation
+        portal.direction = "north";
+      } catch {
+        // Expected: frozen object rejects the write in strict mode.
+      }
+      try {
+        // @ts-expect-error: deliberately attempting a runtime mutation
+        portal.isLit = !portal.isLit;
+      } catch {
+        // Expected: frozen object rejects the write in strict mode.
+      }
+
+      // Re-read every portal's fixed fields each tick and confirm they
+      // still match the construction-time snapshot.
+      for (let i = 0; i < portals.length; i++) {
+        expect(portals[i].destinationHours).toBe(originalDestinations[i]);
+        expect(portals[i].direction).toBe(originalDirections[i]);
+        expect(portals[i].isLit).toBe(originalLitFlags[i]);
+      }
+    }
+
+    // Final snapshot equality (belt-and-suspenders).
+    expect(portals.map((p) => p.destinationHours)).toEqual(
+      originalDestinations,
+    );
+    expect(portals.map((p) => p.direction)).toEqual(originalDirections);
+    expect(portals.map((p) => p.isLit)).toEqual(originalLitFlags);
+    // Coverage guard: a degenerate seed that never lands on one of the
+    // portals would silently weaken the fuzz. Assert every portal was
+    // exercised at least once across the 1000 ticks.
+    expect(touched.every((n) => n > 0)).toBe(true);
+  });
+});

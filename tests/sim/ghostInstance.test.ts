@@ -433,6 +433,34 @@ describe("createGhost: consciousness state (REQ-033 partial)", () => {
     expect(ghost.thoughtBubble.currentKind).toBeNull();
   });
 
+  it("REQ-030 regression: a ghost built with originNormalized = 0.5 tints to interpolateWarmToCool(0.5) within 1e-6", () => {
+    // Dossier section 11 asks for a regression that builds a ghost with
+    // `originNormalized = 0.5` and asserts
+    // `ghost.mesh.material.color.equals(interpolateWarmToCool(0.5))` to
+    // within `1e-6`. The ghost's mesh material color is stamped at
+    // construction by `applyInstanceTint`; assert the per-channel deltas
+    // are all under the tolerance.
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([NEUTRAL]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0.5,
+      instanceId: 1,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+
+    const material = ghost.mesh.material as THREE.MeshStandardMaterial;
+    const expected = interpolateWarmToCool(0.5);
+    const TOL = 1e-6;
+    expect(Math.abs(material.color.r - expected.r)).toBeLessThanOrEqual(TOL);
+    expect(Math.abs(material.color.g - expected.g)).toBeLessThanOrEqual(TOL);
+    expect(Math.abs(material.color.b - expected.b)).toBeLessThanOrEqual(TOL);
+    expect(ghost.originNormalized).toBe(0.5);
+  });
+
   it("exposes the recording so the host can read replayPunchAtTick(recording, tickIndex)", () => {
     const scene = new THREE.Scene();
     const world = buildWorld();

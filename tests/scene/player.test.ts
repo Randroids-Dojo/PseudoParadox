@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { createPlayer } from "../../src/scene/player.ts";
+import { PLAYER_CAPSULE, createPlayer } from "../../src/scene/player.ts";
 import { interpolateWarmToCool } from "../../src/render/colorTint.ts";
 
 beforeAll(async () => {
@@ -114,5 +114,30 @@ describe("createPlayer carry seed (REQ-034)", () => {
     const linvel = player.body.linvel();
     expect(linvel.x).toBeCloseTo(2.4, 6);
     expect(linvel.y).toBeCloseTo(-5, 6);
+  });
+});
+
+describe("REQ-026 spawn pose regression", () => {
+  it("the active player spawns at the room center with the capsule resting on the floor", () => {
+    // Dossier section 11 asks for a regression that spawn pose at game start
+    // matches `(0, 0)` plus the capsule resting Y. The resting Y is the
+    // capsule center such that the base of the lower hemisphere just
+    // touches y = 0 (matching `restY = cylinderLength / 2 + radius` in
+    // `createPlayer`).
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const player = createPlayer(scene, world);
+
+    const t = player.body.translation();
+    expect(t.x).toBeCloseTo(0, 6);
+    expect(t.z).toBeCloseTo(0, 6);
+    const restY = PLAYER_CAPSULE.cylinderLength / 2 + PLAYER_CAPSULE.radius;
+    expect(t.y).toBeCloseTo(restY, 6);
+
+    // Mesh follows the body's pose at construction so the very first render
+    // frame sees the capsule at the spawn pose.
+    expect(player.mesh.position.x).toBeCloseTo(0, 6);
+    expect(player.mesh.position.y).toBeCloseTo(restY, 6);
+    expect(player.mesh.position.z).toBeCloseTo(0, 6);
   });
 });

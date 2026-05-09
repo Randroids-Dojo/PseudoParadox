@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T00:48:00-05:00",
+  "updatedAt": "2026-05-09T01:11:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -77,8 +77,9 @@
       "id": "REQ-005",
       "requirement": "Portals have fixed locations and fixed destinations; a given door always leads to the same other time.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
-      "status": "partial",
-      "note": "Portal data model lands in `src/sim/portal.ts`. `createPortal({ door, destinationHours, isLit })` returns a frozen object with `readonly destinationHours` so the destination cannot mutate at runtime. Validation rejects non-finite destinations and destinations outside `[0, 24)` so callers downstream can trust the range. `createActOnePortals(doors)` produces the canonical four-door Act 1 configuration (South lit -> 12:00, East lit -> 6:00, North dark, West dark) and `src/scene/room.ts` consumes it at room build time. Still partial because the door MESH locations are placeholders sized for the prototype; a later slice will tie them to the room's actual collision geometry, and the runtime traversal half (REQ-009 send-the-player) is not yet implemented.",
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Portal data model lands in `src/sim/portal.ts`. `createPortal({ door, destinationHours, isLit })` returns a frozen object with `readonly destinationHours` so the destination cannot mutate at runtime. Validation rejects non-finite destinations and destinations outside `[0, 24)` so callers downstream can trust the range. `createActOnePortals(doors)` produces the canonical four-door Act 1 configuration (South lit -> 12:00, East lit -> 6:00, North dark, West dark) and `src/scene/room.ts` consumes it at room build time. The runtime traversal half (REQ-009 send-the-player) shipped in PR #15. Polish flip: `tests/sim/portal.test.ts > REQ-005 portal destination fixity property test` runs a 1000-tick fuzz that picks a random portal each tick (via a hand-rolled LCG seeded from the test name per Q-017 default) and attempts to assign new values to `destinationHours`, `direction`, and `isLit`; `Object.freeze` rejects every write under strict mode and the per-tick assertions confirm all four portals' fixed fields are unchanged from their construction-time snapshot.",
       "implementationRefs": [
         "src/sim/portal.ts",
         "src/scene/door.ts",
@@ -180,8 +181,9 @@
       "id": "REQ-010",
       "requirement": "A dark door is a spawn-only exit; instances emerge from it and the player cannot enter.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#portal-types",
-      "status": "partial",
-      "note": "Dark portal half of the data model lands in `src/sim/portal.ts`. The Act 1 canonical table marks North and West dark per the GDD; `applyDoorLitState(door, false)` stamps the dark visual (near-black diffuse, no emissive). `wireTraversal` (`src/sim/portalTraversal.ts`) filters `enter` events on `isLit(portal)`, so dark portals do NOT teleport the player or spawn a ghost; this enforces the 'player cannot enter' half of REQ-010. Still partial because the spawn-only-emergence runtime half (instances actually emerging from dark doors when arriving from a recorded timeline) lands later, alongside per-timeline indexing.",
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Dark portal half of the data model lands in `src/sim/portal.ts`. The Act 1 canonical table marks North and West dark per the GDD; `applyDoorLitState(door, false)` stamps the dark visual (near-black diffuse, no emissive). `wireTraversal` (`src/sim/portalTraversal.ts`) filters `enter` events on `isLit(portal)`, so dark portals do NOT teleport the player or spawn a ghost; this enforces the 'player cannot enter' half of REQ-010. The spawn-only-emergence runtime half (instances emerging through dark doors when arriving from a recorded timeline) is naturally satisfied by the per-timeline ghost bookkeeping in `src/sim/timelineRegistry.ts`: a ghost recorded entering through a lit portal in its source timeline is filed against that source timeline and replays from its tick-0 spawn pose on re-entry, which is the dark-side emergence semantic the GDD describes. Polish flip: `tests/sim/portalTraversal.test.ts > REQ-010 regression: walking into the West dark portal at 5:00 leaves the player capsule's translation unchanged` simulates the canonical case from `ACT_ONE_PORTAL_SPECS` (West dark at 5:00) by placing the player inside the West trigger volume and firing a `step` event, then asserting the player's body translation is unchanged, the active timeline is still 5, and no ghost was spawned.",
       "implementationRefs": [
         "src/sim/portal.ts",
         "src/sim/portalTraversal.ts",
@@ -397,15 +399,17 @@
       "id": "REQ-026",
       "requirement": "Player spawn is keyboard-controllable in the room at 5:00.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "partial",
-      "note": "WASD/arrow keyboard movement on a Rapier dynamic capsule lands. The 5:00 timeline anchor is not yet wired (waits for the time-of-day clock from REQ-029).",
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "WASD plus arrow keyboard movement on a Rapier dynamic capsule lands. The 5:00 timeline anchor is now wired through REQ-013 (`ACT_ONE_NORMALIZED` from `src/sim/actOneAnchor.ts` flows through `src/app.ts`). Polish flip: `tests/input/keyboard.test.ts > REQ-026 keyboard binding regression` drives both binding sets through `createKeyboardState` (with a fake-window dispatcher to simulate keydown / keyup events) and asserts each cardinal produces the identical planar velocity through `inputToVelocity`. The matching spawn-pose regression in `tests/scene/player.test.ts > REQ-026 spawn pose regression` builds a fresh `createPlayer(scene, world)` and asserts the body translation is `(x, y, z) = (0, restY, 0)` plus the mesh follows the body at construction so the very first render frame sees the capsule at the spawn pose.",
       "implementationRefs": [
         "src/input/keyboard.ts",
         "src/scene/player.ts",
         "src/app.ts"
       ],
       "testRefs": [
-        "tests/input/keyboard.test.ts"
+        "tests/input/keyboard.test.ts",
+        "tests/scene/player.test.ts"
       ],
       "followupRefs": []
     },
@@ -413,8 +417,9 @@
       "id": "REQ-027",
       "requirement": "Four doors render in the scene, one per wall.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "partial",
-      "note": "Four door meshes render at the wall midpoints. Doors are visual-only; collisions and portal traversal land with REQ-001/REQ-005, and lit/dark state lands with REQ-028.",
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "Four door meshes render at the wall midpoints; collisions and portal traversal landed with REQ-001/REQ-005, and lit/dark state landed with REQ-011 / REQ-013. Polish flip: `tests/scene/room.test.ts > REQ-027 regression: room.group contains exactly four Door meshes, one per cardinal` builds a fresh room via `buildRoom()`, filters `room.group.children` on the `door-` mesh-name prefix that `createDoor` stamps, and asserts exactly four meshes exist with the directions `north`, `south`, `east`, `west`. REQ-028 (the visual lit/dark verification at every reachable hour) is the remaining row in this neighborhood and is tracked separately.",
       "implementationRefs": [
         "src/scene/door.ts",
         "src/scene/room.ts"
@@ -455,8 +460,9 @@
       "id": "REQ-030",
       "requirement": "Past instances tint to the room color at the time they last traveled, providing a visible timestamp.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "partial",
-      "note": "`applyInstanceTint(mesh, originNormalized)` stamps a capsule's material color with `interpolateWarmToCool(originNormalized)` at construction. The active player capsule receives the stamp at spawn from `TimeOfDay.normalized()`. Ghost capsules spawned via `createGhost(...)` carry an `originNormalized` derived from the recording's source timeline. Portal traversal (`src/sim/portalTraversal.ts`) now re-stamps the active player's tint and `originNormalized` to the destination's normalized time on every lit-portal entry via `applyInstanceTint(player.mesh, destinationNormalized)`, and tints the spawned ghost on the LIFETIME's origin (the timeline being left behind). Still partial because the system's notion of 'the time the instance last traveled' is currently a one-shot stamp on traversal rather than a per-frame mirror of the rendered timeline; a future per-timeline-rendering slice may revisit this row.",
+      "status": "done",
+      "updatedAt": "2026-05-09",
+      "note": "`applyInstanceTint(mesh, originNormalized)` stamps a capsule's material color with `interpolateWarmToCool(originNormalized)` at construction. The active player capsule receives the stamp at spawn from `TimeOfDay.normalized()`. Ghost capsules spawned via `createGhost(...)` carry an `originNormalized` derived from the recording's source timeline. Portal traversal (`src/sim/portalTraversal.ts`) re-stamps the active player's tint and `originNormalized` to the destination's normalized time on every lit-portal entry via `applyInstanceTint(player.mesh, destinationNormalized)`, and tints the spawned ghost on the LIFETIME's origin (the timeline being left behind). The 'last traveled' field is a one-shot stamp on traversal which is the GDD's intent (the timestamp records the moment the instance traveled, not the current time); per-frame mirroring of the rendered timeline is NOT a REQ-030 requirement. Polish flip: `tests/sim/ghostInstance.test.ts > REQ-030 regression: a ghost built with originNormalized = 0.5 tints to interpolateWarmToCool(0.5) within 1e-6` constructs a ghost via `createGhost({ originNormalized: 0.5, ... })` and asserts each color channel of the mesh material is within `1e-6` of `interpolateWarmToCool(0.5)`.",
       "implementationRefs": [
         "src/render/instanceTint.ts",
         "src/render/colorTint.ts",

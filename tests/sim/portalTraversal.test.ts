@@ -344,6 +344,47 @@ describe("wireTraversal: dark portal filtering (REQ-010)", () => {
     expect(lifetime.recorder).toBe(oldRecorder);
     expect(lifetime.recorder.length).toBe(1);
   });
+
+  it("REQ-010 regression: walking into the West dark portal at 5:00 leaves the player capsule's translation unchanged", () => {
+    // Dossier section 11 asks for a regression that simulates the player
+    // walking into a dark portal trigger (the West door at 5:00 is the
+    // canonical case from `ACT_ONE_PORTAL_SPECS`) and asserts the active
+    // player's translation is unchanged after the trigger fires. Uses the
+    // canonical Act 1 portal set (NOT a hand-rolled portal) so the test
+    // exercises the same data path the production room build uses.
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    lifetime.originNormalized = 5 / 24;
+    player.originNormalized = 5 / 24;
+    registry.setActiveTimeline(5);
+
+    const doors = createFourDoors(ROOM_DIMENSIONS.width, ROOM_DIMENSIONS.depth);
+    const portals = createActOnePortals(doors);
+    const detector = createPortalTriggerSet(portals);
+    wireTraversal({ detector, player, lifetime, scene, world, registry });
+
+    // West dark portal sits at -HALF_WIDTH; the trigger volume reaches
+    // 0.4m inward. Place the player just inside the trigger.
+    const sentinelX = -(HALF_WIDTH - 0.4);
+    const sentinelY = player.body.translation().y;
+    const sentinelZ = 0;
+    player.body.setTranslation(
+      { x: sentinelX, y: sentinelY, z: sentinelZ },
+      true,
+    );
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(sentinelX, sentinelZ, 0);
+
+    // Player capsule's translation is unchanged (no teleport on dark entry).
+    const t = player.body.translation();
+    expect(t.x).toBeCloseTo(sentinelX, 6);
+    expect(t.y).toBeCloseTo(sentinelY, 6);
+    expect(t.z).toBeCloseTo(sentinelZ, 6);
+    // Active timeline did not switch (no traversal).
+    expect(registry.activeTimeline).toBe(5);
+    // No ghost was spawned.
+    expect(allGhosts(registry)).toHaveLength(0);
+  });
 });
 
 describe("wireTraversal: empty recording handling", () => {
