@@ -114,11 +114,13 @@ const buildHarness = (): Harness => {
     body,
     mesh,
     originNormalized: 0,
+    instanceId: 1,
   };
   const lifetime: ActiveLifetime = {
     startPosition: { x: 0, z: 0 },
     recorder: new InputRecorder(),
     originNormalized: 0,
+    instanceId: 1,
   };
   const registry = createTimelineRegistry({
     initialTimeline: HARNESS_INITIAL_TIMELINE,
@@ -692,6 +694,147 @@ describe("wireTraversal: REQ-015 6:00 timeline state", () => {
 
     expect(enters).toEqual([]);
     expect(registry.activeTimeline).toBe(6);
+  });
+});
+
+describe("wireTraversal: instance generation numbering (REQ-007 / REQ-008)", () => {
+  it("ghost takes the OUTGOING active player's instanceId on lit traversal", () => {
+    // The OUTGOING active instance becomes the spawned ghost. The ghost IS
+    // that closed-out instance, replayed; it keeps its generation index so a
+    // future thought-bubble UI (REQ-032) can label it via formatInstanceId.
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    player.instanceId = 1;
+    lifetime.instanceId = 1;
+    const south = makePortal("south", 12, true);
+    const detector = createPortalTriggerSet([south]);
+    wireTraversal({ detector, player, lifetime, scene, world, registry });
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, HALF_DEPTH - 0.4, 0);
+
+    const ghosts = allGhosts(registry);
+    expect(ghosts).toHaveLength(1);
+    expect(ghosts[0].instanceId).toBe(1);
+  });
+
+  it("active player advances to nextInstanceId (1 -> 2) on lit traversal", () => {
+    // Per REQ-008 the player always controls the most recently spawned active
+    // instance, so a fresh generation arrives at the destination.
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    player.instanceId = 1;
+    lifetime.instanceId = 1;
+    const south = makePortal("south", 12, true);
+    const detector = createPortalTriggerSet([south]);
+    wireTraversal({ detector, player, lifetime, scene, world, registry });
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, HALF_DEPTH - 0.4, 0);
+
+    expect(player.instanceId).toBe(2);
+    expect(lifetime.instanceId).toBe(2);
+  });
+
+  it("sequential lit traversals produce ghosts with monotonically increasing instanceIds (You1 -> You-1 -> You-2)", () => {
+    // Two consecutive lit traversals from the active player. The first
+    // closes out You1 (instanceId 1); the second closes out You-1
+    // (instanceId 2). The active player ends at instanceId 3 (You-2).
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    player.instanceId = 1;
+    lifetime.instanceId = 1;
+    const south = makePortal("south", 12, true);
+    const detector = createPortalTriggerSet([south]);
+    wireTraversal({ detector, player, lifetime, scene, world, registry });
+
+    let tick = 0;
+
+    // First traversal: spawns the You1 ghost at instanceId 1.
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, HALF_DEPTH - 0.4, tick++);
+    detector.step(0, 0, tick++); // exit
+    expect(player.instanceId).toBe(2);
+
+    // Second traversal: spawns the You-1 ghost at instanceId 2.
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, HALF_DEPTH - 0.4, tick++);
+    expect(player.instanceId).toBe(3);
+
+    const ghostIds = allGhosts(registry).map((g) => g.instanceId);
+    expect(ghostIds).toEqual([1, 2]);
+  });
+
+  it("dark-portal entries do NOT advance the active player's instanceId", () => {
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    player.instanceId = 4;
+    lifetime.instanceId = 4;
+    const dark = makePortal("south", 12, false);
+    const detector = createPortalTriggerSet([dark]);
+    wireTraversal({ detector, player, lifetime, scene, world, registry });
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, HALF_DEPTH - 0.4, 0);
+
+    expect(player.instanceId).toBe(4);
+    expect(lifetime.instanceId).toBe(4);
+  });
+
+  it("ghost retains its instanceId across timeline switches (re-entering the source timeline still labels it the same)", () => {
+    // Cross East from 5:00 (closes out You1; instance 1 ghost in bucket 5,
+    // active player advances to You-1 / instance 2). Then cross West from
+    // 6:00 back to 5:00 (closes out You-1; instance 2 ghost in bucket 6,
+    // active player advances to You-2 / instance 3). The original You1
+    // ghost in bucket 5 must still report instanceId 1 after it is reset
+    // and shown again.
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    lifetime.originNormalized = 5 / 24;
+    player.originNormalized = 5 / 24;
+    player.instanceId = 1;
+    lifetime.instanceId = 1;
+    registry.setActiveTimeline(5);
+
+    const east = makePortal("east", 6, true);
+    const eastDetector = createPortalTriggerSet([east]);
+    const t1 = wireTraversal({
+      detector: eastDetector,
+      player,
+      lifetime,
+      scene,
+      world,
+      registry,
+    });
+
+    lifetime.recorder.record(state({ forward: true }), 0);
+    eastDetector.step(HALF_WIDTH - 0.4, 0, 0);
+    expect(player.instanceId).toBe(2);
+
+    const fiveBucket = registry.ghostsFor(5);
+    expect(fiveBucket).toHaveLength(1);
+    const you1Ghost = fiveBucket[0];
+    expect(you1Ghost.instanceId).toBe(1);
+
+    t1.dispose();
+
+    const west = makePortal("west", 5, true);
+    const westDetector = createPortalTriggerSet([west]);
+    wireTraversal({
+      detector: westDetector,
+      player,
+      lifetime,
+      scene,
+      world,
+      registry,
+    });
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    westDetector.step(-(HALF_WIDTH - 0.4), 0, 1);
+
+    expect(player.instanceId).toBe(3);
+    // The You1 ghost in bucket 5 still has instanceId 1 after the registry
+    // reset / re-show on return to its source timeline.
+    expect(you1Ghost.instanceId).toBe(1);
+    // The You-1 ghost just spawned was filed into bucket 6 (timeline being
+    // left behind); it carries instanceId 2.
+    expect(registry.ghostsFor(6)).toHaveLength(1);
+    expect(registry.ghostsFor(6)[0].instanceId).toBe(2);
   });
 });
 

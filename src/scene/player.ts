@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { applyInstanceTint } from "../render/instanceTint.ts";
+import { INITIAL_INSTANCE_ID, type InstanceId } from "../sim/instanceId.ts";
 
 /**
  * Player capsule dimensions for the prototype (REQ-026).
@@ -34,6 +35,15 @@ export interface Player {
    * future ghost-replay slices that want to re-stamp on portal traversal.
    */
   originNormalized: number;
+  /**
+   * Generation index for the active player (REQ-007). Starts at
+   * `INITIAL_INSTANCE_ID = 1` (You1, the first-ever spawn) and increments by
+   * one on every lit-portal traversal so "the player always controls the most
+   * recently spawned active instance" (REQ-008). Hard reset (REQ-025) returns
+   * this to `INITIAL_INSTANCE_ID`. The label is data only this slice; the UI
+   * overlay lands with REQ-032.
+   */
+  instanceId: InstanceId;
   /**
    * Sets the desired planar (world-XZ) velocity on the body, preserving
    * vertical velocity from gravity. Call this once per fixed physics step
@@ -129,6 +139,10 @@ export function createPlayer(
     mesh,
     body,
     originNormalized,
+    // The active player always opens at `INITIAL_INSTANCE_ID = 1` (You1, the
+    // GDD's first-ever spawn). Subsequent lit-portal traversals advance this
+    // by one in `wireTraversal`; hard reset returns it to the seed.
+    instanceId: INITIAL_INSTANCE_ID,
     setPlanarVelocity,
     syncMeshFromBody,
   };

@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T20:15:00-05:00",
+  "updatedAt": "2026-05-08T20:30:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -113,18 +113,41 @@
       "id": "REQ-007",
       "requirement": "Instance generation numbering tracks generations from the original spawn (You1, You-1, You-2, ...).",
       "gddRef": "docs/gdd/02-time-travel-rules.md#instance-numbering",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "note": "`src/sim/instanceId.ts` exports the `InstanceId` type (positive monotonic integer; 1 = You1, 2 = You-1, 3 = You-2), `INITIAL_INSTANCE_ID = 1`, `formatInstanceId(id)` (the GDD-canonical display label: `formatInstanceId(1) === 'You1'`, `formatInstanceId(n)` for n > 1 is `'You-' + (n - 1)`), and `nextInstanceId(id)` (returns `id + 1`). The id is threaded through the active player handle (`Player.instanceId` seeded by `createPlayer` at `INITIAL_INSTANCE_ID`), the active lifetime (`ActiveLifetime.instanceId`), the active player handle for traversal (`ActivePlayerHandle.instanceId`), and ghost instances (`GhostInstance.instanceId`, `CreateGhostOptions.instanceId`). On every lit-portal traversal `wireTraversal` hands the OUTGOING active player's `instanceId` (via `lifetime.instanceId`) to the spawned ghost (the ghost IS that closed-out instance, replayed) and advances the active player to `nextInstanceId(previous)` (REQ-008). `hardReset` returns both `player.instanceId` and `lifetime.instanceId` to `INITIAL_INSTANCE_ID` so the next spawn is again You1. UI rendering of the label is OUT of scope this slice; the data feeds the future REQ-032 thought-bubble overlay.",
+      "implementationRefs": [
+        "src/sim/instanceId.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/ghostInstance.ts",
+        "src/sim/hardReset.ts",
+        "src/scene/player.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/instanceId.test.ts",
+        "tests/sim/portalTraversal.test.ts",
+        "tests/sim/hardReset.test.ts",
+        "tests/scene/player.test.ts"
+      ],
       "followupRefs": []
     },
     {
       "id": "REQ-008",
       "requirement": "Player input always controls the most recently spawned active instance.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#instance-numbering",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "note": "Encoded in the lit-portal traversal handoff. On every lit entry `wireTraversal` (`src/sim/portalTraversal.ts`) takes the OUTGOING active player's `instanceId` and hands it to the spawned ghost (which IS that closed-out instance, replayed), then advances the active player's `instanceId` to `nextInstanceId(previous)` and writes the same id onto the freshly-opened lifetime. The active player therefore always carries the most recently spawned generation: a sequence of N traversals leaves the active player at instance N+1 with N closed-out ghosts in their respective source timelines, each ghost retaining its own instanceId across timeline switches. `tests/sim/portalTraversal.test.ts > instance generation numbering` covers the chain end-to-end (1 -> 2 -> 3) including the cross-timeline retention case. The keyboard input layer continues to write through the single `player` handle the host wires into `wireTraversal`, so player input is by construction always routed to the most recently spawned active instance.",
+      "implementationRefs": [
+        "src/sim/instanceId.ts",
+        "src/sim/portalTraversal.ts",
+        "src/scene/player.ts",
+        "src/input/keyboard.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/instanceId.test.ts",
+        "tests/sim/portalTraversal.test.ts"
+      ],
       "followupRefs": []
     },
     {
