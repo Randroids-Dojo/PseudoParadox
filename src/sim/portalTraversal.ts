@@ -1,7 +1,6 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import {
-  isLit,
   portalDestinationNormalized,
   type Portal,
 } from "./portal.ts";
@@ -16,6 +15,8 @@ import {
   timelineIdFromNormalized,
   type TimelineRegistry,
 } from "./timelineRegistry.ts";
+import { DOOR_STATE_BY_HOUR } from "./doorStateAtTime.ts";
+import { isLit as portalAuthoredLit } from "./portal.ts";
 
 /**
  * Portal traversal teleport (REQ-009 runtime half / REQ-013 / REQ-014 partial).
@@ -134,10 +135,26 @@ export interface WireTraversalOptions {
    * from `lifetime.originNormalized`) and switches the registry's active
    * timeline to the destination. The host's loop calls `activeGhosts()` to
    * decide which ghosts tick and render this frame (REQ-001 / REQ-003).
+   *
+   * The lit/dark filter that gates traversal is also derived from the
+   * registry's current `activeTimeline`: a portal is enterable iff
+   * `doorLitStateAtHour(activeTimeline)[portal.direction]` is true. This
+   * makes the SAME `doorLitStateAtHour` table that paints the doors drive
+   * the runtime entry predicate, so the two cannot drift across timelines
+   * (REQ-015: at 6:00 only the West door is enterable, regardless of how
+   * the portals were authored at 5:00).
    */
   registry: TimelineRegistry;
   /** Resolves destination spawn pose. Defaults to the room center. */
   resolveSpawnPose?: SpawnPoseResolver;
+  /**
+   * Fired once per LIT traversal AFTER the registry's active timeline has
+   * been switched to the destination. Receives the destination hour as an
+   * integer so the host can repaint doors and snap the time-of-day clock
+   * to the new timeline (REQ-015). Optional; if omitted, the traversal
+   * still completes mechanically.
+   */
+  onTimelineEnter?: (destinationHour: number) => void;
 }
 
 export interface TraversalHandle {
@@ -168,12 +185,35 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     world,
     registry,
     resolveSpawnPose = DEFAULT_SPAWN_POSE,
+    onTimelineEnter,
   } = options;
+
+  const isLitForCurrentTimeline = (portal: Portal): boolean => {
+    // Lit/dark gate (REQ-009 / REQ-010 / REQ-015):
+    //   - When the current timeline is AUTHORED in `DOOR_STATE_BY_HOUR`
+    //     (hours 5 and 6 today), read from that table. The same table that
+    //     paints the doors gates the entry predicate, so the visual and
+    //     behavior cannot drift across timelines (REQ-015: at 6:00 only
+    //     West is enterable, regardless of how the portals were authored
+    //     at 5:00).
+    //   - When the current timeline is UNAUTHORED (e.g. the test harness
+    //     keys hour 0 to exercise leaving-timeline semantics), fall back
+    //     to the portal's frozen `isLit` field. The runtime path in
+    //     `src/app.ts` only ever sits at authored hours (Acts 1-3 use 5,
+    //     6, and 12), so this fallback only fires from test fixtures.
+    //     REQ-011 will collapse the table+field pair into a single
+    //     timeline-derived computation.
+    const table = DOOR_STATE_BY_HOUR[registry.activeTimeline];
+    if (table) return table[portal.direction];
+    return portalAuthoredLit(portal);
+  };
 
   const handleEvent = (event: OverlapEvent): void => {
     if (event.kind !== "enter") return;
-    // REQ-010: dark portals are spawn-only; the player cannot enter them.
-    if (!isLit(event.portal)) return;
+    // REQ-010 / REQ-015: dark portals are spawn-only; the player cannot
+    // enter them. "Dark" is derived from the current timeline's table so a
+    // door's lit state can change as the player moves between timelines.
+    if (!isLitForCurrentTimeline(event.portal)) return;
     traverseLitPortal(event.portal);
   };
 
@@ -243,7 +283,16 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     //    and resets every ghost in the entering timeline to tick 0 with its
     //    spawn pose, then makes it visible. Each timeline visit is a fresh
     //    playback (REQ-001 / REQ-003).
-    registry.setActiveTimeline(timelineIdFromNormalized(destinationNormalized));
+    const destinationHour = timelineIdFromNormalized(destinationNormalized);
+    registry.setActiveTimeline(destinationHour);
+
+    // 7. Fire the timeline-enter hook so the host can repaint doors and
+    //    snap the time-of-day clock to the destination hour (REQ-015). The
+    //    hook fires AFTER the registry has switched, so any caller reading
+    //    `registry.activeTimeline` from inside the hook sees the new value.
+    if (onTimelineEnter) {
+      onTimelineEnter(destinationHour);
+    }
   };
 
   const off = detector.onPortalOverlap(handleEvent);

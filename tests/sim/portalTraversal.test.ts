@@ -394,17 +394,24 @@ describe("wireTraversal: exit and dispose semantics", () => {
 });
 
 describe("wireTraversal: multi-portal sequence", () => {
-  it("ghost list grows by one per LIT entry, stays the same for DARK entries", () => {
+  it("at 5:00 ghost list grows by one per LIT entry, stays the same for DARK entries", () => {
+    // Active timeline pinned to 5:00 so the table-derived lit/dark gate
+    // (REQ-015) reads the canonical 5:00 state: South lit, East lit, North
+    // dark, West dark. After a South entry the active timeline switches to
+    // 12 (South's destination), where the table is unauthored and the gate
+    // falls back to the portal's authored `isLit` field; the test therefore
+    // hits North/West BEFORE leaving 5:00 to keep the timeline-derived gate
+    // active throughout.
     const { scene, world, player, lifetime, registry } = buildHarness();
+    lifetime.originNormalized = 5 / 24;
+    player.originNormalized = 5 / 24;
+    registry.setActiveTimeline(5);
+
     const doors = createFourDoors(ROOM_DIMENSIONS.width, ROOM_DIMENSIONS.depth);
-    // Reuse the canonical Act 1 portal set: south lit, east lit, north dark,
-    // west dark. The traversal handler must teleport on south/east entries
-    // and ignore north/west entries.
     const portals = createActOnePortals(doors);
     const detector = createPortalTriggerSet(portals);
     wireTraversal({ detector, player, lifetime, scene, world, registry });
 
-    // Record a small recording so each lit entry has something to snapshot.
     const recordSomething = (): void => {
       lifetime.recorder.record(NEUTRAL, 0);
     };
@@ -412,28 +419,24 @@ describe("wireTraversal: multi-portal sequence", () => {
     let tick = 0;
     detector.step(0, 0, tick++); // outside
 
-    // Lit south entry.
-    recordSomething();
-    detector.step(0, HALF_DEPTH - 0.4, tick++);
-    expect(allGhosts(registry)).toHaveLength(1);
-    detector.step(0, 0, tick++); // exit
-
-    // Dark north entry: no growth.
+    // Dark north entry at 5:00: table[5][north] = false. No growth.
     recordSomething();
     detector.step(0, -(HALF_DEPTH - 0.4), tick++);
-    expect(allGhosts(registry)).toHaveLength(1);
+    expect(allGhosts(registry)).toHaveLength(0);
     detector.step(0, 0, tick++); // exit
 
-    // Lit east entry.
-    recordSomething();
-    detector.step(HALF_WIDTH - 0.4, 0, tick++);
-    expect(allGhosts(registry)).toHaveLength(2);
-    detector.step(0, 0, tick++); // exit
-
-    // Dark west entry: no growth.
+    // Dark west entry at 5:00: table[5][west] = false. No growth.
     recordSomething();
     detector.step(-(HALF_WIDTH - 0.4), 0, tick++);
-    expect(allGhosts(registry)).toHaveLength(2);
+    expect(allGhosts(registry)).toHaveLength(0);
+    detector.step(0, 0, tick++); // exit
+
+    // Lit east entry at 5:00: table[5][east] = true. Grows to 1; active
+    // timeline switches to 6 after this.
+    recordSomething();
+    detector.step(HALF_WIDTH - 0.4, 0, tick++);
+    expect(allGhosts(registry)).toHaveLength(1);
+    expect(registry.activeTimeline).toBe(6);
   });
 });
 
@@ -513,6 +516,185 @@ describe("wireTraversal: custom spawn pose resolver", () => {
   });
 });
 
+describe("wireTraversal: REQ-015 6:00 timeline state", () => {
+  it("fires onTimelineEnter once per LIT traversal with the destination hour", () => {
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    lifetime.originNormalized = 5 / 24;
+    player.originNormalized = 5 / 24;
+    registry.setActiveTimeline(5);
+
+    const east = makePortal("east", 6, true);
+    const detector = createPortalTriggerSet([east]);
+    const enters: number[] = [];
+    wireTraversal({
+      detector,
+      player,
+      lifetime,
+      scene,
+      world,
+      registry,
+      onTimelineEnter: (hour) => enters.push(hour),
+    });
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(HALF_WIDTH - 0.4, 0, 0);
+
+    expect(enters).toEqual([6]);
+  });
+
+  it("does NOT fire onTimelineEnter for dark-portal entries", () => {
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    registry.setActiveTimeline(5);
+
+    const dark = makePortal("north", 12, false);
+    const detector = createPortalTriggerSet([dark]);
+    const enters: number[] = [];
+    wireTraversal({
+      detector,
+      player,
+      lifetime,
+      scene,
+      world,
+      registry,
+      onTimelineEnter: (hour) => enters.push(hour),
+    });
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, -(HALF_DEPTH - 0.4), 0);
+
+    expect(enters).toEqual([]);
+  });
+
+  it("fires onTimelineEnter AFTER the registry switch (hook reads new active timeline)", () => {
+    // Ordering guard: the host's hook implementation may want to inspect
+    // `registry.activeTimeline` to drive a per-timeline render path. The
+    // hook must fire after the registry has switched to the destination.
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    lifetime.originNormalized = 5 / 24;
+    player.originNormalized = 5 / 24;
+    registry.setActiveTimeline(5);
+
+    const east = makePortal("east", 6, true);
+    const detector = createPortalTriggerSet([east]);
+    let observedActive = -1;
+    wireTraversal({
+      detector,
+      player,
+      lifetime,
+      scene,
+      world,
+      registry,
+      onTimelineEnter: () => {
+        observedActive = registry.activeTimeline;
+      },
+    });
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(HALF_WIDTH - 0.4, 0, 0);
+
+    expect(observedActive).toBe(6);
+  });
+
+  it("first entry into 6:00 yields an empty active-ghost list (REQ-006 unvisited future)", () => {
+    // End-to-end REQ-006 invariant: traversing East from 5:00 into the
+    // unvisited 6:00 timeline produces zero active ghosts. The 5:00-recorded
+    // ghost is filed into the 5 bucket and hidden by the registry switch.
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    lifetime.originNormalized = 5 / 24;
+    player.originNormalized = 5 / 24;
+    registry.setActiveTimeline(5);
+
+    const east = makePortal("east", 6, true);
+    const detector = createPortalTriggerSet([east]);
+    wireTraversal({ detector, player, lifetime, scene, world, registry });
+
+    lifetime.recorder.record(state({ forward: true }), 0);
+    lifetime.recorder.record(state({ forward: true }), 0);
+    detector.step(HALF_WIDTH - 0.4, 0, 0);
+
+    expect(registry.activeTimeline).toBe(6);
+    expect(registry.activeGhosts()).toEqual([]);
+    // The recording itself is preserved in the 5 bucket.
+    expect(registry.ghostsFor(5)).toHaveLength(1);
+  });
+
+  it("at 6:00 the West door is enterable and routes back to 5:00", () => {
+    // Wire a fresh harness with the active timeline set to 6 and the
+    // canonical Act 1 portal set (whose West portal is authored DARK with
+    // destinationHours = 5). The traversal predicate must read from
+    // doorLitStateAtHour(6), which lights West, so walking into the West
+    // trigger fires a traversal even though the portal's frozen `isLit`
+    // is false.
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    lifetime.originNormalized = 6 / 24;
+    player.originNormalized = 6 / 24;
+    registry.setActiveTimeline(6);
+
+    const doors = createFourDoors(ROOM_DIMENSIONS.width, ROOM_DIMENSIONS.depth);
+    const portals = createActOnePortals(doors);
+    const detector = createPortalTriggerSet(portals);
+    const enters: number[] = [];
+    wireTraversal({
+      detector,
+      player,
+      lifetime,
+      scene,
+      world,
+      registry,
+      onTimelineEnter: (hour) => enters.push(hour),
+    });
+
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(-(HALF_WIDTH - 0.4), 0, 0); // walk into West trigger
+
+    expect(enters).toEqual([5]);
+    expect(registry.activeTimeline).toBe(5);
+    expect(player.originNormalized).toBeCloseTo(5 / 24, 6);
+  });
+
+  it("at 6:00 the South, East, and North doors are NOT enterable (only West is lit)", () => {
+    // The lit/dark filter must derive from the current timeline. At 6:00
+    // South and East (authored lit at 5:00) become dark, and North stays
+    // dark. Walking into any of them must NOT trigger a traversal.
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    lifetime.originNormalized = 6 / 24;
+    player.originNormalized = 6 / 24;
+    registry.setActiveTimeline(6);
+
+    const doors = createFourDoors(ROOM_DIMENSIONS.width, ROOM_DIMENSIONS.depth);
+    const portals = createActOnePortals(doors);
+    const detector = createPortalTriggerSet(portals);
+    const enters: number[] = [];
+    wireTraversal({
+      detector,
+      player,
+      lifetime,
+      scene,
+      world,
+      registry,
+      onTimelineEnter: (hour) => enters.push(hour),
+    });
+
+    let tick = 0;
+    detector.step(0, 0, tick++); // outside
+
+    // South: lit at 5:00, dark at 6:00.
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, HALF_DEPTH - 0.4, tick++);
+    detector.step(0, 0, tick++); // exit
+    // East: lit at 5:00, dark at 6:00.
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(HALF_WIDTH - 0.4, 0, tick++);
+    detector.step(0, 0, tick++); // exit
+    // North: dark at both.
+    lifetime.recorder.record(NEUTRAL, 0);
+    detector.step(0, -(HALF_DEPTH - 0.4), tick++);
+
+    expect(enters).toEqual([]);
+    expect(registry.activeTimeline).toBe(6);
+  });
+});
+
 describe("wireTraversal: per-timeline ghost bookkeeping (REQ-001 / REQ-003)", () => {
   it("files the spawned ghost into the SOURCE timeline (the timeline left behind)", () => {
     const { scene, world, player, lifetime, registry } = buildHarness();
@@ -551,17 +733,21 @@ describe("wireTraversal: per-timeline ghost bookkeeping (REQ-001 / REQ-003)", ()
   });
 
   it("does NOT switch the active timeline on dark-portal entry", () => {
+    // North is dark at 5:00 per `doorLitStateAtHour(5)`, so the
+    // table-derived gate (REQ-015) blocks entry. The portal's authored
+    // `isLit` field is false here too, so the test is unambiguous regardless
+    // of which gate fires.
     const { scene, world, player, lifetime, registry } = buildHarness();
     lifetime.originNormalized = 5 / 24;
     player.originNormalized = 5 / 24;
     registry.setActiveTimeline(5);
 
-    const dark = makePortal("south", 12, false);
+    const dark = makePortal("north", 12, false);
     const detector = createPortalTriggerSet([dark]);
     wireTraversal({ detector, player, lifetime, scene, world, registry });
 
     lifetime.recorder.record(NEUTRAL, 0);
-    detector.step(0, HALF_DEPTH - 0.4, 0);
+    detector.step(0, -(HALF_DEPTH - 0.4), 0);
 
     expect(registry.activeTimeline).toBe(5);
   });

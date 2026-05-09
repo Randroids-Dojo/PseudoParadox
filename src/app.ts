@@ -11,6 +11,10 @@ import { InputRecorder } from "./sim/inputRecorder.ts";
 import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
 import { wireTraversal, type ActiveLifetime } from "./sim/portalTraversal.ts";
 import { createTimelineRegistry } from "./sim/timelineRegistry.ts";
+import {
+  repaintDoorsForHour,
+  snapClockToHour,
+} from "./sim/timelineRoom.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -106,6 +110,16 @@ export async function startApp(container: HTMLElement): Promise<void> {
     scene: sceneCtx.scene,
     world,
     registry,
+    // REQ-015: on lit traversal, repaint the doors per the destination
+    // hour's lit/dark table and snap the time-of-day clock so the room
+    // background and the door visuals match the new timeline. The same
+    // `doorLitStateAtHour` table that paints here also gates the runtime
+    // entry predicate inside `wireTraversal`, so the visual and behavior
+    // stay in lockstep.
+    onTimelineEnter(destinationHour) {
+      repaintDoorsForHour(sceneCtx.portals, destinationHour);
+      snapClockToHour(timeOfDay, destinationHour);
+    },
   });
 
   // Track the most recent frame time so the physics integrator can use
