@@ -113,7 +113,7 @@ Each predicate is a pure function over the snapshot. Predicates are written as p
 
 ### REQ-012 (Act 1 cinematic at 12:00)
 
-```
+```text
 beatAct1Cinematic(snapshot):
   // The cinematic is a one-shot at game start; once the player has spawned
   // at 5:00, the cinematic has already been "satisfied." The observer
@@ -128,7 +128,7 @@ The "3 ghosts in the 12:00 bucket" is the two scripted actors plus the knocked-o
 
 ### REQ-016 (Act 2 first loop)
 
-```
+```text
 beatAct2Loop1(snapshot):
   // The player has walked East from 5:00 to 6:00 and West back to 5:00,
   // so the 5:00 bucket now holds You1's recording (the East-bound walk)
@@ -144,7 +144,7 @@ beatAct2Loop1(snapshot):
 
 ### REQ-017 (Act 2 second loop)
 
-```
+```text
 beatAct2Loop2(snapshot):
   // On return to 5:00 the You-1 ghost is in `unconscious` consciousness;
   // a body was carried East via the East portal trigger (the in-flight
@@ -164,7 +164,7 @@ Detection of "the body was dragged East" uses the same in-flight-registry traver
 
 ### REQ-018 (Act 3 setup)
 
-```
+```text
 beatAct3Setup(snapshot):
   // Same shape as Act 2 loop 2, but the player has now repeated the
   // sequence and is back AT 5:00 waiting (i.e. has hard-reset OR
@@ -179,7 +179,7 @@ beatAct3Setup(snapshot):
 
 ### REQ-019 (Act 3 chase beat)
 
-```
+```text
 beatAct3Chase(snapshot):
   // Two instances simultaneously cross the West portal trigger at 5:00.
   // Detection uses the trigger set's tick-aligned events: in a single
@@ -196,7 +196,7 @@ The `recentWestEntries` channel is a small append-only buffer the observer keeps
 
 ### REQ-020 (Act 3 team-up beat)
 
-```
+```text
 beatAct3TeamUp(snapshot):
   // Two instances at 5:00 coordinate to knock out the 5:00 instance.
   // Concretely: the 5:00 active-timeline ghosts now contain at least
@@ -210,7 +210,7 @@ beatAct3TeamUp(snapshot):
 
 ### REQ-021 (Act 3 mirror beat)
 
-```
+```text
 beatAct3Mirror(snapshot):
   // The player has dragged the knocked-out 5:00 instance South to 12:00
   // and placed the body in the center of the room. The observer reads:
@@ -228,7 +228,7 @@ beatAct3Mirror(snapshot):
 
 ### REQ-022 (Act 3 second knockout)
 
-```
+```text
 beatAct3FinalKnockout(snapshot):
   // The player knocks out the instance brought from 6:00 inside the 12:00
   // timeline. The observer reads: at 12:00 there are now TWO unconscious
@@ -240,7 +240,7 @@ beatAct3FinalKnockout(snapshot):
 
 ### REQ-023 (Act 3 escape)
 
-```
+```text
 beatAct3Escape(snapshot):
   // The North door at 12:00 is "open" iff no replay-instance is currently
   // staffing the cinematic (i.e. the cinematic actors have completed
@@ -421,3 +421,5 @@ The spec above resolves to a recommended default for every non-obvious decision.
 - Q-022: REQ-024 enforcement model. Default: observer-only (the watermark is purely informational; the host does not refuse player actions out of order, but the observer reports the highest reachable state).
 
 ### Build log
+
+- 2026-05-09: research-only iteration (no production code). Authored this section file as the canonical spec for the sixteen `not_started` rows on the GDD coverage ledger plus a polish pass on the five remaining partials. Opened Q-012 through Q-022 in `docs/OPEN_QUESTIONS.md` (eleven new questions). Created fourteen `implement:` dots matching the slice plan in section 12. Section's `Status:` stays `not_started` until the first beat slice ships. Files: `docs/gdd/40-act-progress-and-narrative-beats.md`, `docs/OPEN_QUESTIONS.md`, `docs/PROGRESS_LOG.md`, `.dots/PseudoParadox-implement-*.md`. PR #29.
