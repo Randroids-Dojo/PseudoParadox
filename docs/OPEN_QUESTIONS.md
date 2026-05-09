@@ -110,17 +110,6 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
 - Status: open
 - Resolution:
 
-### Q-010: Thought-bubble lookahead window length
-
-- Context: REQ-032 thought bubbles preview upcoming actions. Too short a window and the player has no time to react. Too long and the bubble shows actions far enough out that the player cannot mentally connect the icon to the eventual event.
-- Options:
-  - A. 30 ticks (0.5 s at 60 Hz). Half a second of preview reads as "about to do this."
-  - B. 60 ticks (1.0 s). Full second; safer for reaction but risks losing the connection between icon and event.
-  - C. 15 ticks (0.25 s). Quarter-second; tighter but may not give the player enough preview.
-- Recommended default: A (30 ticks). Balances reactivity against legibility.
-- Status: open
-- Resolution:
-
 ### Q-011: Carried body's relationship to the carrier's recording
 
 - Context: REQ-034 / REQ-036 ask whether a carried body's trajectory while held is part of the carrier's recording or has its own independent recording.
@@ -132,6 +121,17 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
 - Resolution:
 
 ## Resolved
+
+### Q-010: Thought-bubble lookahead window length
+
+- Context: REQ-032 thought bubbles preview upcoming actions. Too short a window and the player has no time to react. Too long and the bubble shows actions far enough out that the player cannot mentally connect the icon to the eventual event.
+- Options:
+  - A. 30 ticks (0.5 s at 60 Hz). Half a second of preview reads as "about to do this."
+  - B. 60 ticks (1.0 s). Full second; safer for reaction but risks losing the connection between icon and event.
+  - C. 15 ticks (0.25 s). Quarter-second; tighter but may not give the player enough preview.
+- Recommended default: A (30 ticks). Balances reactivity against legibility.
+- Status: resolved
+- Resolution: A. `DEFAULT_LOOKAHEAD_TICKS = 30` in `src/sim/thoughtBubblePeek.ts` (PR for REQ-032 thought-bubble overlay slice). The 30-tick window is short enough to read as "about to do this," long enough that the predicted forward integration for door detection stays inside the trigger volume's `PORTAL_TRIGGER_DEPTH = 0.6 m` margin under the prototype's player movement speed and damping. Revisit if playtests show the icon does not give enough reaction time.
 
 ### Q-001: First requirement file
 

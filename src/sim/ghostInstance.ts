@@ -8,6 +8,10 @@ import {
   INITIAL_CONSCIOUSNESS,
   type Consciousness,
 } from "./knockoutState.ts";
+import {
+  createThoughtBubble,
+  type ThoughtBubble,
+} from "../render/thoughtBubble.ts";
 
 /**
  * Ghost-replay capsule (REQ-001 / REQ-002 deepening).
@@ -74,6 +78,16 @@ export interface GhostInstance {
    * again on re-entry).
    */
   consciousness: Consciousness;
+  /**
+   * Thought-bubble overlay (REQ-032). Each ghost owns its own bubble so the
+   * host can call `setIcon` once per render frame after the lookahead scan
+   * resolves the next qualitatively different action. The bubble's group
+   * mesh is parented to the same scene as the ghost mesh; `update` is
+   * called per render frame to position and billboard it. Opens hidden
+   * (no current kind, group `visible` false). `reset()` hides the bubble
+   * so a re-entered timeline starts with a clean preview.
+   */
+  readonly thoughtBubble: ThoughtBubble;
   /** Number of `advanceTick` calls applied so far. Starts at 0. */
   readonly tickIndex: number;
   /**
@@ -165,6 +179,12 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
   ).setFriction(0.5);
   world.createCollider(colliderDesc, body);
 
+  // REQ-032: each ghost owns one thought-bubble. The bubble starts hidden
+  // (`setIcon(null)` is the implicit initial state inside `createThoughtBubble`).
+  // The host's per-render loop reads the lookahead result and calls
+  // `setIcon` on the matching kind.
+  const thoughtBubble = createThoughtBubble(scene);
+
   // Mutable counter behind a getter on the returned object so the tick index
   // is observable but not externally writable. `advanceTick` is the only
   // mutation site, which makes ordering of replay calls verifiable.
@@ -198,6 +218,10 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     );
     body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     syncMeshFromBody();
+    // REQ-032: hide the thought bubble on reset so a re-entered timeline
+    // starts with no preview. The host re-resolves the lookahead on the
+    // next render frame and re-shows the matching icon if appropriate.
+    thoughtBubble.setIcon(null);
   };
 
   syncMeshFromBody();
@@ -208,6 +232,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     originNormalized,
     instanceId,
     recording,
+    thoughtBubble,
     get tickIndex(): number {
       return tickIndex;
     },

@@ -398,6 +398,41 @@ describe("createGhost: consciousness state (REQ-033 partial)", () => {
     expect(targetState).toBe("unconscious");
   });
 
+  it("exposes a thoughtBubble parented to the scene (REQ-032)", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([NEUTRAL]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0,
+      instanceId: 1,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    expect(ghost.thoughtBubble).toBeDefined();
+    expect(scene.children).toContain(ghost.thoughtBubble.group);
+    expect(ghost.thoughtBubble.currentKind).toBeNull();
+  });
+
+  it("reset() hides the thought bubble (REQ-032)", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([NEUTRAL]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0,
+      instanceId: 1,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    ghost.thoughtBubble.setIcon("fist");
+    expect(ghost.thoughtBubble.currentKind).toBe("fist");
+    ghost.reset();
+    expect(ghost.thoughtBubble.currentKind).toBeNull();
+  });
+
   it("exposes the recording so the host can read replayPunchAtTick(recording, tickIndex)", () => {
     const scene = new THREE.Scene();
     const world = buildWorld();

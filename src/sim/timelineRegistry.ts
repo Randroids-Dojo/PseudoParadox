@@ -179,6 +179,10 @@ export function createTimelineRegistry(
     // does not rely on tracking a separate "last-known position"; on
     // re-entry the ghost is reset to tick 0 anyway).
     ghost.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    // REQ-032: hide the thought bubble alongside the ghost. An inactive
+    // ghost has no preview; the bubble re-shows the next render frame
+    // after re-entry resolves a fresh lookahead.
+    ghost.thoughtBubble.setIcon(null);
   };
 
   const showAndResetGhost = (ghost: GhostInstance): void => {
@@ -246,6 +250,10 @@ export function createTimelineRegistry(
         // Rapier removes the body's colliders alongside the body itself,
         // so an explicit `removeCollider` per ghost is unnecessary.
         world.removeRigidBody(ghost.body);
+        // REQ-032: dispose the ghost's thought bubble. Removes its group
+        // from the scene and frees every glyph's geometry / material so a
+        // hard reset does not leak meshes across reset cycles.
+        ghost.thoughtBubble.dispose();
       }
       bucket.ghosts.length = 0;
     }

@@ -49,6 +49,10 @@ import {
   litStateForTimeline,
 } from "./sim/litStateForTimeline.ts";
 import { isLit as portalAuthoredLit } from "./sim/portal.ts";
+import {
+  nextQualitativelyDifferentAction,
+  type ThoughtPeekKind,
+} from "./sim/thoughtBubblePeek.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -542,6 +546,30 @@ export async function startApp(container: HTMLElement): Promise<void> {
     player.syncMeshFromBody();
     for (const ghost of registry.activeGhosts()) {
       ghost.syncMeshFromBody();
+    }
+    // REQ-032: per-render-frame thought-bubble update. For each active
+    // ghost, run the lookahead scan and feed the result to its bubble's
+    // `setIcon` (which is a cheap visibility toggle when the kind has
+    // not changed). The bubble is positioned each frame via `update`
+    // which writes the world position to the ghost's body translation
+    // plus a head offset and orients the group toward the camera.
+    // The active player has NO bubble (dossier section 8: only
+    // non-active instances carry previews).
+    for (const ghost of registry.activeGhosts()) {
+      const t = ghost.body.translation();
+      const kind: ThoughtPeekKind | null = nextQualitativelyDifferentAction({
+        recording: ghost.recording,
+        currentTick: ghost.tickIndex,
+        isCurrentlyUnconscious: ghost.consciousness === "unconscious",
+        currentPosition: { x: t.x, z: t.z },
+        triggers: portalTriggers.triggers,
+      });
+      if (kind !== ghost.thoughtBubble.currentKind) {
+        ghost.thoughtBubble.setIcon(kind);
+      }
+      if (kind !== null) {
+        ghost.thoughtBubble.update(t, sceneCtx.camera);
+      }
     }
     // REQ-031: keep the active-player floor ring snapped to the player's
     // planar position. Done after `syncMeshFromBody` for symmetry; the ring
