@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T23:00:00-05:00",
+  "updatedAt": "2026-05-08T23:25:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -550,9 +550,19 @@
       "id": "REQ-035",
       "requirement": "Unconscious bodies can be dragged across the room while held.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "updatedAt": "2026-05-08",
+      "note": "Drag is not a separate mechanic. It is the visible consequence of pickup (REQ-034) plus carrier movement: the per-tick attachment `applyCarryAttachment` rewrites the carried body's kinematic translation each tick to track the carrier plus `CARRY_OFFSET`. This row flips to `done` via a tests-only slice that pins the regression invariants in `tests/sim/dragRegression.test.ts`. Coverage: body tracks the carrier across a 5-tick walk with a deterministic one-step lag (the kinematic target captured at attach-time is the carrier's pre-step pose; production behavior, documented in the harness docstring); body tracks the carrier through a direction change mid-walk; zero-velocity ticks freeze the carried body's planar position relative to the (settled) carrier within a 0.5m tolerance for the documented Q-006 belt-and-suspenders followup (incidental kinematic-vs-dynamic contact); dropping mid-walk leaves the body at the carrier's current planar pose, NOT the pickup position; after a drop the body is no longer kinematically attached (verified by teleporting the carrier 10m away and confirming the body does not chase); force-drop on knockout-while-carrying severs the attachment; carry survives lit-portal traversal (the dossier section 5 edge case 2 specifies the carrier's carry persists across traversal, and `wireTraversal` does not branch on the carry state so the field passes through untouched), and the per-tick attachment re-anchors the body to the destination spawn pose immediately on the next tick; hard reset clears the carry slot mid-drag. No production code changes: the existing carry implementation already satisfies every invariant.",
+      "implementationRefs": [
+        "src/sim/carryState.ts",
+        "src/sim/applyCarry.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/hardReset.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/dragRegression.test.ts"
+      ],
       "followupRefs": []
     },
     {
