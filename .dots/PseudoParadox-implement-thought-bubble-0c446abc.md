@@ -9,13 +9,13 @@ created-at: "2026-05-08T22:21:09.734130-05:00"
 Spec: docs/gdd/30-combat-and-interaction.md section 8 (Thought bubbles).
 Consumes: Q-010 (lookahead window length, default 30 ticks).
 
-Goal: ship REQ-032 end-to-end. Each non-active ghost displays a billboard icon above its head when an upcoming action (door enter, fight, sleep) is within the lookahead window.
+Goal: ship REQ-032 end-to-end. Each non-active ghost displays a billboard icon above its head when an upcoming action (door enter, fight, sleep, footsteps) is within the lookahead window.
 Status target: REQ-032 not_started -> done.
 
 Affected files:
 - public/icons/door-arrow.png, fist.png, sleep.png, footsteps.png: text-free icon assets. Author as small (64x64 px) PNG sprites in the existing public/ folder. Pillar 3 (sci-fi diegetic) forbids text; icons read as glyphs.
 - src/render/thoughtBubble.ts (NEW): createThoughtBubble(ghost) returns a THREE.Sprite child of ghost.mesh anchored at { x: 0, y: PLAYER_CAPSULE_TOTAL_HEIGHT + 0.3, z: 0 }. Exports updateThoughtBubble(bubble, iconKind | null) to swap the visible texture or hide the bubble when null.
-- src/sim/lookahead.ts (NEW): scanRecordingForUpcomingActions(recording, fromTick, windowTicks) returns the highest-priority IconKind in the window: 'sleep' (ghost is currently unconscious) > 'fist' (punch input rising edge in window) > 'door-arrow' (any LIT portal trigger entry derivable from the recording in window) > 'footsteps' (idle-to-walking transition in window) > null. Pure function over a recording slice.
+- src/sim/lookahead.ts (NEW): scanRecordingForUpcomingActions(recording, fromTick, windowTicks, { isCurrentlyUnconscious }) returns the highest-priority IconKind for the ghost: 'sleep' (if isCurrentlyUnconscious; sleep depends on CURRENT state, not on the recording window) > 'fist' (punch input rising edge in window) > 'door-arrow' (any LIT portal trigger entry derivable from the recording in window) > 'footsteps' (idle-to-walking transition in window) > null. Pure function over the recording slice plus the explicit current-state input. The current-state parameter is passed in (rather than read from the ghost) so the function stays pure and unit-testable without a ghost handle.
 - src/sim/ghostInstance.ts: extend GhostInstance with a thoughtBubble field; createGhost now also creates the bubble. The lookahead computation runs from the host once per render frame (not per tick).
 - src/app.ts: per render frame, iterate registry.activeGhosts() and call updateThoughtBubble for each based on scanRecordingForUpcomingActions.
 

@@ -15,7 +15,7 @@ Status target: REQ-033 not_started -> partial.
 Affected files:
 - src/input/keyboard.ts: extend KeyState with punch boolean; map Space to it.
 - src/sim/inputRecorder.ts: KeyState already deep-frozen by the recorder; verify the extension carries through snapshot()/replay.
-- src/sim/punch.ts (NEW): export PUNCH_RANGE_M = 1.2, isInPunchRange(a, b, range), and applyPunchAtTick(active, recipients, tick) returning the recipient list that transitions to unconscious. Pure helper, no Rapier mutation.
+- src/sim/punch.ts (NEW): export PUNCH_RANGE_M = 1.2, isInPunchRange(posA: { x: number; z: number }, posB: { x: number; z: number }, range: number): boolean (planar XZ distance check), and applyPunchAtTick({ puncherPos, candidates, range }) returning the candidate list whose positions are within range and excluding the puncher itself. Pure helpers, no Rapier mutation. Callers project body translations to XZ before calling.
 - src/sim/knockoutState.ts (NEW): export KnockoutState type with consciousness flag; helper transitionToUnconscious(state). Pure data.
 - src/scene/player.ts: extend Player with consciousness state; expose to traversal/punch.
 - src/sim/ghostInstance.ts: extend GhostInstance with consciousness state; on advanceTick, if recording.frames[tickIndex].keys.punch is true, evaluate punch against active player and other ghosts.
