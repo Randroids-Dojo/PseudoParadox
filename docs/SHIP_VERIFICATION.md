@@ -17,7 +17,7 @@ https://pseudo-paradox.vercel.app
 Run this before declaring the live deploy healthy. Each step lists the expected observable outcome.
 
 1. Page load: visit https://pseudo-paradox.vercel.app. The HTML page returns 200 OK and the document title is "Pseudo Paradox".
-2. Scene render: within 10 seconds of load, the Three.js canvas mounts and the room geometry plus four cardinal doors plus the player capsule are visible. The capsule is tinted with the 5:00 origin color (REQ-005 / REQ-008 visual contract).
+2. Scene render: within 10 seconds of load, the Three.js canvas mounts and the room geometry plus four cardinal doors plus the player capsule are visible. The capsule is tinted with the 5:00 origin color (REQ-013 / REQ-014 Act 1 spawn pose plus REQ-030 origin tint).
 3. Console health: the browser DevTools Console shows no red error entries. Yellow warnings from Three.js or Vite are allowed.
 4. Player movement: WASD moves the player capsule on the planar axes. Hold W (or Up Arrow) and the capsule walks forward. The mesh tilt does not change while moving (capsule stays upright).
 5. Lit-portal traversal: walk into the lit East door at 5:00. The active timeline switches to 6:00, the player teleports to the room center, the origin tint updates to the 6:00 color, and the previously-recorded 5:00 lifetime appears as a ghost replaying the East-bound walk.

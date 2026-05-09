@@ -6,9 +6,9 @@
   "description": "Single-room time travel puzzle game where you escape by manipulating your own past selves.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && vite build",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -29,10 +29,12 @@ import { join, resolve } from "node:path";
  *     bundled), so the budget has ~ 2x headroom for legitimate growth
  *     across follow-up slices.
  *
- * Skip semantics: if `dist/` does not exist (no `npm run build` was run
- * before `npm test`), the test is silently skipped rather than failing.
- * The local verification suite per WORKING_AGREEMENT runs build first,
- * so the test fires on every full verification pass.
+ * Missing-bundle semantics: if `dist/` does not exist (no `npm run build`
+ * was run before `npm test`), the test FAILS LOUD with a clear message.
+ * Silently passing on a missing bundle would let REQ-038 go green even
+ * when nothing was measured, which is the regression mode the gate
+ * exists to catch. CI must run `npm run build` before `npm test`; the
+ * local verification suite per WORKING_AGREEMENT does the same.
  */
 
 const MAX_BUNDLE_BYTES = 5_000_000;
@@ -54,17 +56,10 @@ const totalJsBytes = (dir: string): number => {
 
 describe("REQ-038 bundle-size regression guard", () => {
   it(`dist/assets/*.js total stays under ${MAX_BUNDLE_BYTES} bytes (~ 5 MB)`, () => {
-    if (!existsSync(distAssetsDir)) {
-      // No build artifacts present. The verification suite per
-      // WORKING_AGREEMENT runs `npm run build` before `npm test`, so a
-      // missing dist/ in CI means the prior build step failed and that
-      // failure (not this test) is the right surface for the alarm.
-      // eslint-disable-next-line no-console
-      console.warn(
-        `REQ-038 bundle-size guard skipped: ${distAssetsDir} not present (run \`npm run build\` first).`,
-      );
-      return;
-    }
+    expect(
+      existsSync(distAssetsDir),
+      `REQ-038 bundle-size guard could not find ${distAssetsDir}; run \`npm run build\` before \`npm test\`.`,
+    ).toBe(true);
 
     const total = totalJsBytes(distAssetsDir);
     if (total >= MAX_BUNDLE_BYTES) {

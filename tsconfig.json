@@ -17,7 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["vite/client", "node"]
+    "types": ["vite/client"]
   },
-  "include": ["src", "tests"]
+  "include": ["src"]
 }

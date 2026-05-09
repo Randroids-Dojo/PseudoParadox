@@ -587,6 +587,23 @@ const runFullSequence = (): SequenceResult => {
   applyCarryDrop(player.body, targetGhost.body, RESTING_Y);
   player.carry = { kind: "idle" };
 
+  // F-007 partial path consumed (mirrors `act3Mirror.test.ts` /
+  // `act3FinalKnockout.test.ts`). The runtime mechanism that REHOMES a
+  // carried unconscious body across timelines on a South-portal traversal
+  // does not exist yet; it is the canonical owner of the placement-record
+  // creation in bucket 12 and is documented as F-007. Until F-007 ships,
+  // every per-beat integration test (act3Mirror, act3FinalKnockout, and
+  // this end-to-end driver) files the placement-record / partner ghosts
+  // directly via `createGhost` + `registry.add` so the predicate has the
+  // OUTCOME shape it reads (one unconscious 12:00-origin body within
+  // DROP_CENTER_RADIUS_M of the origin; two unconscious bodies in bucket
+  // 12 for final-knockout; cinematic-actors completed plus crossed-North
+  // for escape). The test reads only the OUTCOME the predicates care
+  // about, not the runtime mechanism that produces it. When F-007 lands,
+  // these direct registry.add calls become assertions on the registry
+  // shape AFTER the South traversal hook fires, and the test becomes
+  // strictly end-to-end.
+
   // File the placement-record ghost into bucket 12 at the room center.
   const placementRecorder = new InputRecorder();
   placementRecorder.record(inputState({}), 12 / 24);
