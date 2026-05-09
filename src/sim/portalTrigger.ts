@@ -172,6 +172,16 @@ export interface PortalTriggerSet {
    * Exposed for tests; the runtime path uses the event stream.
    */
   isOverlapping(portal: Portal): boolean;
+  /**
+   * Force every per-portal overlap flag back to `false` WITHOUT firing any
+   * `enter` or `exit` events. Used by REQ-025 hard reset: after the active
+   * player has been teleported back to the room center, the next `step`
+   * call must not fire a stale `exit` event for whatever portal trigger the
+   * player happened to be standing in at the moment of reset, and a fresh
+   * `enter` event must be deferred until the player walks into a trigger
+   * after the reset settles.
+   */
+  resetOverlapState(): void;
 }
 
 /**
@@ -215,6 +225,11 @@ export function createPortalTriggerSet(
     isOverlapping(portal: Portal): boolean {
       const idx = triggers.findIndex((t) => t.portal === portal);
       return idx >= 0 && overlapping[idx];
+    },
+    resetOverlapState(): void {
+      for (let i = 0; i < overlapping.length; i += 1) {
+        overlapping[i] = false;
+      }
     },
   };
 }

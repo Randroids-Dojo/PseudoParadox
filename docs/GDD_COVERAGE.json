@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T19:42:00-05:00",
+  "updatedAt": "2026-05-08T20:15:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -344,9 +344,17 @@
       "id": "REQ-025",
       "requirement": "Hard reset is available in the pause menu and returns the simulation to a clean Act 1 state.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#failure-recovery",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "note": "Hard reset lands end-to-end as a single key binding plus a pure teardown function. `src/sim/hardReset.ts` exports `hardReset({ player, lifetime, registry, scene, world, timeOfDay, portals, portalTriggers })` which: tears down every ghost in every timeline bucket via the new `TimelineRegistry.clearAllGhosts(scene, world, nextActiveTimeline)` (scene.remove for each mesh, world.removeRigidBody for each body, then bucket.ghosts.length = 0), resets the registry's active timeline to `ACT_ONE_HOUR = 5`, repositions the active player's body at the room center with zero linear velocity (preserving y so the capsule does not float or sink), re-stamps `player.originNormalized` plus the player mesh tint to `ACT_ONE_NORMALIZED`, opens a fresh `InputRecorder` with `startPosition = { x: 0, z: 0 }` and `originNormalized = ACT_ONE_NORMALIZED` on the lifetime, snaps the time-of-day clock back to `ACT_ONE_NORMALIZED` via `snapClockToHour`, repaints every door's lit/dark via `repaintDoorsForHour(portals, ACT_ONE_HOUR)` so the four doors match the GDD's 5:00 table (South lit, East lit, North dark, West dark), and clears the portal-trigger overlap state via the new `PortalTriggerSet.resetOverlapState()` so the next `step` call does not fire a stale `exit` event for whatever trigger the player happened to be standing in at reset and a fresh `enter` event is deferred until the player walks into a trigger after the reset settles. `src/app.ts` binds `KeyR` keydown to the function so pressing `r` returns the simulation to the Act 1 spawn pose. The function is total and idempotent: calling it on an already-clean state is a safe no-op; calling it after several traversals correctly tears down ghosts in every visited timeline (not just the active one) because `clearAllGhosts` walks every bucket. Pause-menu UI is OUT OF SCOPE for this slice; the GDD allows it but a single key binding is enough to ship the failure-recovery contract, and the next slice's UI can call the same `hardReset` function directly. Animated transition / fade-out and undo are also OUT OF SCOPE; the GDD explicitly forbids auto-rewind.",
+      "implementationRefs": [
+        "src/sim/hardReset.ts",
+        "src/sim/timelineRegistry.ts",
+        "src/sim/portalTrigger.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/hardReset.test.ts"
+      ],
       "followupRefs": ["F-003"]
     },
     {
