@@ -17,6 +17,14 @@ import {
   snapClockToHour,
 } from "./sim/timelineRoom.ts";
 import { hardReset } from "./sim/hardReset.ts";
+import {
+  PUNCH_RANGE_M,
+  resolvePunches,
+  suppressUnconsciousPunches,
+  type PunchActor,
+} from "./sim/punch.ts";
+import { applyKnockout } from "./sim/knockoutState.ts";
+import { replayPunchAtTick } from "./sim/inputRecorder.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -187,7 +195,72 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // also pushed into the recorder so a ghost capsule can later replay
       // this path tick-for-tick.
       lifetime.recorder.record(keyboard.state, timeOfDay.normalized());
-      const velocity = inputToVelocity(keyboard.state);
+
+      // REQ-033 partial: per-tick punch resolution. Build a PunchActor list
+      // from the active player and every ghost in the active timeline, run
+      // it through the resolver, and flip each target's `consciousness` to
+      // `'unconscious'`. The resolution reads each actor's pre-tick state,
+      // so simultaneous mutual punches both land. Unconscious attackers
+      // have their `punching` flag suppressed before the resolver so they
+      // cannot punch even if their recorded input still has it set this
+      // tick. Done BEFORE advancing ghost ticks and BEFORE stepping the
+      // world so the punch flag for THIS tick is the ghost's
+      // `replayPunchAtTick(recording, tickIndex)` reading.
+      const activeGhostsList = registry.activeGhosts();
+      const playerTranslation = player.body.translation();
+      const punchActors: PunchActor[] = [
+        {
+          id: player.instanceId,
+          position: { x: playerTranslation.x, z: playerTranslation.z },
+          punching: keyboard.state.punch,
+          consciousness: player.consciousness,
+        },
+      ];
+      for (const ghost of activeGhostsList) {
+        const ghostTranslation = ghost.body.translation();
+        // The ghost's recording stores one boolean per tick; the punch flag
+        // for THIS tick is at `ghost.tickIndex` BEFORE advanceTick runs.
+        // Past the end of the recording the helper returns false, so a
+        // ghost that has exhausted its recording stops punching.
+        const ghostPunching = replayPunchAtTick(
+          ghost.recording,
+          ghost.tickIndex,
+        );
+        punchActors.push({
+          id: ghost.instanceId,
+          position: { x: ghostTranslation.x, z: ghostTranslation.z },
+          punching: ghostPunching,
+          consciousness: ghost.consciousness,
+        });
+      }
+      const sanitizedActors = suppressUnconsciousPunches(punchActors);
+      const resolutions = resolvePunches(sanitizedActors, PUNCH_RANGE_M);
+      if (resolutions.length > 0) {
+        for (const { targetId } of resolutions) {
+          if (targetId === player.instanceId) {
+            player.consciousness = applyKnockout(player.consciousness);
+            continue;
+          }
+          for (const ghost of activeGhostsList) {
+            if (ghost.instanceId === targetId) {
+              ghost.consciousness = applyKnockout(ghost.consciousness);
+              break;
+            }
+          }
+        }
+      }
+
+      // REQ-033 partial: an unconscious player has its keyboard input
+      // suppressed before the planar velocity write so the body stops
+      // moving (and its recorded input continues to capture whatever the
+      // player presses, which is consistent with the dossier's "input is
+      // frozen" semantics: the recorded path stops moving on replay too
+      // because the punch resolver flips the recorded ghost when it
+      // re-enters this timeline).
+      const velocity =
+        player.consciousness === "conscious"
+          ? inputToVelocity(keyboard.state)
+          : { x: 0, z: 0 };
       player.setPlanarVelocity(velocity.x, velocity.z);
       // Advance every ACTIVE ghost (those filed into the timeline the
       // player is currently in) by one tick BEFORE stepping the world so
@@ -196,8 +269,16 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // timelines are hidden by the registry and not iterated here, so
       // they neither tick nor render until the player returns to their
       // timeline (REQ-001 / REQ-003 / REQ-006).
-      for (const ghost of registry.activeGhosts()) {
+      for (const ghost of activeGhostsList) {
         ghost.advanceTick();
+        // REQ-033 partial: an unconscious ghost stops moving. The body
+        // response (bump impulse, damping) lands in the next slice; for
+        // now we just zero the planar velocity AFTER advanceTick wrote
+        // the recorded value.
+        if (ghost.consciousness === "unconscious") {
+          const current = ghost.body.linvel();
+          ghost.body.setLinvel({ x: 0, y: current.y, z: 0 }, true);
+        }
       }
       world.step();
       // REQ-009: evaluate portal-overlap edges AFTER the world step so the

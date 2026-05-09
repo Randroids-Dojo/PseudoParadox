@@ -34,6 +34,7 @@ const NEUTRAL: KeyState = {
   back: false,
   left: false,
   right: false,
+  punch: false,
 };
 
 const buildRecording = (frames: KeyState[]) => {
@@ -88,6 +89,9 @@ const buildHarness = (initialActiveTimeline = ACT_ONE_HOUR): Harness => {
     // Pre-advanced past the seed so the reset's "instanceId back to 1"
     // contract (REQ-007 / REQ-025) is observable.
     instanceId: 4,
+    // Pre-flipped to unconscious so the reset's "consciousness back to
+    // conscious" contract (REQ-033 partial / REQ-025) is observable.
+    consciousness: "unconscious",
   };
 
   const lifetime: ActiveLifetime = {
@@ -440,6 +444,26 @@ describe("hardReset: idempotence and post-traversal teardown (REQ-025)", () => {
     ).not.toThrow();
     expect(h.registry.ghostsFor(5)).toEqual([]);
     expect(h.timeOfDay.normalized()).toBeCloseTo(ACT_ONE_NORMALIZED, 6);
+  });
+});
+
+describe("hardReset: consciousness reset (REQ-033 partial / REQ-025)", () => {
+  it("returns the active player's consciousness to 'conscious'", () => {
+    const h = buildHarness();
+    expect(h.player.consciousness).toBe("unconscious");
+
+    hardReset({
+      player: h.player,
+      lifetime: h.lifetime,
+      registry: h.registry,
+      scene: h.scene,
+      world: h.world,
+      timeOfDay: h.timeOfDay,
+      portals: h.portals,
+      portalTriggers: h.portalTriggers,
+    });
+
+    expect(h.player.consciousness).toBe("conscious");
   });
 });
 

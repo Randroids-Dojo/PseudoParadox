@@ -4,12 +4,18 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { createGhost } from "../../src/sim/ghostInstance.ts";
 import {
   InputRecorder,
+  replayPunchAtTick,
 } from "../../src/sim/inputRecorder.ts";
 import {
   PLAYER_SPEED_MPS,
   type KeyState,
 } from "../../src/input/keyboard.ts";
 import { interpolateWarmToCool } from "../../src/render/colorTint.ts";
+import {
+  resolvePunches,
+  suppressUnconsciousPunches,
+  type PunchActor,
+} from "../../src/sim/punch.ts";
 
 beforeAll(async () => {
   await RAPIER.init();
@@ -20,6 +26,7 @@ const NEUTRAL: KeyState = {
   back: false,
   left: false,
   right: false,
+  punch: false,
 };
 
 const state = (overrides: Partial<KeyState>): KeyState => ({
@@ -267,5 +274,141 @@ describe("createGhost: tint and scene wiring", () => {
     expect(ghost.mesh.position.x).toBeCloseTo(3, 6);
     expect(ghost.mesh.position.y).toBeCloseTo(1, 6);
     expect(ghost.mesh.position.z).toBeCloseTo(-4, 6);
+  });
+});
+
+describe("createGhost: consciousness state (REQ-033 partial)", () => {
+  it("opens at 'conscious'", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([NEUTRAL]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0,
+      instanceId: 1,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    expect(ghost.consciousness).toBe("conscious");
+  });
+
+  it("can be flipped to 'unconscious' through the setter", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([NEUTRAL]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0,
+      instanceId: 1,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    ghost.consciousness = "unconscious";
+    expect(ghost.consciousness).toBe("unconscious");
+  });
+
+  it("reset() returns the consciousness flag to 'conscious'", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([NEUTRAL]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0,
+      instanceId: 1,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    ghost.consciousness = "unconscious";
+    ghost.reset();
+    expect(ghost.consciousness).toBe("conscious");
+  });
+
+  it("a recorded punch in timeline T replays through a ghost and knocks out a target in range", () => {
+    // End-to-end punch-replay shape mirroring the host loop in `src/app.ts`:
+    // a ghost replaying a recording with `punch=true` at tick T, plus a
+    // conscious "active player" stand-in within range, produces a
+    // resolution that flips the target unconscious.
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([
+      state({ punch: false }),
+      state({ punch: true }),
+      state({ punch: false }),
+    ]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0,
+      instanceId: 1,
+      scene,
+      world,
+      // Place the ghost at (0, 0); the "active player" stand-in sits at
+      // (1.0, 0), inside the 1.2 m punch range.
+      startPosition: { x: 0, z: 0 },
+    });
+
+    const targetActor: PunchActor = {
+      id: 2,
+      position: { x: 1.0, z: 0 },
+      punching: false,
+      consciousness: "conscious",
+    };
+    let targetState: "conscious" | "unconscious" = "conscious";
+
+    // Tick 0: no punch in the recording, no resolution.
+    {
+      const punchActors: PunchActor[] = [
+        {
+          id: ghost.instanceId,
+          position: ghost.body.translation(),
+          punching: replayPunchAtTick(ghost.recording, ghost.tickIndex),
+          consciousness: ghost.consciousness,
+        },
+        { ...targetActor, consciousness: targetState },
+      ];
+      const r = resolvePunches(suppressUnconsciousPunches(punchActors));
+      expect(r).toEqual([]);
+      ghost.advanceTick();
+    }
+
+    // Tick 1: the recording has punch=true at the ghost's current tick.
+    // The resolver produces (ghost.instanceId, target.id).
+    {
+      const punchActors: PunchActor[] = [
+        {
+          id: ghost.instanceId,
+          position: ghost.body.translation(),
+          punching: replayPunchAtTick(ghost.recording, ghost.tickIndex),
+          consciousness: ghost.consciousness,
+        },
+        { ...targetActor, consciousness: targetState },
+      ];
+      const r = resolvePunches(suppressUnconsciousPunches(punchActors));
+      expect(r).toEqual([{ attackerId: ghost.instanceId, targetId: 2 }]);
+      // Apply the knockout the way the host does.
+      for (const { targetId } of r) {
+        if (targetId === 2) targetState = "unconscious";
+      }
+      ghost.advanceTick();
+    }
+    expect(targetState).toBe("unconscious");
+  });
+
+  it("exposes the recording so the host can read replayPunchAtTick(recording, tickIndex)", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([NEUTRAL, NEUTRAL]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0,
+      instanceId: 1,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    // The exposed recording is the same frozen object the caller passed in.
+    expect(ghost.recording).toBe(recording);
   });
 });

@@ -49,6 +49,7 @@ import {
 } from "./actOneAnchor.ts";
 import { InputRecorder } from "./inputRecorder.ts";
 import { INITIAL_INSTANCE_ID } from "./instanceId.ts";
+import { INITIAL_CONSCIOUSNESS } from "./knockoutState.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import {
   repaintDoorsForHour,
@@ -146,6 +147,13 @@ export function hardReset(options: HardResetOptions): void {
   // the next spawn at whatever generation the player happened to be at when
   // the reset key was pressed, breaking the GDD's "clean Act 1 state" contract.
   player.instanceId = INITIAL_INSTANCE_ID;
+
+  // REQ-033 partial: hard reset returns the active player to `'conscious'`.
+  // A knocked-out player (the "stuck" state hard reset is designed to
+  // recover from) walks out of the reset alive. Ghost consciousness is
+  // cleared by `clearAllGhosts` above (every ghost is removed from every
+  // bucket; the next spawn opens at `INITIAL_CONSCIOUSNESS`).
+  player.consciousness = INITIAL_CONSCIOUSNESS;
 
   // 4. Open a fresh lifetime at the Act 1 anchor: a new recorder (so no
   // recorded frames from the just-cleared run leak into a future ghost

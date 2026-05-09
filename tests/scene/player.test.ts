@@ -59,3 +59,12 @@ describe("createPlayer instance generation seed (REQ-007)", () => {
     expect(player.instanceId).toBe(1);
   });
 });
+
+describe("createPlayer consciousness seed (REQ-033 partial)", () => {
+  it("seeds the active player at 'conscious'", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const player = createPlayer(scene, world);
+    expect(player.consciousness).toBe("conscious");
+  });
+});

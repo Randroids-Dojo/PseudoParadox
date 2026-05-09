@@ -1,6 +1,6 @@
 # Combat and Interaction
 
-**Status:** not_started
+**Status:** partial
 
 The combat-and-interaction surface (knockouts, pickup, drag, throw, thought-bubble previews) is the load-bearing system that turns the time-travel substrate into a playable puzzle. Pillar #1 (interaction with multiple selves) is the entire reason this surface exists. Without it the Acts 2-3 narrative beats (REQ-016 through REQ-023) and the Act 1 cinematic (REQ-012) cannot be implemented.
 
@@ -211,3 +211,5 @@ Slices land in this order (the implementor mode picks them up next iteration):
 6. **Thought-bubble icon overlay** (REQ-032). Ships the four billboard sprites, the lookahead scan over ghost recordings, and the anti-spam rules.
 
 ### Build log
+
+- 2026-05-08: Punch input channel + knockout state machine landed (REQ-033 partial; section 10 slice 1). `KeyState.punch` extends recorded input alongside the movement axes; `Space` is the default binding (Q-002). `replayPunchAtTick(recording, tick)` is the sibling helper to `replayAtTick`. New module `src/sim/knockoutState.ts` exports the `Consciousness` type, `INITIAL_CONSCIOUSNESS`, `applyKnockout`, and `isConscious`. New module `src/sim/punch.ts` exports `PUNCH_RANGE_M = 1.2` (Q-003), `isInPunchRange`, `suppressUnconsciousPunches`, `resolvePunches`, and the `PunchActor` / `PunchResolution` interfaces. Both `Player` and `GhostInstance` carry a mutable `consciousness` flag; `ghost.reset()` returns it to the seed. The host loop in `src/app.ts` builds a per-tick `PunchActor` snapshot from the active player plus every active-timeline ghost, runs it through suppress + resolve, and applies the resulting knockouts. Movement is gated on consciousness for both the player (zero velocity write) and ghosts (planar velocity zeroed after `advanceTick`). `hardReset` returns the player's consciousness to the seed. Body response (bump impulse, damping reduction, rotation lock relaxation, tipped-over pose) is deferred to the next slice. Files: `src/input/keyboard.ts`, `src/sim/inputRecorder.ts`, `src/sim/knockoutState.ts`, `src/sim/punch.ts`, `src/scene/player.ts`, `src/sim/ghostInstance.ts`, `src/sim/portalTraversal.ts`, `src/sim/hardReset.ts`, `src/app.ts`, `tests/sim/knockoutState.test.ts`, `tests/sim/punch.test.ts`, `tests/sim/inputRecorder.test.ts`, `tests/sim/ghostInstance.test.ts`, `tests/scene/player.test.ts`, `tests/sim/hardReset.test.ts`. PR #N.

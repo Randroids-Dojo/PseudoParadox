@@ -18,6 +18,7 @@ import {
 import { litStateForTimeline } from "./litStateForTimeline.ts";
 import { isLit as portalAuthoredLit } from "./portal.ts";
 import { nextInstanceId, type InstanceId } from "./instanceId.ts";
+import type { Consciousness } from "./knockoutState.ts";
 
 /**
  * Portal traversal teleport (REQ-009 runtime half / REQ-013 / REQ-014 partial).
@@ -112,6 +113,16 @@ export interface ActivePlayerHandle {
    * always controls the most recently spawned active instance."
    */
   instanceId: InstanceId;
+  /**
+   * Two-state consciousness flag (REQ-033 partial). Mutated by the per-tick
+   * punch resolver in `src/app.ts`; reset to `'conscious'` by `hardReset`.
+   * Traversal does NOT branch on this flag in the current slice; the
+   * dossier permits a knocked-out instance to be carried through a portal
+   * by a future pickup-and-throw slice, but in this slice the player simply
+   * cannot move while unconscious so a portal traversal is mechanically
+   * unreachable.
+   */
+  consciousness: Consciousness;
 }
 
 /**

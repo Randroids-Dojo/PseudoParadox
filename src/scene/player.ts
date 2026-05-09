@@ -2,6 +2,10 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import { INITIAL_INSTANCE_ID, type InstanceId } from "../sim/instanceId.ts";
+import {
+  INITIAL_CONSCIOUSNESS,
+  type Consciousness,
+} from "../sim/knockoutState.ts";
 
 /**
  * Player capsule dimensions for the prototype (REQ-026).
@@ -44,6 +48,17 @@ export interface Player {
    * overlay lands with REQ-032.
    */
   instanceId: InstanceId;
+  /**
+   * Two-state consciousness flag (REQ-033 partial). The active player opens
+   * at `'conscious'`. A landed punch from another instance flips this to
+   * `'unconscious'`. While unconscious, the host (`src/app.ts`) suppresses
+   * keyboard input before the per-tick punch resolver and before the
+   * planar velocity write, so the body stops moving and stops punching.
+   * Visual body response (bump impulse, damping reduction, rotation lock
+   * relaxation) lands in the next slice. Hard reset returns this to
+   * `'conscious'` (`src/sim/hardReset.ts`).
+   */
+  consciousness: Consciousness;
   /**
    * Sets the desired planar (world-XZ) velocity on the body, preserving
    * vertical velocity from gravity. Call this once per fixed physics step
@@ -143,6 +158,10 @@ export function createPlayer(
     // GDD's first-ever spawn). Subsequent lit-portal traversals advance this
     // by one in `wireTraversal`; hard reset returns it to the seed.
     instanceId: INITIAL_INSTANCE_ID,
+    // REQ-033 partial: every freshly-spawned player opens conscious. The
+    // flag is mutated by the punch resolver in `src/app.ts` and reset to
+    // `'conscious'` by `hardReset`.
+    consciousness: INITIAL_CONSCIOUSNESS,
     setPlanarVelocity,
     syncMeshFromBody,
   };

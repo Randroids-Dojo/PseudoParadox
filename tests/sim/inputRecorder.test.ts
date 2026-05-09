@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   InputRecorder,
   replayAtTick,
+  replayPunchAtTick,
 } from "../../src/sim/inputRecorder.ts";
 import { PLAYER_SPEED_MPS, type KeyState } from "../../src/input/keyboard.ts";
 
@@ -10,6 +11,7 @@ const NEUTRAL: KeyState = {
   back: false,
   left: false,
   right: false,
+  punch: false,
 };
 
 const state = (overrides: Partial<KeyState>): KeyState => ({
@@ -134,5 +136,58 @@ describe("replayAtTick", () => {
     const pastEnd = replayAtTick(snap, 5);
     expect(Object.keys(inRange).sort()).toEqual(["x", "z"]);
     expect(Object.keys(pastEnd).sort()).toEqual(["x", "z"]);
+  });
+});
+
+describe("replayPunchAtTick (REQ-033 partial)", () => {
+  it("returns the recorded punch flag for a tick mid-recording", () => {
+    const r = new InputRecorder();
+    r.record(state({ punch: false }), 0);
+    r.record(state({ punch: true }), 0);
+    r.record(state({ punch: false }), 0);
+    const snap = r.snapshot();
+
+    expect(replayPunchAtTick(snap, 0)).toBe(false);
+    expect(replayPunchAtTick(snap, 1)).toBe(true);
+    expect(replayPunchAtTick(snap, 2)).toBe(false);
+  });
+
+  it("returns false for ticks past the end of the recording", () => {
+    const r = new InputRecorder();
+    r.record(state({ punch: true }), 0);
+    const snap = r.snapshot();
+
+    expect(replayPunchAtTick(snap, 1)).toBe(false);
+    expect(replayPunchAtTick(snap, 1000)).toBe(false);
+  });
+
+  it("returns false for negative tick indices", () => {
+    const r = new InputRecorder();
+    r.record(state({ punch: true }), 0);
+    const snap = r.snapshot();
+    expect(replayPunchAtTick(snap, -1)).toBe(false);
+  });
+
+  it("returns false for an empty recording at any tick", () => {
+    const snap = new InputRecorder().snapshot();
+    expect(replayPunchAtTick(snap, 0)).toBe(false);
+    expect(replayPunchAtTick(snap, 5)).toBe(false);
+  });
+
+  it("captures punch alongside the movement axes in the same frame", () => {
+    const r = new InputRecorder();
+    r.record(state({ forward: true, punch: true }), 0);
+    const snap = r.snapshot();
+    expect(replayAtTick(snap, 0)).toEqual({ x: 0, z: -PLAYER_SPEED_MPS });
+    expect(replayPunchAtTick(snap, 0)).toBe(true);
+  });
+
+  it("defensively copies KeyState so later mutation of punch does not rewrite history", () => {
+    const r = new InputRecorder();
+    const live: KeyState = { ...NEUTRAL, punch: true };
+    r.record(live, 0);
+    live.punch = false;
+    const snap = r.snapshot();
+    expect(replayPunchAtTick(snap, 0)).toBe(true);
   });
 });
