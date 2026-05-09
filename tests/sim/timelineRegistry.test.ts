@@ -45,6 +45,7 @@ const spawnTestGhost = (
       state({ forward: true }),
     ]),
     originNormalized: 5 / 24,
+    instanceId: 1,
     scene,
     world,
     startPosition,

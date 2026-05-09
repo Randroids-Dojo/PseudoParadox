@@ -50,6 +50,7 @@ describe("createGhost: tick-driven replay", () => {
     const ghost = createGhost({
       recording,
       originNormalized: 0.5,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },
@@ -74,6 +75,7 @@ describe("createGhost: tick-driven replay", () => {
     const ghost = createGhost({
       recording,
       originNormalized: 0,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },
@@ -102,6 +104,7 @@ describe("createGhost: tick-driven replay", () => {
     const ghost = createGhost({
       recording,
       originNormalized: 0,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },
@@ -122,6 +125,7 @@ describe("createGhost: tick-driven replay", () => {
     const ghost = createGhost({
       recording,
       originNormalized: 0,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },
@@ -157,6 +161,7 @@ describe("createGhost: tick-driven replay", () => {
     const ghost = createGhost({
       recording,
       originNormalized: 0,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },
@@ -186,6 +191,7 @@ describe("createGhost: tint and scene wiring", () => {
     const ghost = createGhost({
       recording,
       originNormalized: 0.7,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },
@@ -203,6 +209,7 @@ describe("createGhost: tint and scene wiring", () => {
     const a = createGhost({
       recording,
       originNormalized: 0.0,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },
@@ -210,6 +217,7 @@ describe("createGhost: tint and scene wiring", () => {
     const b = createGhost({
       recording,
       originNormalized: 0.85,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },
@@ -230,6 +238,7 @@ describe("createGhost: tint and scene wiring", () => {
     const ghost = createGhost({
       recording,
       originNormalized: 0,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 1.5, z: -2.25 },
@@ -247,6 +256,7 @@ describe("createGhost: tint and scene wiring", () => {
     const ghost = createGhost({
       recording,
       originNormalized: 0,
+      instanceId: 1,
       scene,
       world,
       startPosition: { x: 0, z: 0 },

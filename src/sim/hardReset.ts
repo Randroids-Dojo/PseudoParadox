@@ -48,6 +48,7 @@ import {
   ACT_ONE_NORMALIZED,
 } from "./actOneAnchor.ts";
 import { InputRecorder } from "./inputRecorder.ts";
+import { INITIAL_INSTANCE_ID } from "./instanceId.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import {
   repaintDoorsForHour,
@@ -139,12 +140,21 @@ export function hardReset(options: HardResetOptions): void {
   player.originNormalized = ACT_ONE_NORMALIZED;
   applyInstanceTint(player.mesh, ACT_ONE_NORMALIZED);
 
+  // Reset the active instance generation back to the seed (REQ-007 / REQ-025).
+  // After hard reset the player is again "You1": the next portal traversal
+  // will spawn a fresh You-1 ghost. Without this, a hard reset would leave
+  // the next spawn at whatever generation the player happened to be at when
+  // the reset key was pressed, breaking the GDD's "clean Act 1 state" contract.
+  player.instanceId = INITIAL_INSTANCE_ID;
+
   // 4. Open a fresh lifetime at the Act 1 anchor: a new recorder (so no
   // recorded frames from the just-cleared run leak into a future ghost
-  // spawn), a start position at the room center, and the Act 1 origin.
+  // spawn), a start position at the room center, the Act 1 origin, and the
+  // seed `INITIAL_INSTANCE_ID` so the next spawned ghost is again You-1.
   lifetime.recorder = new InputRecorder();
   lifetime.startPosition = { x: ROOM_CENTER_X, z: ROOM_CENTER_Z };
   lifetime.originNormalized = ACT_ONE_NORMALIZED;
+  lifetime.instanceId = INITIAL_INSTANCE_ID;
 
   // 5. Snap the time-of-day clock back to the Act 1 anchor so the room's
   // background tint reads as 5:00 amber on the next render frame.

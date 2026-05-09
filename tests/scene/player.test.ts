@@ -50,3 +50,12 @@ describe("createPlayer originNormalized wiring (REQ-030)", () => {
     ).toBeGreaterThan(0.05);
   });
 });
+
+describe("createPlayer instance generation seed (REQ-007)", () => {
+  it("seeds the active player at INITIAL_INSTANCE_ID = 1 (You1)", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const player = createPlayer(scene, world);
+    expect(player.instanceId).toBe(1);
+  });
+});

@@ -3,6 +3,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { PLAYER_CAPSULE } from "../scene/player.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import { replayAtTick, type InputRecording } from "./inputRecorder.ts";
+import type { InstanceId } from "./instanceId.ts";
 
 /**
  * Ghost-replay capsule (REQ-001 / REQ-002 deepening).
@@ -42,6 +43,14 @@ export interface GhostInstance {
   body: RAPIER.RigidBody;
   /** Origin normalized time-of-day in [0, 1] used for the constant tint. */
   originNormalized: number;
+  /**
+   * Generation index of the instance this ghost is replaying (REQ-007). Set
+   * once at spawn from the OUTGOING active player's `instanceId` at the
+   * moment of traversal: the ghost IS that closed-out instance, just rendered
+   * as a recording. Carried so a future thought-bubble UI (REQ-032) can label
+   * the ghost via `formatInstanceId`. The label is data only this slice.
+   */
+  readonly instanceId: InstanceId;
   /** Number of `advanceTick` calls applied so far. Starts at 0. */
   readonly tickIndex: number;
   /**
@@ -74,6 +83,14 @@ export interface CreateGhostOptions {
    * origin from the host's perspective).
    */
   originNormalized: number;
+  /**
+   * Generation index of the instance this ghost is replaying (REQ-007). The
+   * caller passes the OUTGOING active player's `instanceId` at the moment of
+   * traversal so the ghost preserves its identity across timeline switches
+   * (a returning player still sees the same You-1 / You-2 in its source
+   * timeline). See `formatInstanceId` for the GDD-canonical display label.
+   */
+  instanceId: InstanceId;
   scene: THREE.Scene;
   world: GhostWorldHandle;
   /** World-space spawn position. The capsule center y is computed so the base
@@ -89,7 +106,14 @@ export interface CreateGhostOptions {
  * REQ-002 ("worked around or physically redirected").
  */
 export function createGhost(options: CreateGhostOptions): GhostInstance {
-  const { recording, originNormalized, scene, world, startPosition } = options;
+  const {
+    recording,
+    originNormalized,
+    instanceId,
+    scene,
+    world,
+    startPosition,
+  } = options;
   const { radius, cylinderLength } = PLAYER_CAPSULE;
 
   const geometry = new THREE.CapsuleGeometry(radius, cylinderLength, 8, 16);
@@ -151,6 +175,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     mesh,
     body,
     originNormalized,
+    instanceId,
     get tickIndex(): number {
       return tickIndex;
     },

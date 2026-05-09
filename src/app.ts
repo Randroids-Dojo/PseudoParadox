@@ -8,6 +8,7 @@ import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
+import { INITIAL_INSTANCE_ID } from "./sim/instanceId.ts";
 import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
 import { wireTraversal, type ActiveLifetime } from "./sim/portalTraversal.ts";
 import { createTimelineRegistry } from "./sim/timelineRegistry.ts";
@@ -77,6 +78,11 @@ export async function startApp(container: HTMLElement): Promise<void> {
     startPosition: { ...playerSpawn },
     recorder: new InputRecorder(),
     originNormalized: timeOfDay.normalized(),
+    // REQ-007: the lifetime opens at the active player's current generation.
+    // The first lifetime opens at `INITIAL_INSTANCE_ID = 1` (You1, the GDD's
+    // first-ever spawn). On every lit-portal traversal the lifetime advances
+    // to `nextInstanceId(previous)` (REQ-008: most-recently-spawned active).
+    instanceId: INITIAL_INSTANCE_ID,
   };
 
   // REQ-009 deepening: edge-triggered portal overlap detector. Reports an

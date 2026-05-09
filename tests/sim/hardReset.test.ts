@@ -85,12 +85,16 @@ const buildHarness = (initialActiveTimeline = ACT_ONE_HOUR): Harness => {
     mesh: playerMesh,
     // A non-Act-1 origin so the reset's re-stamp is observable.
     originNormalized: 6 / 24,
+    // Pre-advanced past the seed so the reset's "instanceId back to 1"
+    // contract (REQ-007 / REQ-025) is observable.
+    instanceId: 4,
   };
 
   const lifetime: ActiveLifetime = {
     startPosition: { x: 1, z: 2 },
     recorder: new InputRecorder(),
     originNormalized: 6 / 24,
+    instanceId: 4,
   };
   // Pre-seed the recorder with frames so the reset's "fresh recorder"
   // contract is observable (length should drop back to 0).
@@ -134,6 +138,7 @@ const spawnGhostInto = (
       { ...NEUTRAL, forward: true },
     ]),
     originNormalized: 5 / 24,
+    instanceId: 1,
     scene,
     world,
     startPosition,
@@ -435,5 +440,45 @@ describe("hardReset: idempotence and post-traversal teardown (REQ-025)", () => {
     ).not.toThrow();
     expect(h.registry.ghostsFor(5)).toEqual([]);
     expect(h.timeOfDay.normalized()).toBeCloseTo(ACT_ONE_NORMALIZED, 6);
+  });
+});
+
+describe("hardReset: instance generation reset (REQ-007 / REQ-025)", () => {
+  it("resets the active player's instanceId to the seed (You1)", () => {
+    // The harness pre-advances the player to instanceId 4 (post several
+    // traversals); after reset the next spawn must be You1 again.
+    const h = buildHarness();
+    expect(h.player.instanceId).toBe(4);
+
+    hardReset({
+      player: h.player,
+      lifetime: h.lifetime,
+      registry: h.registry,
+      scene: h.scene,
+      world: h.world,
+      timeOfDay: h.timeOfDay,
+      portals: h.portals,
+      portalTriggers: h.portalTriggers,
+    });
+
+    expect(h.player.instanceId).toBe(1);
+  });
+
+  it("resets the active lifetime's instanceId to the seed", () => {
+    const h = buildHarness();
+    expect(h.lifetime.instanceId).toBe(4);
+
+    hardReset({
+      player: h.player,
+      lifetime: h.lifetime,
+      registry: h.registry,
+      scene: h.scene,
+      world: h.world,
+      timeOfDay: h.timeOfDay,
+      portals: h.portals,
+      portalTriggers: h.portalTriggers,
+    });
+
+    expect(h.lifetime.instanceId).toBe(1);
   });
 });
