@@ -30,7 +30,7 @@ Edge cases:
 
 ## Verify
 
-- [ ] npm test: new tests in tests/sim/punch.test.ts (range predicate, no-self-hit guard, multi-recipient broadcast) all pass.
+- [ ] npm test: new tests in tests/sim/punch.test.ts (range predicate, puncher-not-its-own-recipient guard, multi-recipient broadcast, Act 3 team-up beat where active player punches their OWN GHOST and the ghost transitions to unconscious) all pass.
 - [ ] tests/sim/inputRecorder.test.ts: a recording captured with punch=true at tick T returns punch=true on replayAtTick equivalent (via the KeyState snapshot path).
 - [ ] tests/sim/ghostInstance.test.ts: a ghost advancing through a recording with a punch frame triggers the proximity check and transitions an in-range recipient to unconscious.
 - [ ] tests/scene/player.test.ts: createPlayer seeds consciousness=conscious.

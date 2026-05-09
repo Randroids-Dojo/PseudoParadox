@@ -33,6 +33,7 @@ Edge cases:
 - [ ] tests/render/thoughtBubble.test.ts: creating a bubble produces a Sprite child of the ghost mesh at the configured offset.
 - [ ] tests/sim/ghostInstance.test.ts: a ghost has a thoughtBubble field after createGhost.
 - [ ] Visual smoke (manual): dev-server walkthrough confirms an icon visibly appears above a ghost about to enter a door, throw a punch, or while unconscious.
+- [ ] Visual footsteps (manual, REQ-032): dev-server walkthrough confirms the footsteps icon appears at the moment a ghost transitions from idle (>= 5 consecutive zero-velocity ticks) to walking, and clears once the ghost has been walking for at least one frame.
 - [ ] grep -rnP '[\x{2014}\x{2013}]' . returns nothing.
 - [ ] git diff --check clean.
 - [ ] npm run build succeeds.
