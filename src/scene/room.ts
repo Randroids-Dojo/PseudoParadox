@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { applyDoorLitState, createFourDoors } from "./door.ts";
 import { createActOnePortals } from "../sim/portal.ts";
 import type { Portal } from "../sim/portal.ts";
+import { ACT_ONE_HOUR } from "../sim/actOneAnchor.ts";
+import { doorLitStateAtHour } from "../sim/doorStateAtTime.ts";
 
 /**
  * Canonical room dimensions for the prototype.
@@ -92,18 +94,21 @@ export function buildRoom(): RoomBuild {
   // Doors: one per wall, placed at the wall midpoint. Visual-only for now;
   // collisions and portal traversal land in later slices (REQ-001/REQ-005).
   // Each door is paired with a Portal carrying its fixed destination time
-  // and a stubbed lit/dark flag (REQ-005, REQ-009, REQ-010). The canonical
-  // Act 1 configuration (REQ-013/REQ-014) lights South and East and leaves
-  // North and West dark. The visual differentiation is applied here so the
-  // room reads correctly at startup; a downstream slice (REQ-011) will
-  // replace the stub with timeline-derived lit/dark and re-stamp on change.
+  // (REQ-005). The lit/dark VISUAL state is sourced from
+  // `doorLitStateAtHour(ACT_ONE_HOUR)` (REQ-013/REQ-014): the canonical
+  // 5:00 table lights South and East and leaves North and West dark. The
+  // portal's own `isLit` flag still feeds the runtime traversal predicate;
+  // both views agree because `ACT_ONE_PORTAL_SPECS` and
+  // `DOOR_STATE_BY_HOUR[5]` both encode the same GDD truth. REQ-011 will
+  // collapse the two sources into one timeline-derived computation.
   const doors = createFourDoors(width, depth);
   for (const door of doors) {
     group.add(door.mesh);
   }
   const portals = createActOnePortals(doors);
-  for (const portal of portals) {
-    applyDoorLitState(portal.door, portal.isLit);
+  const litByDirection = doorLitStateAtHour(ACT_ONE_HOUR);
+  for (const door of doors) {
+    applyDoorLitState(door, litByDirection[door.direction]);
   }
 
   return { group, portals };

@@ -6,6 +6,7 @@ import { createPlayer } from "./scene/player.ts";
 import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
+import { ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
 import type { GhostInstance } from "./sim/ghostInstance.ts";
 import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
@@ -33,10 +34,19 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // tick. The clock is advanced once per fixed physics step below, not per
   // render frame, so REQ-001 timeline recording playback stays frame-exact
   // independent of how many frames render between physics steps.
-  const timeOfDay = new TimeOfDay({ ticksPerSecond: 60 });
+  // REQ-013 / REQ-014: anchor the opening time at 5:00 on the canonical
+  // 24-hour day arc (ACT_ONE_NORMALIZED = 5/24) so the very first frame
+  // renders the Act 1 spawn pose: the room tints to the 5:00 amber, the
+  // player capsule's tint stamps at the same normalized time, and the door
+  // lit/dark state painted in `buildRoom` matches what the GDD specifies
+  // for 5:00.
+  const timeOfDay = new TimeOfDay({
+    ticksPerSecond: 60,
+    initialNormalized: ACT_ONE_NORMALIZED,
+  });
   // REQ-030: stamp the player capsule with the warm-to-cool tint at its
-  // spawn time. With a freshly constructed clock at tick 0 this is the warm
-  // anchor; a later portal-traversal slice will re-stamp on travel.
+  // spawn time. The clock starts at the Act 1 5:00 anchor so this lands on
+  // the 5:00 hue; a later portal-traversal slice will re-stamp on travel.
   const player = createPlayer(sceneCtx.scene, world, {
     originNormalized: timeOfDay.normalized(),
   });

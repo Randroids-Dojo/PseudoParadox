@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T18:50:00-05:00",
+  "updatedAt": "2026-05-08T19:15:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -182,16 +182,21 @@
       "id": "REQ-013",
       "requirement": "Act 1 spawn at 5:00: the player stands in the center of the room, with North and West dark and South and East lit.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
-      "status": "partial",
-      "note": "The lit/dark Act 1 anchors are already wired (PR #12: `createActOnePortals` paints South and East lit, North and West dark) and the player capsule spawns at the room center. Traversal (`src/sim/portalTraversal.ts`) teleports the player to the destination spawn pose on lit-portal entry, defaulting to the room center via the pluggable `resolveSpawnPose` resolver. Still partial because the 5:00 timeline state itself (the time-of-day clock starting AT 5:00 normalized rather than at tick 0, and re-pinning to 5:00 on a return traversal) is not yet wired; the next slice authors per-time spawn poses and the 5:00 clock anchor.",
+      "status": "done",
+      "note": "Act 1 spawn pose lands end-to-end. `src/sim/actOneAnchor.ts` defines `ACT_ONE_HOUR = 5`, `ACT_ONE_NORMALIZED = 5 / 24`, and `hourToNormalized(hours)` as the canonical 24-hour day-arc convention. `src/app.ts` constructs `TimeOfDay` with `initialNormalized: ACT_ONE_NORMALIZED` so the opening frame reads the 5:00 amber background tint and the player capsule's `originNormalized` stamps to 5/24 (REQ-030). The player still spawns at the room center per PR #4. `src/sim/doorStateAtTime.ts` (`doorLitStateAtHour(5)`) is the canonical lit/dark table for the 5:00 timeline (South lit, East lit, North dark, West dark) and `src/scene/room.ts` now reads through the helper at room-build time so the four-door visual state at the opening frame matches the GDD spec.",
       "implementationRefs": [
+        "src/sim/actOneAnchor.ts",
+        "src/sim/doorStateAtTime.ts",
         "src/sim/portal.ts",
         "src/sim/portalTraversal.ts",
+        "src/sim/timeOfDay.ts",
         "src/scene/player.ts",
         "src/scene/room.ts",
         "src/app.ts"
       ],
       "testRefs": [
+        "tests/sim/actOneAnchor.test.ts",
+        "tests/sim/doorStateAtTime.test.ts",
         "tests/sim/portal.test.ts",
         "tests/sim/portalTraversal.test.ts",
         "tests/scene/room.test.ts"
@@ -202,15 +207,19 @@
       "id": "REQ-014",
       "requirement": "Door destinations from 5:00: South leads to 12:00 and East leads to 6:00.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
-      "status": "partial",
-      "note": "The destinations are authored in `ACT_ONE_PORTAL_SPECS` (PR #12: South to 12:00, East to 6:00) and `wireTraversal` reads `portal.destinationHours` via `portalDestinationNormalized` to drive both the player teleport's spawn pose lookup and the player's re-stamped `originNormalized` tint on traversal. So entering the South door at 5:00 now sends the player to 12:00 and entering the East door sends the player to 6:00, end-to-end. Still partial because the destination-side timeline state (the time-of-day clock pinning to 12:00 or 6:00 on arrival, and 6:00's West-only-lit configuration of REQ-015) is not yet wired; that flips REQ-014 to done alongside REQ-013 in the next slice.",
+      "status": "done",
+      "note": "Door destinations from 5:00 are wired end-to-end. `ACT_ONE_PORTAL_SPECS` (PR #12) authors South to 12:00 and East to 6:00; `wireTraversal` (`src/sim/portalTraversal.ts`) reads `portal.destinationHours` via `portalDestinationNormalized` to drive both the player teleport's destination resolver and the re-stamped `originNormalized` tint. With this slice's 5:00 clock anchor (`ACT_ONE_NORMALIZED` from `src/sim/actOneAnchor.ts`) the player physically opens at 5:00 with the matching 5:00 amber background, so entering the South door sends the player to 12:00 and entering the East door sends the player to 6:00 from the canonical opening state. The 6:00-side door state (REQ-015 'West-only lit') is forward-authored in `DOOR_STATE_BY_HOUR[6]` so the next slice can drop in cleanly.",
       "implementationRefs": [
+        "src/sim/actOneAnchor.ts",
+        "src/sim/doorStateAtTime.ts",
         "src/sim/portal.ts",
         "src/sim/portalTraversal.ts",
         "src/scene/room.ts",
         "src/app.ts"
       ],
       "testRefs": [
+        "tests/sim/actOneAnchor.test.ts",
+        "tests/sim/doorStateAtTime.test.ts",
         "tests/sim/portal.test.ts",
         "tests/sim/portalTraversal.test.ts",
         "tests/scene/room.test.ts"
