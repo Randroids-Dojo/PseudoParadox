@@ -1,5 +1,5 @@
 /**
- * Door lit/dark lookup keyed by current-time hour (REQ-013 / REQ-014).
+ * Door lit/dark lookup keyed by current-time hour (REQ-013 / REQ-014 / REQ-023).
  *
  * The Act 1 spawn pose at 5:00 needs an explicit answer to "for the time
  * the room is currently rendering, which doors are lit and which are dark?"
@@ -7,19 +7,21 @@
  *
  *   - At 5:00: South lit, East lit, North dark, West dark.
  *   - At 6:00: West lit; all other doors dark (REQ-015).
+ *   - At 12:00: North lit (escape door); all other doors dark (REQ-023).
+ *     The North door's lit/dark state is then DARKENED by the
+ *     `BlockedByArrivals` rule in `litStateForTimeline` while the cinematic
+ *     scripted-actor ghosts have not yet completed their recordings, so
+ *     the seeded `north: true` reads as the post-cinematic escape state.
  *
- * Other timelines (12:00 cinematic, Act 3 escape) are not authored yet and
- * will land in their own slices. The 12:00 timeline's North-door-open
- * escape state (REQ-023) is a beat-conditional rather than a flat lookup,
- * so it does not belong here.
+ * The 12:00 entry's South / East / West are sealed dark per the GDD: 12:00
+ * is the escape timeline, the player has only one place to go (out the
+ * North door), and the cinematic does not hand off to a non-North portal.
  *
- * The 6:00 entry is documented even though only 5:00 is reachable at the
- * current point in the build; locking it in now so the next slice (REQ-015
- * "6:00 timeline state") drops in cleanly without a second author pass.
- *
- * REQ-011 will replace this static table with a derivation over the
- * recorded timeline. Until then, the table is the source of truth and the
- * runtime trusts it.
+ * REQ-011 already replaced direct callers in the runtime traversal gate
+ * with the `litStateForTimeline` derivation. The visual paint path
+ * (`repaintDoorsForHour`, `room.ts`) still calls this table directly; the
+ * F-006 unification slice will route the paint through `litStateForTimeline`
+ * so the cinematic darkens the painted North door at 12:00 too.
  */
 
 import type { DoorDirection } from "../scene/door.ts";
@@ -45,6 +47,12 @@ export const DOOR_STATE_BY_HOUR: Readonly<Record<number, DoorLitByDirection>> =
       south: false,
       east: false,
       west: true,
+    }),
+    12: Object.freeze({
+      north: true,
+      south: false,
+      east: false,
+      west: false,
     }),
   });
 

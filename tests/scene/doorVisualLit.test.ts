@@ -110,21 +110,29 @@ describe("REQ-028: door visual lit/dark matches the predicate", () => {
     }
   });
 
-  it("at 12:00 the predicate is null (unauthored seed) and the paint path agrees by throwing on repaint", () => {
-    // Hour 12 is reachable in the runtime (Act 1 cinematic destination) but
-    // its lit/dark seed is not authored yet (`DOOR_STATE_BY_HOUR` covers 5
-    // and 6). The predicate returns `null` for unauthored hours; the paint
-    // path throws via `doorLitStateAtHour`. Both halves agreeing on
-    // "unauthored" is the correctness contract for this hour today; the
-    // 12:00 seed lands with REQ-012 (Act 1 cinematic).
+  it("at 12:00 the seed lights only the North door and the paint path agrees (REQ-023)", () => {
+    // Hour 12 is the Act 3 escape timeline. The seed authors `north: true`
+    // (the escape door); `litStateForTimeline`'s arrivals body darkens
+    // North while the cinematic actors have not yet completed, but with
+    // `NO_GHOSTS` (no scripted-actor recordings in flight) the seed reads
+    // through unchanged.
     const expected = litStateForTimeline(12, { ghosts: NO_GHOSTS });
-    expect(expected).toBeNull();
+    expect(expected).not.toBeNull();
+    expect(expected!.north).toBe(true);
+    expect(expected!.south).toBe(false);
+    expect(expected!.east).toBe(false);
+    expect(expected!.west).toBe(false);
 
     const doors = createFourDoors(ROOM_DIMENSIONS.width, ROOM_DIMENSIONS.depth);
     const portals: readonly Portal[] = doors.map((d) =>
       createPortal({ door: d, destinationHours: 5, isLit: false }),
     );
-    expect(() => repaintDoorsForHour(portals, 12)).toThrow(/12|authored/i);
+    repaintDoorsForHour(portals, 12);
+    for (const portal of portals) {
+      const expectedLit = expected![portal.direction];
+      const actualLit = colorHex(portal.door.mesh) === DOOR_LIT_COLOR_HEX;
+      expect(actualLit).toBe(expectedLit);
+    }
   });
 
   it("door visuals react to a predicate state change via the arrivals seam", () => {
