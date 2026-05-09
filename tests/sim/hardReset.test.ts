@@ -493,6 +493,34 @@ describe("hardReset: carry state reset (REQ-034 / REQ-025)", () => {
   });
 });
 
+describe("hardReset: thought bubbles cleared (REQ-032)", () => {
+  it("removes every ghost's thought-bubble group from the scene", () => {
+    const h = buildHarness();
+    const ghostA = spawnGhostInto(h.scene, h.world, { x: 1, z: 0 });
+    const ghostB = spawnGhostInto(h.scene, h.world, { x: 0, z: 1 });
+    h.registry.add(5, ghostA);
+    h.registry.add(6, ghostB);
+    ghostA.thoughtBubble.setIcon("fist");
+    ghostB.thoughtBubble.setIcon("door");
+    expect(h.scene.children).toContain(ghostA.thoughtBubble.group);
+    expect(h.scene.children).toContain(ghostB.thoughtBubble.group);
+
+    hardReset({
+      player: h.player,
+      lifetime: h.lifetime,
+      registry: h.registry,
+      scene: h.scene,
+      world: h.world,
+      timeOfDay: h.timeOfDay,
+      portals: h.portals,
+      portalTriggers: h.portalTriggers,
+    });
+
+    expect(h.scene.children).not.toContain(ghostA.thoughtBubble.group);
+    expect(h.scene.children).not.toContain(ghostB.thoughtBubble.group);
+  });
+});
+
 describe("hardReset: knockout body response cleared (REQ-033 finishing pass)", () => {
   it("clears the player mesh's tilt rotation back to identity", () => {
     const h = buildHarness();
