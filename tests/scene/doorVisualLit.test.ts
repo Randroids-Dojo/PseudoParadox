@@ -124,7 +124,7 @@ describe("REQ-028: door visual lit/dark matches the predicate", () => {
     const portals: readonly Portal[] = doors.map((d) =>
       createPortal({ door: d, destinationHours: 5, isLit: false }),
     );
-    expect(() => repaintDoorsForHour(portals, 12)).toThrow();
+    expect(() => repaintDoorsForHour(portals, 12)).toThrow(/12|authored/i);
   });
 
   it("door visuals react to a predicate state change via the arrivals seam", () => {
