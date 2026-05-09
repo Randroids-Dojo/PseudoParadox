@@ -15,7 +15,7 @@ import {
   timelineIdFromNormalized,
   type TimelineRegistry,
 } from "./timelineRegistry.ts";
-import { DOOR_STATE_BY_HOUR } from "./doorStateAtTime.ts";
+import { litStateForTimeline } from "./litStateForTimeline.ts";
 import { isLit as portalAuthoredLit } from "./portal.ts";
 import { nextInstanceId, type InstanceId } from "./instanceId.ts";
 
@@ -207,22 +207,22 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
   } = options;
 
   const isLitForCurrentTimeline = (portal: Portal): boolean => {
-    // Lit/dark gate (REQ-009 / REQ-010 / REQ-015):
-    //   - When the current timeline is AUTHORED in `DOOR_STATE_BY_HOUR`
-    //     (hours 5 and 6 today), read from that table. The same table that
-    //     paints the doors gates the entry predicate, so the visual and
-    //     behavior cannot drift across timelines (REQ-015: at 6:00 only
-    //     West is enterable, regardless of how the portals were authored
-    //     at 5:00).
-    //   - When the current timeline is UNAUTHORED (e.g. the test harness
-    //     keys hour 0 to exercise leaving-timeline semantics), fall back
-    //     to the portal's frozen `isLit` field. The runtime path in
-    //     `src/app.ts` only ever sits at authored hours (Acts 1-3 use 5,
-    //     6, and 12), so this fallback only fires from test fixtures.
-    //     REQ-011 will collapse the table+field pair into a single
-    //     timeline-derived computation.
-    const table = DOOR_STATE_BY_HOUR[registry.activeTimeline];
-    if (table) return table[portal.direction];
+    // Lit/dark gate (REQ-009 / REQ-010 / REQ-011 / REQ-015):
+    //   - For timelines authored in the seed (`DOOR_STATE_BY_HOUR`, today
+    //     hours 5 and 6), `litStateForTimeline` returns
+    //     `seed[cardinal] && !blockedByArrivals(ghosts, cardinal)`. The
+    //     arrivals body is a stub returning `false` (REQ-011 MVP); future
+    //     Act 2 / Act 3 slices will populate the rule. The same call drives
+    //     `repaintDoorsForHour` so visual and behavior cannot drift.
+    //   - For timelines NOT in the seed (e.g. the test harness keys hour 0
+    //     to exercise leaving-timeline semantics), `litStateForTimeline`
+    //     returns `null` and we fall back to the portal's frozen `isLit`
+    //     field. The runtime path in `src/app.ts` only ever sits at
+    //     authored hours, so this fallback only fires from test fixtures.
+    const state = litStateForTimeline(registry.activeTimeline, {
+      ghosts: registry.ghostsFor(registry.activeTimeline),
+    });
+    if (state) return state[portal.direction];
     return portalAuthoredLit(portal);
   };
 
