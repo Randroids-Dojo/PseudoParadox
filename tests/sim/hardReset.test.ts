@@ -467,6 +467,47 @@ describe("hardReset: consciousness reset (REQ-033 partial / REQ-025)", () => {
   });
 });
 
+describe("hardReset: knockout body response cleared (REQ-033 finishing pass)", () => {
+  it("clears the player mesh's tilt rotation back to identity", () => {
+    const h = buildHarness();
+    // Pre-tilt the mesh as if the player had been knocked out.
+    h.player.mesh.rotation.z = Math.PI / 2;
+
+    hardReset({
+      player: h.player,
+      lifetime: h.lifetime,
+      registry: h.registry,
+      scene: h.scene,
+      world: h.world,
+      timeOfDay: h.timeOfDay,
+      portals: h.portals,
+      portalTriggers: h.portalTriggers,
+    });
+
+    expect(h.player.mesh.rotation.z).toBe(0);
+  });
+
+  it("restores the player body's linear damping to the active value (8.0)", () => {
+    const h = buildHarness();
+    // Pre-set the damping to the unconscious value (the post-knockout state).
+    h.player.body.setLinearDamping(0.5);
+    expect(h.player.body.linearDamping()).toBeCloseTo(0.5, 6);
+
+    hardReset({
+      player: h.player,
+      lifetime: h.lifetime,
+      registry: h.registry,
+      scene: h.scene,
+      world: h.world,
+      timeOfDay: h.timeOfDay,
+      portals: h.portals,
+      portalTriggers: h.portalTriggers,
+    });
+
+    expect(h.player.body.linearDamping()).toBeCloseTo(8.0, 6);
+  });
+});
+
 describe("hardReset: instance generation reset (REQ-007 / REQ-025)", () => {
   it("resets the active player's instanceId to the seed (You1)", () => {
     // The harness pre-advances the player to instanceId 4 (post several
