@@ -784,10 +784,17 @@ describe("wireTraversal: instance generation numbering (REQ-007 / REQ-008)", () 
     // Two consecutive lit traversals from the active player. The first
     // closes out You1 (instanceId 1); the second closes out You-1
     // (instanceId 2). The active player ends at instanceId 3 (You-2).
+    // Destination hour 0 is intentionally unauthored: `litStateForTimeline`
+    // returns null for hour 0 and `wireTraversal` falls back to the portal's
+    // frozen `isLit: true` so both consecutive traversals fire. Once REQ-023
+    // authored hour 12 in `DOOR_STATE_BY_HOUR` (with South dark), a 12 ->
+    // 12 self-loop on the South portal gates closed on the second tick;
+    // hour 0 keeps this test focused on the instance-numbering contract
+    // without depending on a specific timeline's seed.
     const { scene, world, player, lifetime, registry } = buildHarness();
     player.instanceId = 1;
     lifetime.instanceId = 1;
-    const south = makePortal("south", 12, true);
+    const south = makePortal("south", 0, true);
     const detector = createPortalTriggerSet([south]);
     wireTraversal({ detector, player, lifetime, scene, world, registry });
 

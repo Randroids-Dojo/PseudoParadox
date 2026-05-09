@@ -45,13 +45,13 @@ describe("litStateForTimeline (REQ-011)", () => {
     }
   });
 
-  it("returns null for an unauthored timeline (hour 12)", () => {
-    // The seed currently authors only 5 and 6. Hour 12 is reachable via the
-    // South-from-5:00 portal but is not in the seed; the function returns
-    // null and `wireTraversal` falls back to the portal's frozen `isLit`
-    // flag (preserving pre-REQ-011 behavior for unauthored hours).
+  it("returns the seed object for hour 12 when no arrivals override (REQ-023 escape seed)", () => {
+    // The 12:00 seed authors `north: true` (the escape door); with no
+    // ghosts in flight, the seed reads through unchanged.
     const state = litStateForTimeline(12, { ghosts: NO_GHOSTS });
-    expect(state).toBeNull();
+    expect(state).not.toBeNull();
+    expect(state).toBe(DOOR_STATE_BY_HOUR[12]);
+    expect(state!.north).toBe(true);
   });
 
   it("returns null for unauthored hours 0 and 23", () => {
@@ -59,13 +59,109 @@ describe("litStateForTimeline (REQ-011)", () => {
     expect(litStateForTimeline(23, { ghosts: NO_GHOSTS })).toBeNull();
   });
 
-  it("DEFAULT_BLOCKED_BY_ARRIVALS returns false for every input", () => {
-    // The MVP body of the arrivals predicate. Acts 1-3 do not yet have a
-    // narrative beat that blocks a door via arrivals; the default keeps the
-    // seed lit/dark state authoritative until Act 2 / Act 3 land.
+  it("DEFAULT_BLOCKED_BY_ARRIVALS returns false for every (5, cardinal) and (6, cardinal) pair", () => {
+    // The Acts 1-3 body only blocks North-at-12; every other pair is
+    // unblocked. Acts 1-3 do not have any other narrative beat that blocks
+    // a door via arrivals.
     for (const cardinal of CARDINALS) {
-      expect(DEFAULT_BLOCKED_BY_ARRIVALS(NO_GHOSTS, cardinal)).toBe(false);
+      expect(DEFAULT_BLOCKED_BY_ARRIVALS(NO_GHOSTS, cardinal, 5)).toBe(false);
+      expect(DEFAULT_BLOCKED_BY_ARRIVALS(NO_GHOSTS, cardinal, 6)).toBe(false);
     }
+  });
+
+  it("DEFAULT_BLOCKED_BY_ARRIVALS at (12, north) returns false when no ghost is mid-recording", () => {
+    // No ghosts at all: nothing is staffing the door, so the seed lights
+    // through and the player can escape.
+    expect(DEFAULT_BLOCKED_BY_ARRIVALS(NO_GHOSTS, "north", 12)).toBe(false);
+    // Ghosts present but all completed: every recording exhausted, so
+    // nothing is staffing the door.
+    const completedGhost = {
+      tickIndex: 50,
+      recording: { length: 50 },
+    } as unknown as GhostInstance;
+    expect(
+      DEFAULT_BLOCKED_BY_ARRIVALS([completedGhost], "north", 12),
+    ).toBe(false);
+  });
+
+  it("DEFAULT_BLOCKED_BY_ARRIVALS at (12, north) returns true when any ghost is mid-recording", () => {
+    // One ghost mid-recording: the door is blocked. The cinematic body
+    // (1-frame recording) at tickIndex 0 satisfies this.
+    const inFlightGhost = {
+      tickIndex: 0,
+      recording: { length: 1 },
+    } as unknown as GhostInstance;
+    expect(
+      DEFAULT_BLOCKED_BY_ARRIVALS([inFlightGhost], "north", 12),
+    ).toBe(true);
+    // Mixed: one completed, one mid-recording. The any() reads true.
+    const completedGhost = {
+      tickIndex: 50,
+      recording: { length: 50 },
+    } as unknown as GhostInstance;
+    expect(
+      DEFAULT_BLOCKED_BY_ARRIVALS(
+        [completedGhost, inFlightGhost],
+        "north",
+        12,
+      ),
+    ).toBe(true);
+  });
+
+  it("DEFAULT_BLOCKED_BY_ARRIVALS does not block non-North cardinals at 12:00", () => {
+    // The arrivals rule scopes to North only at 12:00. South / East / West
+    // at 12:00 are unblocked even with ghosts mid-recording (the seed
+    // already darkens those cardinals at 12:00 anyway).
+    const inFlightGhost = {
+      tickIndex: 0,
+      recording: { length: 1 },
+    } as unknown as GhostInstance;
+    for (const cardinal of ["south", "east", "west"] as const) {
+      expect(
+        DEFAULT_BLOCKED_BY_ARRIVALS([inFlightGhost], cardinal, 12),
+      ).toBe(false);
+    }
+  });
+
+  it("DEFAULT_BLOCKED_BY_ARRIVALS does not light a seed-dark cardinal via the seed-and-blocked rule", () => {
+    // The full lit-state rule is `seed && !blocked`. A seed-dark cardinal
+    // stays dark regardless of what `blocked` returns; this test confirms
+    // that even at (12, south) where the seed is dark and the rule
+    // returns false, `litStateForTimeline` does NOT flip the cardinal lit.
+    const state = litStateForTimeline(12, { ghosts: NO_GHOSTS });
+    expect(state!.south).toBe(false);
+  });
+
+  it("flips the North door at 12:00 to dark while a cinematic-shaped ghost is mid-recording", () => {
+    // End-to-end: a single in-flight ghost in the bucket darkens the
+    // seeded-lit North door via the default arrivals rule.
+    const inFlightGhost = {
+      tickIndex: 30,
+      recording: { length: 240 },
+    } as unknown as GhostInstance;
+    const state = litStateForTimeline(12, { ghosts: [inFlightGhost] });
+    expect(state).not.toBeNull();
+    expect(state!.north).toBe(false);
+    expect(state).not.toBe(DOOR_STATE_BY_HOUR[12]);
+  });
+
+  it("lights the North door at 12:00 once every cinematic-shaped ghost has completed", () => {
+    // The escape state: every ghost has reached tickIndex >= recording.length,
+    // so the arrivals rule reads false and the seed lights through.
+    const completedDragger = {
+      tickIndex: 240,
+      recording: { length: 240 },
+    } as unknown as GhostInstance;
+    const completedBody = {
+      tickIndex: 1,
+      recording: { length: 1 },
+    } as unknown as GhostInstance;
+    const state = litStateForTimeline(12, {
+      ghosts: [completedDragger, completedDragger, completedBody],
+    });
+    expect(state).not.toBeNull();
+    expect(state!.north).toBe(true);
+    expect(state).toBe(DOOR_STATE_BY_HOUR[12]);
   });
 
   it("respects an injected arrivals predicate that blocks a single cardinal", () => {
@@ -150,10 +246,13 @@ describe("litStateForCardinal (REQ-011)", () => {
     expect(litStateForCardinal(5, "north", { ghosts: NO_GHOSTS })).toBe(false);
     expect(litStateForCardinal(6, "west", { ghosts: NO_GHOSTS })).toBe(true);
     expect(litStateForCardinal(6, "east", { ghosts: NO_GHOSTS })).toBe(false);
+    // REQ-023: hour 12 is now authored (north lit, others dark).
+    expect(litStateForCardinal(12, "north", { ghosts: NO_GHOSTS })).toBe(true);
+    expect(litStateForCardinal(12, "south", { ghosts: NO_GHOSTS })).toBe(false);
   });
 
   it("returns null for unauthored hours", () => {
-    expect(litStateForCardinal(12, "south", { ghosts: NO_GHOSTS })).toBeNull();
+    expect(litStateForCardinal(7, "south", { ghosts: NO_GHOSTS })).toBeNull();
     expect(litStateForCardinal(0, "north", { ghosts: NO_GHOSTS })).toBeNull();
   });
 
