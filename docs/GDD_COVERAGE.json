@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-08T19:30:00-05:00",
+  "updatedAt": "2026-05-08T19:42:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -95,11 +95,12 @@
       "id": "REQ-006",
       "requirement": "An unvisited future contains no recorded events and no instances; a time period only contains events once an instance has entered it.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
-      "status": "partial",
-      "note": "`TimelineRegistry.ghostsFor(timeline)` returns an empty list for any timeline that no portal traversal has filed a ghost into, and `activeGhosts()` (driven by the host's per-fixed-step loop) returns an empty list when the active timeline is unvisited. Combined with `wireTraversal` only filing ghosts into the SOURCE timeline of a lit-portal entry, this enforces the GDD's 'an unvisited future contains nothing' invariant for ghost playback: walking East from 5:00 into 6:00 for the first time arrives at an empty 6:00, because no instance has ever recorded a path there. Still partial because non-ghost recorded events (knockouts, dragged bodies, lit/dark state derived from arrivals per REQ-011) are not yet timeline-keyed; the registry exposes per-timeline ghost counts that REQ-011 will eventually consume.",
+      "status": "done",
+      "note": "`TimelineRegistry.ghostsFor(timeline)` returns an empty list for any timeline that no portal traversal has filed a ghost into, and `activeGhosts()` (driven by the host's per-fixed-step loop) returns an empty list when the active timeline is unvisited. Combined with `wireTraversal` only filing ghosts into the SOURCE timeline of a lit-portal entry, this enforces the GDD's 'an unvisited future contains nothing' invariant for ghost playback: walking East from 5:00 into 6:00 for the first time arrives at an empty 6:00, because no instance has ever recorded a path there. The end-to-end invariant is now provably tested across timelines: `tests/sim/portalTraversal.test.ts > first entry into 6:00 yields an empty active-ghost list` asserts that after East-from-5:00 entry the registry's `activeGhosts()` is `[]` while the 5:00 bucket holds the spawned recording. Lit/dark state derivation (REQ-011) is the remaining cross-cutting recorded-event class; that row tracks the rest of REQ-011's scope and the registry already exposes the per-timeline ghost counts REQ-011 will consume.",
       "implementationRefs": [
         "src/sim/timelineRegistry.ts",
         "src/sim/portalTraversal.ts",
+        "src/sim/timelineRoom.ts",
         "src/app.ts"
       ],
       "testRefs": [
@@ -242,9 +243,20 @@
       "id": "REQ-015",
       "requirement": "6:00 timeline state: the room is empty, only the West door is lit, and the West door leads back to 5:00.",
       "gddRef": "docs/gdd/03-story-acts-1-3.md#act-1-wake-up",
-      "status": "not_started",
-      "implementationRefs": [],
-      "testRefs": [],
+      "status": "done",
+      "note": "Traversing East from 5:00 now drops the player into a properly empty 6:00 room with West-only lit and the West door routing back to 5:00. `src/sim/timelineRoom.ts` exposes `repaintDoorsForHour(portals, hour)` (stamps each portal door's lit/dark visual via `applyDoorLitState(portal.door, doorLitStateAtHour(hour)[portal.direction])`) and `snapClockToHour(timeOfDay, hour)` (sets the time-of-day clock so the room background tints at the destination hour). `wireTraversal` (`src/sim/portalTraversal.ts`) gains an `onTimelineEnter(destinationHour)` callback fired AFTER the registry's active timeline switches; `src/app.ts` wires the callback to call both helpers on every lit traversal. The traversal handler's lit/dark gate now reads `DOOR_STATE_BY_HOUR[registry.activeTimeline][portal.direction]` for authored hours and falls back to `portal.isLit` for unauthored hours, so the West portal (authored DARK at 5:00 in `ACT_ONE_PORTAL_SPECS`) is ENTERABLE at 6:00 per the table without any portal-data rewrite. The 6:00-side door state was forward-authored in `DOOR_STATE_BY_HOUR[6]` by PR #16 (West lit, others dark) and the West portal's `destinationHours = 5` was already authored in PR #12, so no portal data change was needed. First entry into 6:00 yields an empty active-ghost list (REQ-006: an unvisited future contains nothing) and the West door at 6:00 routes back to 5:00.",
+      "implementationRefs": [
+        "src/sim/timelineRoom.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/doorStateAtTime.ts",
+        "src/sim/portal.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/timelineRoom.test.ts",
+        "tests/sim/portalTraversal.test.ts",
+        "tests/sim/doorStateAtTime.test.ts"
+      ],
       "followupRefs": []
     },
     {
