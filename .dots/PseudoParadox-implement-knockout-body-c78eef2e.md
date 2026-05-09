@@ -27,6 +27,7 @@ Edge cases:
 4. Knockout while at a portal trigger: the body falls inside the trigger; the next traversal evaluation still fires, but ghosts and actives both gate on consciousness so the body cannot self-traverse.
 
 ## Verify
+
 - [ ] npm test: new tests in tests/sim/applyKnockout.test.ts pin impulse direction and magnitude on a stub body.
 - [ ] tests/sim/punch.test.ts: end-to-end test that a recipient body's linvel is non-zero and pointing along the incoming direction immediately after the punch resolves.
 - [ ] tests/scene/player.test.ts: an unconscious player ignores keyboard input (setPlanarVelocity is not called).

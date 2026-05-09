@@ -29,6 +29,7 @@ Edge cases:
 6. Pickup while standing inside a portal trigger volume: allowed; the body comes along on the next traversal.
 
 ## Verify
+
 - [ ] npm test: new tests in tests/sim/carryState.test.ts cover nearestCarryable selection (closest, ties, range cutoff).
 - [ ] tests/sim/applyCarry.test.ts pins the kinematic-flag and collision-group flips on pickup and drop.
 - [ ] tests/scene/player.test.ts: setPlanarVelocity is scaled by 0.6 while carrying.

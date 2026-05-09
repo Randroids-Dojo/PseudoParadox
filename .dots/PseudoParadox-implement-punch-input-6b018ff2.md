@@ -29,6 +29,7 @@ Edge cases:
 5. Active player punches own ghost in same timeline (Act 3 team-up beat): allowed; the ghost transitions to unconscious.
 
 ## Verify
+
 - [ ] npm test: new tests in tests/sim/punch.test.ts (range predicate, no-self-hit guard, multi-recipient broadcast) all pass.
 - [ ] tests/sim/inputRecorder.test.ts: a recording captured with punch=true at tick T returns punch=true on replayAtTick equivalent (via the KeyState snapshot path).
 - [ ] tests/sim/ghostInstance.test.ts: a ghost advancing through a recording with a punch frame triggers the proximity check and transitions an in-range recipient to unconscious.

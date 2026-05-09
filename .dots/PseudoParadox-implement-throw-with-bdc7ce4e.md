@@ -31,10 +31,11 @@ Edge cases:
 6. Throw mid-air across a portal during the airborne phase: the body teleports as soon as its translation enters the trigger, mid-arc.
 7. Thrown body lands on top of another unconscious body: standard physics; no special case.
 8. Two thrown bodies in flight simultaneously: both tracked in the airborne list; both resolved independently.
-9. Hard reset while a body is airborne: clearAllGhosts removes it; the airborne list is cleared as part of reset.
+9. Hard reset while a body is airborne: hardReset must explicitly tear down tracked thrown bodies (scene.remove for the mesh, world.removeRigidBody for the body) and clear the airborne list; this is separate from clearAllGhosts because thrown bodies do NOT spawn ghosts. Implementation: extend hardReset's options with a `thrownBodies` handle (or similar) and walk it the same way clearAllGhosts walks ghost buckets, OR file thrown bodies into a dedicated registry that hardReset already knows about.
 10. Thrown body that crosses a portal but lands at exactly the destination spawn pose where the active player is: standard collision; the player gets bumped.
 
 ## Verify
+
 - [ ] npm test: new tests in tests/sim/throw.test.ts pin computeThrowImpulse direction and magnitude.
 - [ ] tests/sim/facing.test.ts pins the last-non-zero-velocity tracking and the north default.
 - [ ] tests/sim/bodyTraversal.test.ts: a body crossing a LIT portal teleports to the destination spawn pose with linvel preserved.

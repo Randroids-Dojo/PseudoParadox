@@ -28,6 +28,7 @@ Edge cases (covered by the four test cases above):
 4. Carrier-knocked-out-mid-drag (test 4).
 
 ## Verify
+
 - [ ] npm test: tests/sim/dragRegression.test.ts all four cases pass.
 - [ ] No new production code, OR if a regression surfaces, the fix is bounded to src/sim/applyCarry.ts or src/sim/portalTraversal.ts and is documented in the slice's PROGRESS_LOG entry.
 - [ ] grep -rnP '[\x{2014}\x{2013}]' . returns nothing.

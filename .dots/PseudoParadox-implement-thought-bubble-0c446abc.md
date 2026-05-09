@@ -28,6 +28,7 @@ Edge cases:
 6. Active player has no bubble (per spec, the active player does not need a preview of itself).
 
 ## Verify
+
 - [ ] npm test: tests/sim/lookahead.test.ts cover priority order, window boundaries, idle-to-walking detection, sleep override.
 - [ ] tests/render/thoughtBubble.test.ts: creating a bubble produces a Sprite child of the ghost mesh at the configured offset.
 - [ ] tests/sim/ghostInstance.test.ts: a ghost has a thoughtBubble field after createGhost.
