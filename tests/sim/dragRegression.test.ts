@@ -46,6 +46,7 @@ import { createDoor, type DoorDirection } from "../../src/scene/door.ts";
 import { ROOM_DIMENSIONS } from "../../src/scene/room.ts";
 import { PLAYER_CAPSULE } from "../../src/scene/player.ts";
 import { InputRecorder } from "../../src/sim/inputRecorder.ts";
+import { MilestoneRecorder } from "../../src/sim/milestone.ts";
 import { applyInstanceTint } from "../../src/render/instanceTint.ts";
 import { createTimelineRegistry } from "../../src/sim/timelineRegistry.ts";
 import { hardReset } from "../../src/sim/hardReset.ts";
@@ -388,6 +389,7 @@ describe("drag regression (REQ-035): carry survives lit-portal traversal", () =>
     const lifetime: ActiveLifetime = {
       startPosition: { x: 0, z: 0 },
       recorder: new InputRecorder(),
+      milestones: new MilestoneRecorder(),
       originNormalized: 0,
       instanceId: 1,
     };
@@ -498,6 +500,7 @@ describe("drag regression (REQ-035): hard reset clears carry state mid-drag", ()
     const lifetime: ActiveLifetime = {
       startPosition: { x: 1, z: 2 },
       recorder: new InputRecorder(),
+      milestones: new MilestoneRecorder(),
       originNormalized: 6 / 24,
       instanceId: 4,
     };

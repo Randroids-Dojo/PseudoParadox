@@ -48,6 +48,7 @@ import {
   ACT_ONE_NORMALIZED,
 } from "./actOneAnchor.ts";
 import { InputRecorder } from "./inputRecorder.ts";
+import { MilestoneRecorder } from "./milestone.ts";
 import { INITIAL_INSTANCE_ID } from "./instanceId.ts";
 import { INITIAL_CONSCIOUSNESS } from "./knockoutState.ts";
 import { clearKnockoutBodyResponse } from "./applyKnockoutBody.ts";
@@ -208,6 +209,10 @@ export function hardReset(options: HardResetOptions): void {
   // spawn), a start position at the room center, the Act 1 origin, and the
   // seed `INITIAL_INSTANCE_ID` so the next spawned ghost is again You-1.
   lifetime.recorder = new InputRecorder();
+  // F-013 PR3a: clear the milestone log alongside the input recorder so
+  // wall bumps and door traversals from the just-cleared run do not leak
+  // into the next ghost spawn.
+  lifetime.milestones = new MilestoneRecorder();
   lifetime.startPosition = { x: ROOM_CENTER_X, z: ROOM_CENTER_Z };
   lifetime.originNormalized = ACT_ONE_NORMALIZED;
   lifetime.instanceId = INITIAL_INSTANCE_ID;

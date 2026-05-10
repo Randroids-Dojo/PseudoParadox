@@ -5,6 +5,7 @@ import {
   type Portal,
 } from "./portal.ts";
 import { InputRecorder } from "./inputRecorder.ts";
+import { MilestoneRecorder, DOOR_TRAVERSAL_WEIGHT } from "./milestone.ts";
 import { createGhost } from "./ghostInstance.ts";
 import type {
   OverlapEvent,
@@ -74,6 +75,13 @@ export interface ActiveLifetime {
   startPosition: { x: number; z: number };
   /** Recorder for this lifetime's input. Reset on every traversal. */
   recorder: InputRecorder;
+  /**
+   * Recorder for this lifetime's milestones (F-013 PR3a: wall_bump and
+   * door_traversal events). Reset on every traversal alongside `recorder`.
+   * Snapshotted onto the spawned ghost so future replay slices (PR3b) can
+   * steer toward the same milestones.
+   */
+  milestones: MilestoneRecorder;
   /** Normalized time-of-day of the timeline this lifetime is recording in.
    * Used as the tint stamp on any ghost spawned from this lifetime. */
   originNormalized: number;
@@ -257,10 +265,27 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
   };
 
   const traverseLitPortal = (portal: Portal): void => {
+    // 0. Record the door_traversal milestone on the LEAVING lifetime BEFORE
+    //    snapshotting. The recording-tick at the moment of traversal is the
+    //    recorder's current length (the next tick that would have been
+    //    written), and the door's milestone position is the player's
+    //    translation at the door (used by PR3b's path-follower to steer
+    //    toward the door). This is the load-bearing high-weight milestone:
+    //    PR3b makes it unskippable.
+    const playerPos = player.body.translation();
+    lifetime.milestones.record({
+      kind: "door_traversal",
+      tick: lifetime.recorder.length,
+      position: { x: playerPos.x, z: playerPos.z },
+      weight: DOOR_TRAVERSAL_WEIGHT,
+      door: portal.direction,
+    });
+
     // 1. Snapshot the LEAVING lifetime's recording. The recording is frozen
     //    at this point so the ghost cannot accidentally pick up frames the
     //    fresh recorder records after this traversal.
     const recording = lifetime.recorder.snapshot();
+    const milestones = lifetime.milestones.snapshot();
 
     // 2. Spawn the ghost ONLY if there is a recording to play back. A zero-
     //    length recording would produce a stationary ghost at the start
@@ -275,6 +300,7 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     if (recording.length > 0) {
       const ghost = createGhost({
         recording,
+        milestones,
         // The ghost belongs to the timeline being LEFT BEHIND; tint on its
         // origin normalized.
         originNormalized: lifetime.originNormalized,
@@ -325,7 +351,10 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     //    recording was snapshotted in step 1 and is already feeding the
     //    spawned ghost; resetting the recorder to a new instance does not
     //    affect the ghost's playback (the snapshot is a defensive copy).
+    //    The milestone recorder is reset alongside the input recorder so
+    //    the fresh lifetime starts with an empty milestone log.
     lifetime.recorder = new InputRecorder();
+    lifetime.milestones = new MilestoneRecorder();
     lifetime.startPosition = { x: destination.x, z: destination.z };
     lifetime.originNormalized = destinationNormalized;
     lifetime.instanceId = incomingInstanceId;

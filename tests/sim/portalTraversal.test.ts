@@ -20,6 +20,7 @@ import {
 } from "../../src/scene/door.ts";
 import { ROOM_DIMENSIONS } from "../../src/scene/room.ts";
 import { InputRecorder } from "../../src/sim/inputRecorder.ts";
+import { MilestoneRecorder } from "../../src/sim/milestone.ts";
 import { PLAYER_CAPSULE } from "../../src/scene/player.ts";
 import { applyInstanceTint } from "../../src/render/instanceTint.ts";
 import type { GhostInstance } from "../../src/sim/ghostInstance.ts";
@@ -124,6 +125,7 @@ const buildHarness = (): Harness => {
   const lifetime: ActiveLifetime = {
     startPosition: { x: 0, z: 0 },
     recorder: new InputRecorder(),
+    milestones: new MilestoneRecorder(),
     originNormalized: 0,
     instanceId: 1,
   };
@@ -174,6 +176,42 @@ describe("wireTraversal: lit portal entry", () => {
     const ghosts = allGhosts(registry);
     expect(ghosts).toHaveLength(1);
     expect(ghosts[0].body).toBeDefined();
+  });
+
+  it("records a door_traversal milestone on the leaving lifetime and snapshots it onto the ghost (F-013 PR3a)", () => {
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    const south = makePortal("south", 12, true);
+    const detector = createPortalTriggerSet([south]);
+    wireTraversal({ detector, player, lifetime, scene, world, registry });
+
+    lifetime.recorder.record(state({ back: true }), 0);
+    lifetime.recorder.record(state({ back: true }), 0);
+
+    detector.step(0, HALF_DEPTH - 0.4, 0);
+
+    const ghosts = allGhosts(registry);
+    expect(ghosts).toHaveLength(1);
+    const ghost = ghosts[0];
+    expect(ghost.milestones.length).toBe(1);
+    const m = ghost.milestones.milestones[0];
+    expect(m.kind).toBe("door_traversal");
+    if (m.kind !== "door_traversal") throw new Error("unreachable");
+    expect(m.door).toBe("south");
+    expect(m.weight).toBe(5);
+    // Tick equals the recorder length at the moment of traversal (2).
+    expect(m.tick).toBe(2);
+  });
+
+  it("milestone recorder is reset on the new lifetime after traversal", () => {
+    const { scene, world, player, lifetime, registry } = buildHarness();
+    const south = makePortal("south", 12, true);
+    const detector = createPortalTriggerSet([south]);
+    wireTraversal({ detector, player, lifetime, scene, world, registry });
+
+    lifetime.recorder.record(state({ forward: true }), 0);
+    detector.step(0, HALF_DEPTH - 0.4, 0);
+
+    expect(lifetime.milestones.length).toBe(0);
   });
 
   it("ghost is tinted at the LIFETIME's origin normalized (the timeline being left behind)", () => {

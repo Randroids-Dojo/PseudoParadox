@@ -7,6 +7,7 @@ import {
   ACT_ONE_NORMALIZED,
 } from "../../src/sim/actOneAnchor.ts";
 import { InputRecorder } from "../../src/sim/inputRecorder.ts";
+import { MilestoneRecorder } from "../../src/sim/milestone.ts";
 import { TimeOfDay } from "../../src/sim/timeOfDay.ts";
 import {
   createTimelineRegistry,
@@ -102,6 +103,7 @@ const buildHarness = (initialActiveTimeline = ACT_ONE_HOUR): Harness => {
   const lifetime: ActiveLifetime = {
     startPosition: { x: 1, z: 2 },
     recorder: new InputRecorder(),
+    milestones: new MilestoneRecorder(),
     originNormalized: 6 / 24,
     instanceId: 4,
   };
