@@ -3,6 +3,10 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { PLAYER_CAPSULE } from "../scene/player.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import { replayAtTick, type InputRecording } from "./inputRecorder.ts";
+import {
+  EMPTY_MILESTONE_RECORDING,
+  type MilestoneRecording,
+} from "./milestone.ts";
 import type { InstanceId } from "./instanceId.ts";
 import {
   INITIAL_CONSCIOUSNESS,
@@ -69,6 +73,15 @@ export interface GhostInstance {
    */
   readonly recording: InputRecording;
   /**
+   * Frozen milestone recording captured during the lifetime that produced
+   * this ghost (F-013 PR3a). Empty for ghosts spawned from a lifetime
+   * that fired no milestones (e.g. Act 1 cinematic actors whose
+   * hand-authored recordings predate the milestone system). PR3b's
+   * hybrid replay path-follower steers toward these milestones; this
+   * slice only stores them.
+   */
+  readonly milestones: MilestoneRecording;
+  /**
    * Two-state consciousness flag (REQ-033 partial). A ghost opens at
    * `'conscious'` regardless of how its recording resolved in the source
    * timeline; the per-tick punch resolver in the host can flip this to
@@ -114,6 +127,13 @@ export interface GhostInstance {
 export interface CreateGhostOptions {
   recording: InputRecording;
   /**
+   * Frozen milestone recording for this ghost (F-013 PR3a). Optional;
+   * defaults to an empty recording for callers that predate the
+   * milestone system (Act 1 cinematic actors, ghost test fixtures).
+   * PR3b's hybrid replay reads this to steer toward the next milestone.
+   */
+  milestones?: MilestoneRecording;
+  /**
    * Normalized time-of-day in [0, 1] used to tint the ghost's mesh via
    * `applyInstanceTint`. Typically the `TimeOfDay.normalized()` reading at
    * the moment the ghost was spawned (which represents the recording's
@@ -145,6 +165,7 @@ export interface CreateGhostOptions {
 export function createGhost(options: CreateGhostOptions): GhostInstance {
   const {
     recording,
+    milestones = EMPTY_MILESTONE_RECORDING,
     originNormalized,
     instanceId,
     scene,
@@ -232,6 +253,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     originNormalized,
     instanceId,
     recording,
+    milestones,
     thoughtBubble,
     get tickIndex(): number {
       return tickIndex;

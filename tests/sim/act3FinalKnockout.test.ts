@@ -14,6 +14,7 @@ import { createActOnePortals } from "../../src/sim/portal.ts";
 import { createFourDoors } from "../../src/scene/door.ts";
 import { ROOM_DIMENSIONS } from "../../src/scene/room.ts";
 import { InputRecorder } from "../../src/sim/inputRecorder.ts";
+import { MilestoneRecorder } from "../../src/sim/milestone.ts";
 import { PLAYER_CAPSULE } from "../../src/scene/player.ts";
 import { applyInstanceTint } from "../../src/render/instanceTint.ts";
 import {
@@ -176,6 +177,7 @@ const buildHarness = (): Harness => {
   const lifetime: ActiveLifetime = {
     startPosition: { x: 0, z: 0 },
     recorder: new InputRecorder(),
+    milestones: new MilestoneRecorder(),
     originNormalized: 5 / 24,
     instanceId: 1,
   };
@@ -354,6 +356,8 @@ const beginNewLifetimeAt5 = (harness: Harness): void => {
   player.carry = { kind: "idle" };
 
   lifetime.recorder = new InputRecorder();
+
+  lifetime.milestones = new MilestoneRecorder();
   lifetime.startPosition = { x: 0, z: 0 };
   lifetime.originNormalized = 5 / 24;
   lifetime.instanceId = player.instanceId;

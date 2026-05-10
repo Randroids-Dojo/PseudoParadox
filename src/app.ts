@@ -11,6 +11,11 @@ import { createTouchOverlay } from "./render/touchOverlay.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
+import {
+  MilestoneRecorder,
+  WALL_BUMP_WEIGHT,
+} from "./sim/milestone.ts";
+import { createWallBumpDetector } from "./sim/wallBumpDetector.ts";
 import { INITIAL_INSTANCE_ID } from "./sim/instanceId.ts";
 import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
 import { despawnGhostsAtLitPortals } from "./sim/ghostDespawn.ts";
@@ -139,6 +144,11 @@ export async function startApp(container: HTMLElement): Promise<void> {
   const lifetime: ActiveLifetime = {
     startPosition: { ...playerSpawn },
     recorder: new InputRecorder(),
+    // F-013 PR3a: parallel milestone recorder. The host records wall_bump
+    // milestones below and the wireTraversal handler records the
+    // door_traversal milestone immediately before snapshotting on a lit
+    // traversal. Reset alongside `recorder` on every lit traversal.
+    milestones: new MilestoneRecorder(),
     originNormalized: timeOfDay.normalized(),
     // REQ-007: the lifetime opens at the active player's current generation.
     // The first lifetime opens at `INITIAL_INSTANCE_ID = 1` (You1, the GDD's
@@ -146,6 +156,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // to `nextInstanceId(previous)` (REQ-008: most-recently-spawned active).
     instanceId: INITIAL_INSTANCE_ID,
   };
+  // F-013 PR3a: per-tick wall-bump edge detector. Tracks which walls the
+  // player is currently in contact with so a slide along the wall files one
+  // milestone, not 60 per second.
+  const wallBumpDetector = createWallBumpDetector();
 
   // REQ-009 deepening: edge-triggered portal overlap detector. Reports an
   // `enter` once per portal when the active player walks into its trigger
@@ -566,6 +580,26 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // detector reads the post-integration translation. The same tick
       // counter advances here regardless of how many ghosts exist.
       const playerPos = player.body.translation();
+      // F-013 PR3a: wall-bump milestone capture. Edge-triggered: a walk
+      // along a wall produces ONE milestone, not 60 per second. The
+      // detector reads the same post-integration translation the portal
+      // detector reads, so wall_bump and door_traversal milestones share
+      // a tick coordinate. Recorded on the active player's lifetime
+      // only; ghost replay does not generate new milestones.
+      const wallEnters = wallBumpDetector.step(
+        playerPos.x,
+        playerPos.z,
+        PLAYER_CAPSULE.radius,
+      );
+      for (const wall of wallEnters) {
+        lifetime.milestones.record({
+          kind: "wall_bump",
+          tick: lifetime.recorder.length,
+          position: { x: playerPos.x, z: playerPos.z },
+          weight: WALL_BUMP_WEIGHT,
+          wall,
+        });
+      }
       portalTriggers.step(playerPos.x, playerPos.z, portalTick);
       portalTick += 1;
       // REQ-036: step the in-flight registry. Each tracked body's
