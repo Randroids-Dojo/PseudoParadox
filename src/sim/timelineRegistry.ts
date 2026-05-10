@@ -42,7 +42,6 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { HOURS_PER_DAY } from "./actOneAnchor.ts";
 import type { GhostInstance } from "./ghostInstance.ts";
-import { DOOR_TRAVERSAL_WEIGHT } from "./milestone.ts";
 
 /**
  * Minimal subset of `RAPIER.World` the registry needs for `clearAllGhosts`.
@@ -257,7 +256,7 @@ export function createTimelineRegistry(
     arrivalTick: number,
   ): boolean => {
     for (const m of ghost.milestones.milestones) {
-      if (m.weight === DOOR_TRAVERSAL_WEIGHT) {
+      if (m.kind === "door_traversal") {
         const abs = ghost.startTick + m.tick;
         if (abs <= arrivalTick) return true;
       }

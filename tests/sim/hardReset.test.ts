@@ -104,7 +104,9 @@ const buildHarness = (initialActiveTimeline = ACT_ONE_HOUR): Harness => {
     startPosition: { x: 1, z: 2 },
     recorder: new InputRecorder(),
     milestones: new MilestoneRecorder(),
-    startTick: 0,
+    // Pre-set to a non-zero tick so the reset's "startTick back to 0"
+    // contract (F-014 / REQ-025) is observable.
+    startTick: 37,
     originNormalized: 6 / 24,
     instanceId: 4,
   };
@@ -257,6 +259,9 @@ describe("hardReset: pure teardown contract (REQ-025)", () => {
     expect(h.lifetime.recorder.length).toBe(0);
     expect(h.lifetime.startPosition).toEqual({ x: 0, z: 0 });
     expect(h.lifetime.originNormalized).toBeCloseTo(ACT_ONE_NORMALIZED, 6);
+    // F-014: startTick must return to 0 so the next ghost is filed at
+    // tick 0 of the Act 1 anchor.
+    expect(h.lifetime.startTick).toBe(0);
   });
 
   it("snaps the time-of-day clock to the Act 1 normalized hour", () => {

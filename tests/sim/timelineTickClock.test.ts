@@ -8,6 +8,8 @@ import {
   DOOR_TRAVERSAL_WEIGHT,
   MilestoneRecorder,
 } from "../../src/sim/milestone.ts";
+import { createPortal } from "../../src/sim/portal.ts";
+import { createDoor } from "../../src/scene/door.ts";
 import type { KeyState } from "../../src/input/keyboard.ts";
 
 beforeAll(async () => {
@@ -292,8 +294,35 @@ describe("GhostInstance.fastForwardTo (F-014)", () => {
 
 describe("Portal.destinationTick (F-014)", () => {
   it("defaults to 0 when not supplied", () => {
-    // Spot-checked via createPortal; verified by portal.test.ts and
-    // the portalTraversal.test.ts default-flow behavior.
-    expect(true).toBe(true);
+    const door = createDoor("south", 10, 10);
+    const portal = createPortal({
+      door,
+      destinationHours: 12,
+      isLit: true,
+    });
+    expect(portal.destinationTick).toBe(0);
+  });
+
+  it("preserves a non-zero destinationTick passed at construction", () => {
+    const door = createDoor("south", 10, 10);
+    const portal = createPortal({
+      door,
+      destinationHours: 12,
+      isLit: true,
+      destinationTick: 200,
+    });
+    expect(portal.destinationTick).toBe(200);
+  });
+
+  it("rejects a negative destinationTick", () => {
+    const door = createDoor("south", 10, 10);
+    expect(() =>
+      createPortal({
+        door,
+        destinationHours: 12,
+        isLit: true,
+        destinationTick: -1,
+      }),
+    ).toThrow();
   });
 });
