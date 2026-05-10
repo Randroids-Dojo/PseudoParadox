@@ -384,6 +384,7 @@ const beginNewLifetimeAt5 = (harness: Harness): void => {
 
   // 3. Open a fresh lifetime at 5:00. Same shape as the traversal handler.
   lifetime.recorder = new InputRecorder();
+  lifetime.milestones = new MilestoneRecorder();
   lifetime.startPosition = { x: 0, z: 0 };
   lifetime.originNormalized = 5 / 24;
   lifetime.instanceId = player.instanceId;

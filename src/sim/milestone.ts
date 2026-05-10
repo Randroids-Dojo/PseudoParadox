@@ -83,10 +83,12 @@ export class MilestoneRecorder {
   /**
    * Append one milestone. The caller is responsible for picking the
    * correct `kind`, `tick`, and `position`; this recorder is a passive
-   * sink. Defensive-freezes the milestone object so callers that retain
-   * a reference cannot mutate it later.
+   * sink. Deep-freezes the milestone object plus its nested `position`
+   * so callers that retain a reference cannot mutate either layer
+   * (Object.freeze is shallow by default).
    */
   record(milestone: Milestone): void {
+    Object.freeze(milestone.position);
     this.buffer.push(Object.freeze(milestone));
   }
 

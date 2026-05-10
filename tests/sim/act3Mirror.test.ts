@@ -379,6 +379,8 @@ const beginNewLifetimeAt5 = (harness: Harness): void => {
   player.carry = { kind: "idle" };
 
   lifetime.recorder = new InputRecorder();
+
+  lifetime.milestones = new MilestoneRecorder();
   lifetime.startPosition = { x: 0, z: 0 };
   lifetime.originNormalized = 5 / 24;
   lifetime.instanceId = player.instanceId;
