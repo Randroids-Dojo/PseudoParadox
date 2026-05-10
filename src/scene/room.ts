@@ -130,35 +130,61 @@ export function buildRoom(): RoomBuild {
 }
 
 /**
- * Half-extent of the static floor collider along world X and Z. Sized
- * far larger than the room footprint so the player capsule cannot walk
- * off the edge and fall, even after passing through a dark-door gap or
- * the visual wall mesh (walls are visual-only this slice). The room
- * itself is still 10x10; the extra apron is invisible because the
- * collider has no mesh.
- */
-const FLOOR_COLLIDER_HALF_EXTENT = 50;
-
-/**
- * Spawns the static floor collider so the dynamic player capsule has
- * something to stand on. Without this the body falls under gravity the
- * moment the simulation starts. Wall colliders are intentionally NOT
- * created in this slice: with door-shaped gaps the player would escape
- * through dark doors, and with solid walls the portal trigger volumes
- * (centered on the inner wall face) would sit out of reach behind the
- * collider. The wider floor means leaving the visual room footprint
- * costs the player nothing worse than a confused walk in empty space.
+ * Spawns the static physics colliders that make the room a solid play
+ * volume: a floor the player capsule rests on plus four solid walls
+ * that contain the capsule. Solid walls also stop the player from
+ * walking through dark doors (which are not enterable per REQ-010) or
+ * out into the void.
+ *
+ * The portal trigger volumes are sized to overlap the band of player-
+ * center positions reachable when the capsule is pressed against a
+ * wall: with `wallThickness = 0.2` and `PORTAL_TRIGGER_DEPTH = 0.6`,
+ * the trigger zone for a north door covers `z in [-4.94, -4.34]` and a
+ * 0.4-radius capsule pressed against the wall sits at center
+ * `z = -4.5`, which is inside the trigger. So solid walls and the
+ * existing trigger geometry coexist without changing the trigger
+ * shape.
  */
 export function createRoomColliders(world: RAPIER.World): void {
+  const { width, depth, height } = ROOM_DIMENSIONS;
   const thickness = ROOM_WALL_THICKNESS;
 
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  const halfH = height / 2;
+  const halfT = thickness / 2;
+
+  // Floor: a thin slab whose top face sits on y = 0 (the player capsule's
+  // resting plane). Sized to the room footprint; the four wall colliders
+  // below close the box so the player cannot leave the floor.
   const floorBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   world.createCollider(
-    RAPIER.ColliderDesc.cuboid(
-      FLOOR_COLLIDER_HALF_EXTENT,
-      thickness / 2,
-      FLOOR_COLLIDER_HALF_EXTENT,
-    ).setTranslation(0, -thickness / 2, 0),
+    RAPIER.ColliderDesc.cuboid(halfW, halfT, halfD)
+      .setTranslation(0, -halfT, 0),
     floorBody,
   );
+
+  // Four solid walls flush with the visual wall meshes. North and south
+  // run along world X (wide along X, thin along Z). East and west run
+  // along world Z. Each wall is one cuboid, no door cutout: the player
+  // capsule's center reaches the portal trigger zone before the edge
+  // hits the wall, so lit-portal traversal still fires.
+  const wallSpecs = [
+    // North
+    { hx: halfW, hy: halfH, hz: halfT, x: 0, y: halfH, z: -halfD },
+    // South
+    { hx: halfW, hy: halfH, hz: halfT, x: 0, y: halfH, z: halfD },
+    // East
+    { hx: halfT, hy: halfH, hz: halfD, x: halfW, y: halfH, z: 0 },
+    // West
+    { hx: halfT, hy: halfH, hz: halfD, x: -halfW, y: halfH, z: 0 },
+  ];
+  for (const w of wallSpecs) {
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(w.hx, w.hy, w.hz)
+        .setTranslation(w.x, w.y, w.z),
+      body,
+    );
+  }
 }

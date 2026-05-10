@@ -23,9 +23,31 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Blocks Release
 
-(none yet)
+### F-012: Ghosts despawn on lit-portal traversal during replay
+
+- Priority: blocks-release
+- Context: When a ghost replays a recording that included a portal traversal, the ghost currently does not actually traverse. They stay in their originating timeline and continue replaying past the door, sometimes ending up at zero velocity at the end of the recording and "stuck" at the door visually. The user observed: "their body shouldn't be stuck there." Expected behavior: when a ghost's recording-driven body crosses a lit portal trigger, despawn the ghost from the active timeline (mirror what the active player did when they originally walked through the door). The destination timeline already has its own ghost recordings filed separately, so the ghost does not need to "re-appear" anywhere; this is purely a despawn at the door.
+- Blocker: needs ghost-vs-portal-trigger detection (the existing `PortalTriggerSet` only tracks the active player's overlap). Either the per-tick loop iterates ghosts through the same trigger set, or a separate ghost-overlap path is added.
+- Unblock condition: a slice that wires a ghost's per-tick translation through the portal trigger detector and despawns the ghost (remove from registry, dispose body / mesh) on a lit-portal enter event.
+- PR / Dot reference (when picked up):
+
+### F-013: Goal-oriented ghost replay with milestone weights
+
+- Priority: blocks-release
+- Context: Ghost replay currently replays per-tick recorded `KeyState` exactly. When the active player or another ghost bumps the replaying ghost, the ghost's position drifts but the recorded inputs keep firing on the original timing, producing visibly broken paths. The user wants ghosts to instead chase weighted MILESTONES recorded at the time of the original lifetime: wall bumps (low weight) and door traversals (high weight). On replay the ghost path-follows toward the next milestone; if too delayed they skip lower-weight milestones to hit the high-weight ones. Tail behavior: see F-014 (which captures the user's "fast-forward stale instances to the time the active player walks in" rule).
+- Blocker: requires per-tick wall-bump detection during recording, milestone-targeted pathing during replay, weighted skip logic, and a tail strategy that interacts with the timeline registry's lit-portal model.
+- Unblock condition: design plus implementation in a dedicated slice. Likely splits into two steps: (1) milestone capture during recording (wall bumps + door traversals appended to the existing `InputRecorder` or a parallel `MilestoneRecorder`), (2) replay path-follower that consumes milestones and handles weight-based skipping.
+- PR / Dot reference (when picked up):
 
 ## Nice To Have
+
+### F-014: Stale ghosts fast-forward to active player's tick on timeline arrival
+
+- Priority: nice-to-have
+- Context: The user described an advanced scenario for F-013 tail behavior: "If there is an instance who stays in a room/time for hours, then they need to fast-forward to the position they were in at whatever time I am walking into that room." Means: when the active player lands in a timeline at tick T, every ghost whose recording started before T should advance their replay state to tick T (their position, milestone progress) rather than rewinding to tick 0. Otherwise a ghost recorded between hour 2 and hour 9 in a 10-hour timeline would always replay starting from hour 2, even if the player walks in at hour 9.
+- Blocker: depends on F-013 milestone replay landing first.
+- Unblock condition: ghost spawn / setActiveTimeline path needs a "skip-to-tick" entry point that respects milestone progress (advance through skipped milestones if they are lower-weight) and a "skip-to-position" path that works for ghosts mid-traversal.
+- PR / Dot reference (when picked up):
 
 ### F-011: Wall colliders compatible with portal trigger volumes
 
@@ -33,7 +55,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Context: The static-floor slice (PR after #44) shipped a floor collider but no wall colliders. Two failed approaches were tried first. (1) Walls with door-shaped gaps: the gap let the player walk through dark doors and off the world. (2) Solid walls flush with the wall mesh: the existing portal trigger volumes (centered on the inner wall face, depth 0.6) sat out of reach behind the collider so lit-portal traversal would break (player capsule center cannot enter the trigger zone without colliding with the wall first). The clean answer needs either (a) solid walls plus deeper trigger volumes wired to fire from positions the capsule can reach, or (b) door blockers that mirror the timeline-driven lit state so dark doors are physically blocked while lit doors stay enterable. Either way the room becomes a real bounded play volume.
 - Blocker: not blocking; the wide invisible floor apron means the player cannot fall off, and the visual wall mesh still reads as a room boundary even though it does not collide.
 - Unblock condition: a slice that picks one of the two strategies above. Strategy (a) is simpler if `PORTAL_TRIGGER_DEPTH` can be widened safely; strategy (b) keeps the trigger geometry untouched but needs a per-tick lit-state read that updates the door blockers when the active timeline changes.
-- PR / Dot reference (when picked up):
+- Resolved: PR #46. The dossier's strategy (a) ended up working without touching `PORTAL_TRIGGER_DEPTH` because the math at the trigger zone for a solid wall already accommodates a 0.4-radius capsule pressed against the wall: the capsule center sits inside the existing trigger band at the moment of collision. Solid full-height walls flush with the visual mesh; no door cutouts; no trigger geometry change.
 
 ### F-009: Touch buttons for pickup / throw / punch / hard-reset
 
