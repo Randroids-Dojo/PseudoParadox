@@ -309,10 +309,21 @@ export function createTimelineRegistry(
       // fast-forwards to its position-at-arrivalTick.
       const survivors: GhostInstance[] = [];
       for (const ghost of entering.ghosts) {
-        if (ghostLeftBefore(ghost, targetTick) && disposeOptions) {
-          disposeOptions.scene.remove(ghost.mesh);
-          disposeOptions.world.removeRigidBody(ghost.body);
-          ghost.thoughtBubble.dispose();
+        if (ghostLeftBefore(ghost, targetTick)) {
+          // The ghost's door_traversal milestone fires at or before
+          // arrival, so it has already left this timeline. Never
+          // fast-forward or re-show it. With disposeOptions present
+          // we tear down its mesh / body / bubble; without (legacy
+          // callers that did not pass scene + world) we drop it from
+          // the bucket so the ghost is not visible and is no longer
+          // tracked. Either way, no survivors entry.
+          if (disposeOptions) {
+            disposeOptions.scene.remove(ghost.mesh);
+            disposeOptions.world.removeRigidBody(ghost.body);
+            ghost.thoughtBubble.dispose();
+          } else {
+            ghost.mesh.visible = false;
+          }
           continue;
         }
         ghost.fastForwardTo(targetTick);

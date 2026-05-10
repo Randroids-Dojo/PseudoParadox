@@ -212,6 +212,36 @@ describe("setActiveTimeline fast-forward and despawn (F-014)", () => {
     r.add(5, ghost);
     r.setActiveTimeline(5, 220, { scene, world });
     expect(r.ghostsFor(5)).toHaveLength(1);
+    // Re-entering the same bucket at a later arrival tick (240, past
+    // the ghost's absolute door_traversal at 230) despawns it.
+    r.setActiveTimeline(5, 240, { scene, world });
+    expect(r.ghostsFor(5)).toHaveLength(0);
+    expect(scene.children).not.toContain(ghost.mesh);
+  });
+
+  it("ghostLeftBefore without disposeOptions hides the ghost (no fast-forward, no survivors)", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const r = createTimelineRegistry({ initialTimeline: 0 });
+    const ghost = createGhost({
+      recording: buildRecording(
+        Array.from({ length: 100 }, () => NEUTRAL),
+      ),
+      milestones: buildMilestones(50),
+      originNormalized: 5 / 24,
+      instanceId: 1,
+      startTick: 0,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    r.add(5, ghost);
+    // Arrival at 60 (door_traversal absolute tick = 50, in the past)
+    // without disposeOptions: the ghost must be dropped from the
+    // bucket and hidden, NOT fast-forwarded back into view.
+    r.setActiveTimeline(5, 60);
+    expect(r.ghostsFor(5)).toHaveLength(0);
+    expect(ghost.mesh.visible).toBe(false);
   });
 
   it("clearAllGhosts wipes every timeline's tick clock", () => {
