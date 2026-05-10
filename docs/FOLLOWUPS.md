@@ -23,9 +23,13 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Blocks Release
 
-(none yet)
+### F-012: Ghosts despawn on lit-portal traversal during replay
 
-## Nice To Have
+- Priority: blocks-release
+- Context: When a ghost replays a recording that included a portal traversal, the ghost currently does not actually traverse. They stay in their originating timeline and continue replaying past the door, sometimes ending up at zero velocity at the end of the recording and "stuck" at the door visually. The user observed: "their body shouldn't be stuck there." Expected behavior: when a ghost's recording-driven body crosses a lit portal trigger, despawn the ghost from the active timeline (mirror what the active player did when they originally walked through the door). The destination timeline already has its own ghost recordings filed separately, so the ghost does not need to "re-appear" anywhere; this is purely a despawn at the door.
+- Blocker: needs ghost-vs-portal-trigger detection (the existing `PortalTriggerSet` only tracks the active player's overlap). Either the per-tick loop iterates ghosts through the same trigger set, or a separate ghost-overlap path is added.
+- Unblock condition: a slice that wires a ghost's per-tick translation through the portal trigger detector and despawns the ghost (remove from registry, dispose body / mesh) on a lit-portal enter event.
+- PR / Dot reference (when picked up):
 
 ### F-013: Goal-oriented ghost replay with milestone weights
 
@@ -35,20 +39,14 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Unblock condition: design plus implementation in a dedicated slice. Likely splits into two steps: (1) milestone capture during recording (wall bumps + door traversals appended to the existing `InputRecorder` or a parallel `MilestoneRecorder`), (2) replay path-follower that consumes milestones and handles weight-based skipping.
 - PR / Dot reference (when picked up):
 
+## Nice To Have
+
 ### F-014: Stale ghosts fast-forward to active player's tick on timeline arrival
 
 - Priority: nice-to-have
 - Context: The user described an advanced scenario for F-013 tail behavior: "If there is an instance who stays in a room/time for hours, then they need to fast-forward to the position they were in at whatever time I am walking into that room." Means: when the active player lands in a timeline at tick T, every ghost whose recording started before T should advance their replay state to tick T (their position, milestone progress) rather than rewinding to tick 0. Otherwise a ghost recorded between hour 2 and hour 9 in a 10-hour timeline would always replay starting from hour 2, even if the player walks in at hour 9.
 - Blocker: depends on F-013 milestone replay landing first.
 - Unblock condition: ghost spawn / setActiveTimeline path needs a "skip-to-tick" entry point that respects milestone progress (advance through skipped milestones if they are lower-weight) and a "skip-to-position" path that works for ghosts mid-traversal.
-- PR / Dot reference (when picked up):
-
-### F-012: Ghosts despawn on lit-portal traversal during replay
-
-- Priority: blocks-release
-- Context: When a ghost replays a recording that included a portal traversal, the ghost currently does not actually traverse. They stay in their originating timeline and continue replaying past the door, sometimes ending up at zero velocity at the end of the recording and "stuck" at the door visually. The user observed: "their body shouldn't be stuck there." Expected behavior: when a ghost's recording-driven body crosses a lit portal trigger, despawn the ghost from the active timeline (mirror what the active player did when they originally walked through the door). The destination timeline already has its own ghost recordings filed separately, so the ghost does not need to "re-appear" anywhere; this is purely a despawn at the door.
-- Blocker: needs ghost-vs-portal-trigger detection (the existing `PortalTriggerSet` only tracks the active player's overlap). Either the per-tick loop iterates ghosts through the same trigger set, or a separate ghost-overlap path is added.
-- Unblock condition: a slice that wires a ghost's per-tick translation through the portal trigger detector and despawns the ghost (remove from registry, dispose body / mesh) on a lit-portal enter event.
 - PR / Dot reference (when picked up):
 
 ### F-011: Wall colliders compatible with portal trigger volumes
