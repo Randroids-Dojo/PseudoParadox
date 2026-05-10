@@ -4,19 +4,59 @@ import type { Portal } from "../sim/portal.ts";
 
 export interface SceneContext {
   scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
+  camera: THREE.OrthographicCamera;
   portals: readonly Portal[];
+  resizeCamera: (canvasWidth: number, canvasHeight: number) => void;
+}
+
+/**
+ * Base world-space rect that the orthographic camera must contain at zoom 1.
+ *
+ * The room is 10x10x4. Viewed from a 3/4 dollhouse vantage the projected
+ * footprint is roughly the room's diagonal in width and the depth+height
+ * combination in vertical extent. These constants pad that with a small
+ * margin so the room never sits flush against the canvas edges. The
+ * frustum is then expanded along whichever axis the canvas is larger on,
+ * so the room stays fully visible regardless of aspect ratio.
+ */
+const BASE_WORLD_WIDTH = 16;
+const BASE_WORLD_HEIGHT = 12;
+
+/**
+ * Computes the orthographic frustum that contains a worldW x worldH rect
+ * inside a canvasW x canvasH viewport, expanding (never cropping) along
+ * the larger canvas axis. Pattern lifted from mi-casa-es-su-casa's
+ * dollhouse renderer.
+ */
+function computeFrustum(
+  canvasWidth: number,
+  canvasHeight: number,
+  worldWidth: number,
+  worldHeight: number,
+): { left: number; right: number; top: number; bottom: number } {
+  const screenAspect = canvasWidth / Math.max(canvasHeight, 1);
+  const worldAspect = worldWidth / worldHeight;
+  let halfW: number;
+  let halfH: number;
+  if (screenAspect >= worldAspect) {
+    halfH = worldHeight / 2;
+    halfW = halfH * screenAspect;
+  } else {
+    halfW = worldWidth / 2;
+    halfH = halfW / screenAspect;
+  }
+  return { left: -halfW, right: halfW, top: halfH, bottom: -halfH };
 }
 
 /**
  * Builds the placeholder scene used by the prototype shell.
  *
- * This slice intentionally avoids modeling doors, the player, or instance
- * tints. Those land in their own slices keyed to specific REQ rows
- * (REQ-026 player spawn, REQ-027 four doors, REQ-029 room color tint).
- * What lands here is the empty-room volume, a hemisphere fill light, a
- * directional key light, and a fixed isometric-ish camera so future slices
- * have a stable visual reference to author against.
+ * Camera is orthographic with a contain-fit frustum so the entire room is
+ * always visible regardless of the canvas aspect ratio. The vantage is a
+ * 3/4 dollhouse angle: lifted high and back so the floor, three walls,
+ * and the four doors are all in frame. Resizing the canvas calls
+ * `resizeCamera` to re-fit the frustum without changing the camera's
+ * world-space pose.
  */
 export function buildScene(): SceneContext {
   const scene = new THREE.Scene();
@@ -32,17 +72,41 @@ export function buildScene(): SceneContext {
   key.position.set(4, 8, 6);
   scene.add(key);
 
-  const camera = new THREE.PerspectiveCamera(
-    50,
-    1,
-    0.1,
-    100,
-  );
-  // Lift the camera high and back so the whole room is in frame at startup.
-  // Future camera-system slices replace this with the real prototype rig.
-  const { width, depth } = ROOM_DIMENSIONS;
-  camera.position.set(width * 0.9, 9, depth * 0.9);
-  camera.lookAt(0, 1, 0);
+  const { width, depth, height } = ROOM_DIMENSIONS;
 
-  return { scene, camera, portals: room.portals };
+  // Initial frustum is a unit box; resizeCamera below re-fits it. The near
+  // plane is small and the far plane large enough to clear the camera's
+  // distance from the room (~25 units away in world space).
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+
+  // Dollhouse 3/4 vantage. Camera sits high and back so we see the floor,
+  // three walls, and the door silhouettes. Distance does not affect the
+  // image scale under orthographic projection, only the frustum bounds do,
+  // so we choose a distance that keeps the room comfortably inside near/far.
+  camera.position.set(width * 1.4, height * 2.2, depth * 1.4);
+  camera.lookAt(0, height * 0.4, 0);
+
+  const resizeCamera = (canvasWidth: number, canvasHeight: number): void => {
+    const f = computeFrustum(
+      canvasWidth,
+      canvasHeight,
+      BASE_WORLD_WIDTH,
+      BASE_WORLD_HEIGHT,
+    );
+    camera.left = f.left;
+    camera.right = f.right;
+    camera.top = f.top;
+    camera.bottom = f.bottom;
+    camera.updateProjectionMatrix();
+  };
+
+  // Initial framing against the current window. The renderer also calls
+  // resizeCamera on every layout change so the framing stays correct on
+  // window resize and device rotation.
+  resizeCamera(
+    typeof window !== "undefined" ? window.innerWidth : 1,
+    typeof window !== "undefined" ? window.innerHeight : 1,
+  );
+
+  return { scene, camera, portals: room.portals, resizeCamera };
 }

@@ -9,17 +9,37 @@ import * as THREE from "three";
  * construction so future slices can swap render passes (post-processing,
  * outline pass, etc.) without touching scene authoring code.
  */
-export function createRenderer(container: HTMLElement): THREE.WebGLRenderer {
+export interface RendererHandle {
+  renderer: THREE.WebGLRenderer;
+  /**
+   * Subscribe to resize events. The callback receives the canvas's current
+   * pixel-space dimensions immediately on subscription and on every
+   * subsequent layout change. Used by the orthographic camera to re-fit
+   * the dollhouse frustum so the room stays in frame on window resize and
+   * device rotation.
+   */
+  onResize: (cb: (width: number, height: number) => void) => void;
+}
+
+export function createRenderer(container: HTMLElement): RendererHandle {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
 
+  const subscribers = new Set<(w: number, h: number) => void>();
+
   const sizeRenderer = (): void => {
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
-    renderer.setSize(width, height, false);
+    // updateStyle=true (the default): write the canvas CSS size as well as
+    // its buffer size. With updateStyle=false the canvas had no inline
+    // style and rendered at its raw pixel buffer size, which on a HiDPI
+    // display is 2x the viewport, leaving the framed scene confined to
+    // the upper-left quadrant.
+    renderer.setSize(width, height, true);
+    for (const cb of subscribers) cb(width, height);
   };
 
   sizeRenderer();
@@ -34,5 +54,12 @@ export function createRenderer(container: HTMLElement): THREE.WebGLRenderer {
     window.addEventListener("resize", sizeRenderer);
   }
 
-  return renderer;
+  const onResize = (cb: (width: number, height: number) => void): void => {
+    subscribers.add(cb);
+    const width = container.clientWidth || window.innerWidth;
+    const height = container.clientHeight || window.innerHeight;
+    cb(width, height);
+  };
+
+  return { renderer, onResize };
 }

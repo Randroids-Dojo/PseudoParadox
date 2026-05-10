@@ -49,10 +49,17 @@ export function buildRoom(): RoomBuild {
     roughness: 0.9,
     metalness: 0.0,
   });
+  // Walls render BackSide so the camera-facing walls do not occlude the
+  // dollhouse view. BoxGeometry normals point outward; rendering only the
+  // back faces means each wall is visible from inside the room and
+  // invisible from outside, producing the mi-casa-style cutaway where the
+  // two far walls form the visible backdrop and the two near walls drop
+  // out so the floor and doors are unobstructed.
   const wallMaterial = new THREE.MeshStandardMaterial({
     color: 0x4a5260,
     roughness: 0.85,
     metalness: 0.0,
+    side: THREE.BackSide,
   });
 
   const floor = new THREE.Mesh(

@@ -27,6 +27,22 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Nice To Have
 
+### F-010: Camera pan / zoom / orbit gestures
+
+- Priority: nice-to-have
+- Context: The dollhouse camera shipped in the responsive-camera slice is fixed: `OrthographicCamera` with `(width*1.4, height*2.2, depth*1.4)` looking at `(0, height*0.4, 0)` and a contain-fit frustum. The mi-casa renderer this pattern was lifted from also exposes `applyPanDeltaPixels` (drag-to-pan) and `applyZoomScale` (pinch / wheel zoom). Pseudo Paradox does not yet have these; the user explicitly asked about mi-casa-style camera handling and a future slice should let the player pan and zoom into a corner of the room when needed.
+- Blocker: not blocking; the fixed dollhouse vantage shows the whole 10x10 room and all four doors so the prototype is playable as-is.
+- Unblock condition: a slice that wires `wheel` / pointer-drag (desktop) and pinch / two-finger-drag (mobile) into `OrthographicCamera.zoom` plus a pan offset on the lookAt target, with bounds so the camera never leaves the room region.
+- PR / Dot reference (when picked up):
+
+### F-009: Touch buttons for pickup / throw / punch / hard-reset
+
+- Priority: nice-to-have
+- Context: The touch-joystick slice shipped a single-stick movement-only input on mobile. Pickup (F), throw (T), punch (Space), and hard-reset (R) still require a keyboard. Without these the prototype is not fully playable on a phone.
+- Blocker: none. The DOM-overlay pattern in `src/render/touchOverlay.ts` already shows the joystick ring; a parallel `actionButtons.ts` module would mount four bottom-right action buttons that flip the same `KeyState` booleans the keyboard handler does.
+- Unblock condition: a slice that adds DOM buttons wired to the existing `KeyState.pickup / throw / punch` plus a synthetic `keydown KeyR` for hard reset. Should respect `aria-pressed` and not interfere with the joystick when the user touches them.
+- PR / Dot reference (when picked up):
+
 ### F-008: Real-browser ship gates (Playwright E2E plus Lighthouse load-time plus 60fps frame budget)
 
 - Priority: nice-to-have

@@ -5,6 +5,8 @@ import { buildScene } from "./scene/scene.ts";
 import { createPlayer } from "./scene/player.ts";
 import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
+import { bindTouchControls } from "./input/touch.ts";
+import { createTouchOverlay } from "./render/touchOverlay.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
@@ -72,8 +74,13 @@ export async function startApp(container: HTMLElement): Promise<void> {
 
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
 
-  const renderer = createRenderer(container);
+  const { renderer, onResize } = createRenderer(container);
   const sceneCtx = buildScene();
+  // Re-fit the orthographic dollhouse frustum on every canvas resize so the
+  // room stays fully framed across window resize, device rotation, and
+  // initial layout settling. Fires immediately on subscription with the
+  // current canvas dimensions.
+  onResize((w, h) => sceneCtx.resizeCamera(w, h));
   // REQ-029: warm-to-cool room tint driven by the deterministic simulation
   // tick. The clock is advanced once per fixed physics step below, not per
   // render frame, so REQ-001 timeline recording playback stays frame-exact
@@ -102,6 +109,15 @@ export async function startApp(container: HTMLElement): Promise<void> {
   sceneCtx.scene.add(floorRing);
   updateFloorRing(floorRing, player.body);
   const keyboard = createKeyboardState(window);
+  // Touch joystick: float-where-you-tap stick that writes deflection into
+  // the same forward/back/left/right booleans the keyboard fills. The
+  // physics, recorder, and replay paths all read from `keyboard.state`, so
+  // touch and keyboard never conflict and a recording made on one device
+  // replays identically on the other. The visible ring/knob is a DOM
+  // overlay updated on every state change.
+  const touchOverlay = createTouchOverlay(container);
+  const touch = bindTouchControls(window, keyboard.state);
+  touch.onChange((js) => touchOverlay.update(js));
   // REQ-001 / REQ-002 / REQ-003 foundation: the active player owns a
   // `lifetime` whose `recorder` captures input each fixed step. On portal
   // traversal the lifetime is closed (its recording snapshotted onto a
