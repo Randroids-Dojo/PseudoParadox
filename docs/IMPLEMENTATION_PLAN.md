@@ -68,3 +68,54 @@ Closing the loop without all three is the Flatline failure mode: shipping a comp
 ## Current Planned Scope
 
 Use `docs/gdd/` as the product scope. The current high-level remaining areas are reflected in `docs/GDD_COVERAGE.json`, with active spillover in `docs/FOLLOWUPS.md`.
+
+## Next Up: Goal-Oriented Replay plus Reading-C Tick Model (F-013, F-014)
+
+A four-PR sequence that replaces raw `KeyState` ghost replay with milestone-driven hybrid replay (F-013) and shifts the timeline registry from "reset to tick 0 each visit" to a continuous per-timeline tick clock (F-014). All four design knobs are resolved as Q-024, Q-025, Q-026, Q-027. Ship in order; each PR is independently deployable.
+
+### PR3a: Milestone capture during recording
+
+- Add `Milestone` discriminated union (`wall_bump | door_traversal`) plus a `MilestoneRecorder` parallel to `InputRecorder`. Lifetimes carry both.
+- Wall-bump detection: scan Rapier contact pairs after `world.step()` for player-vs-wall-collider contacts. Debounce so sliding along a wall is one bump, not 60.
+- Door-traversal detection: mirror the existing `portalTriggers.step` enter event for lit portals into the milestone log on the same tick.
+- Milestones are captured on the active player's lifetime only; ghost replay does not generate new milestones.
+- Snapshot milestones alongside `recording.snapshot()` when filing a ghost on portal traversal. Store on `GhostInstance.milestones` (frozen).
+- No replay change yet. Existing ghosts ignore the new field.
+- Tests: milestone shape, debounce on wall slide, door milestone fires once per traversal, snapshot freezes.
+
+### PR3b: Hybrid replay using milestones
+
+- Replace `GhostInstance.advanceTick` with a small state machine: `replaying-input` (default, uses existing `replayAtTick`) and `path-following` (steers toward next pending milestone).
+- Drift detector: compare ghost body translation to the expected position at `currentTick` (replayed virtually from tick 0). If `distance > DRIFT_THRESHOLD = 0.5`, switch to `path-following`.
+- Path-follower: normalize direction to next milestone, write velocity = direction times `PLAYER_SPEED_MPS`. When `distance < ARRIVAL_RADIUS = 0.3`, mark milestone reached and switch back to `replaying-input` if still on schedule, else continue path-following toward the next milestone.
+- Skip rule: if `currentTick - milestone.tick > MILESTONE_BUDGET_TICKS[milestone.kind]` and the milestone is skippable (weight less than 5), skip and target the next. `wall_bump` budget is 60 ticks (1 s); `door_traversal` budget is `Infinity`.
+- Visits still reset to tick 0 (F-014 lands later).
+- Tests: drift triggers switch, path-follower reaches milestone, skip past stale wall_bump, door is unskippable.
+
+### PR3c: Reading-C tick model plus door destination ticks
+
+- `TimelineRegistry` adds a per-timeline `tickClock` map. `setActiveTimeline(next, arrivalTick)` advances the entering timeline's clock to `arrivalTick`.
+- `GhostInstance` adds `startTick: number` (absolute tick within its timeline). On creation, `startTick` is set from the active timeline's tick clock at the moment of filing.
+- New `GhostInstance.fastForwardTo(absoluteTick)` deterministically replays the recording from `tick 0` to `absoluteTick - startTick` so milestone state and body position match the destination tick.
+- `Portal.destinationTick: number` added; defaults to `0` for backwards compatibility.
+- `wireTraversal` reads the destination tick and passes it to `setActiveTimeline`.
+- Existing tests update from "tick 0 reset" semantics to the new contract; expect ~30 test rewrites in `tests/sim/`. The Acts 1 to 3 cinematic timing constants stay anchored to `tick 0` because all current door destination ticks are 0.
+- Tests: tick clock advances on traversal, ghost fast-forwards correctly to mid-recording position, ghost despawns if its recording ended before arrival tick (door milestone before arrival).
+
+### PR3d: Game-design pass authoring door destination ticks
+
+- Per the GDD's Acts 1 to 3 narrative beats, set specific destination ticks for each portal so the loop-back-and-bump scenarios work end-to-end.
+- Update `mountAct1Cinematic` and any other scripted ghosts to file with non-zero `startTick` if the script calls for it.
+- Smoke test the user's stated invariant: bump an instance in one timeline, traverse a loop, return to that timeline, see the past-self bump replay.
+
+### Knobs and defaults (frozen across PR3a to PR3d)
+
+- `WALL_BUMP_BUDGET_TICKS = 60` (Q-025).
+- `DRIFT_THRESHOLD = 0.5` (Q-024).
+- `ARRIVAL_RADIUS = 0.3` (Q-024).
+- Milestone weights: `wall_bump = 1`, `door_traversal = 5`. Door is unskippable.
+- `Portal.destinationTick` defaults to 0.
+
+### Validation gate
+
+The user's load-bearing invariant: "If I bump an instance in one time, when I loop back to that time, I should see an instance of myself bumping that instance." A scripted integration test in PR3d simulates this end-to-end. The test exists alongside the four PRs as a regression guard.

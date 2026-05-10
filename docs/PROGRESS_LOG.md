@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-10, Docs Cleanup plus PR3 Plan (F-013, F-014, Q-024 to Q-027)
+
+- Branch: `docs-plan-pr3` (committed directly to main per user authorization).
+- PR: none (docs-only, merged direct).
+- Changed: docs-only slice that locks in the design for the goal-oriented ghost replay rewrite the user described in a 2026-05-10 design pass. Four new entries in `docs/OPEN_QUESTIONS.md` resolved on birth: Q-024 (replay style: hybrid input plus path-follower fallback), Q-025 (skip rule: ticks-behind per weight tier with `WALL_BUMP_BUDGET_TICKS = 60`, door unskippable), Q-026 (Reading-C continuous per-timeline tick clock plus door destination ticks), Q-027 (initial milestone schema: `wall_bump` weight 1 plus `door_traversal` weight 5). `docs/FOLLOWUPS.md` rewrites F-013 (now references the resolved Qs and the four-PR slice plan) and F-014 (now describes Reading-C, blocks-release, references the worked example: "a door whose destination is hour-5 tick 200 lands the player at tick 200 of the hour-5 timeline; ghosts whose recordings cover that tick are positioned at `position(arrivalTick - startTick)`"). F-014 moved from Nice To Have to Blocks Release section to match its priority. `docs/IMPLEMENTATION_PLAN.md` adds a top-level "Next Up" section that lays out the four-PR sequence (PR3a milestones, PR3b hybrid replay, PR3c Reading-C tick model, PR3d game-design door destination ticks) with frozen knobs and the user's load-bearing invariant ("loop back to bump") as the validation gate. No code touched; no tests added or removed.
+- Verification: dash sweep clean. `git diff --check` clean. Type-check and tests not run because no source files changed.
+- Assumptions: the user authorized direct merge to main for this docs-only cleanup ("Merge the cleanup and clear plan directly to main and we will continue later"). The four resolved Qs ship under their `Recommended default` per the project's "Recommended default" convention; the user picked each option explicitly during the design pass. The PR3 sequence stays as four PRs unless a future slice consolidates them.
+- GDD coverage: no REQ rows changed.
+- Followups: F-013 and F-014 now have their own detailed slice plans; PR3a is the next implementable slice when work resumes.
+
 ## 2026-05-10, Ghost Despawn at Lit Portal Traversal (F-012)
 
 - Branch: `ghost-despawn-at-doors`

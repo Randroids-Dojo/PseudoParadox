@@ -34,20 +34,20 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 ### F-013: Goal-oriented ghost replay with milestone weights
 
 - Priority: blocks-release
-- Context: Ghost replay currently replays per-tick recorded `KeyState` exactly. When the active player or another ghost bumps the replaying ghost, the ghost's position drifts but the recorded inputs keep firing on the original timing, producing visibly broken paths. The user wants ghosts to instead chase weighted MILESTONES recorded at the time of the original lifetime: wall bumps (low weight) and door traversals (high weight). On replay the ghost path-follows toward the next milestone; if too delayed they skip lower-weight milestones to hit the high-weight ones. Tail behavior: see F-014 (which captures the user's "fast-forward stale instances to the time the active player walks in" rule).
-- Blocker: requires per-tick wall-bump detection during recording, milestone-targeted pathing during replay, weighted skip logic, and a tail strategy that interacts with the timeline registry's lit-portal model.
-- Unblock condition: design plus implementation in a dedicated slice. Likely splits into two steps: (1) milestone capture during recording (wall bumps + door traversals appended to the existing `InputRecorder` or a parallel `MilestoneRecorder`), (2) replay path-follower that consumes milestones and handles weight-based skipping.
+- Context: Ghost replay currently replays per-tick recorded `KeyState` exactly. When the active player or another ghost bumps the replaying ghost, the ghost's position drifts but the recorded inputs keep firing on the original timing, producing visibly broken paths. The user wants ghosts to chase weighted MILESTONES recorded at the time of the original lifetime so that "if I bump an instance in one time, when I loop back to that time I should see an instance of myself bumping that instance." Initial schema (Q-027 default A): `wall_bump` (weight 1) and `door_traversal` (weight 5). On replay the ghost replays original input until drift exceeds threshold, then path-follows toward the next milestone (Q-024 default B: hybrid replay). Lower-weight milestones can be skipped if the ghost is too delayed; the door is unskippable (Q-025 default A: ticks-behind per weight tier with `WALL_BUMP_BUDGET_TICKS = 60`).
+- Blocker: requires per-tick wall-bump detection during recording, milestone-targeted pathing during replay, weighted skip logic, and a hybrid replay state machine.
+- Unblock condition: PR3a (milestone capture) plus PR3b (hybrid replay) per the slice plan in `docs/IMPLEMENTATION_PLAN.md`. Q-024, Q-025, Q-027 all resolved with concrete defaults; F-014 (the catch-up-on-arrival half) is split into its own slice (PR3c plus PR3d) so this followup can ship without the registry refactor.
+- PR / Dot reference (when picked up):
+
+### F-014: Continuous per-timeline tick clock plus door destination ticks (Reading C)
+
+- Priority: blocks-release
+- Context: The user clarified the timeline tick model in a 2026-05-10 design pass: each timeline has a continuous absolute tick clock, ghosts have an absolute `startTick` within the timeline, and door destinations are pinned to (timelineId, tick) pairs rather than just timeline. Worked example: a door whose destination is hour-5 tick 200 lands the player at tick 200 of the hour-5 timeline; ghosts whose recordings cover that tick are positioned at `position(arrivalTick - startTick)` of their recording. Ghosts whose recording ended before the arrival tick (their `door_traversal` milestone fired earlier) are not visible. Replaces the current "reset every ghost to tick 0 on entry" model. See Q-026 for the worked example and the three reading variants.
+- Blocker: requires (1) per-timeline tick clock in `TimelineRegistry`; (2) `startTick` field on `GhostInstance`; (3) `Portal.destinationTick` field added with default 0 for backwards compatibility; (4) `setActiveTimeline(next, arrivalTick)` that fast-forwards each ghost's milestone state and body position to the arrival tick; (5) F-013 milestones landed first so the fast-forward can replay the recording up to `arrivalTick - startTick` deterministically.
+- Unblock condition: PR3a (milestones) and PR3b (hybrid replay) merged. Then PR3c lands the registry refactor plus `Portal.destinationTick` plumbing; PR3d does the game-design pass authoring specific destination ticks per door per the GDD.
 - PR / Dot reference (when picked up):
 
 ## Nice To Have
-
-### F-014: Stale ghosts fast-forward to active player's tick on timeline arrival
-
-- Priority: nice-to-have
-- Context: The user described an advanced scenario for F-013 tail behavior: "If there is an instance who stays in a room/time for hours, then they need to fast-forward to the position they were in at whatever time I am walking into that room." Means: when the active player lands in a timeline at tick T, every ghost whose recording started before T should advance their replay state to tick T (their position, milestone progress) rather than rewinding to tick 0. Otherwise a ghost recorded between hour 2 and hour 9 in a 10-hour timeline would always replay starting from hour 2, even if the player walks in at hour 9.
-- Blocker: depends on F-013 milestone replay landing first.
-- Unblock condition: ghost spawn / setActiveTimeline path needs a "skip-to-tick" entry point that respects milestone progress (advance through skipped milestones if they are lower-weight) and a "skip-to-position" path that works for ghosts mid-traversal.
-- PR / Dot reference (when picked up):
 
 ### F-011: Wall colliders compatible with portal trigger volumes
 

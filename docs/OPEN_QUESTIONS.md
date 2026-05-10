@@ -249,6 +249,49 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
 
 ## Resolved
 
+### Q-024: Replay style for goal-oriented ghosts (F-013)
+
+- Context: F-013 changes ghost replay from per-tick `KeyState` playback to milestone-driven steering. Open question is whether to replace the input-replay path entirely (pure path-following) or keep it and overlay path-follower as a fallback when the ghost drifts off course.
+- Options:
+  - A. Pure straight-line steering: ghost beelines to each milestone position. Loses idle / wandering of the original recording but is deterministic and simple. Wall colliders provide obstacle avoidance for free.
+  - B. Hybrid: replay original input until drift exceeds a threshold, then path-follow toward the next milestone, then resume input replay once back on schedule. Preserves the visual feel of the original walk.
+- Recommended default: B. Hybrid keeps the natural-looking playback when nothing pushes the ghost off course (the common case) while guaranteeing the load-bearing milestones still land when something does.
+- Status: resolved
+- Resolution: B. Hybrid replay confirmed by user. Drift threshold (default `0.5 m`), path-follower speed (`PLAYER_SPEED_MPS`), and arrival radius (`0.3 m`) ship as tunables in PR3b.
+
+### Q-025: Skip rule for goal-oriented replay (F-013)
+
+- Context: When a ghost falls behind schedule (its current tick has already passed a milestone's recorded tick), should we skip the milestone, wait for the ghost to catch up, or pick a different rule?
+- Options:
+  - A. Ticks-behind per weight tier. Each milestone has a budget; `wall_bump` budget is `60` ticks (1 s); `door_traversal` budget is `Infinity`. If `currentTick - milestone.tick > BUDGET[milestone.kind]`, skip the milestone (only milestones with `weight < 5` are skippable). Door is sacred.
+  - B. Stuck-detector. Track frames-since-distance-decreased; skip if the ghost makes no progress for 90 ticks.
+  - C. Both A and B (skip if either fires).
+- Recommended default: A. Deterministic and easy to tune. Budgets can be raised per-milestone if a recording is unusually slow.
+- Status: resolved
+- Resolution: A. Per the user: "if you really get off track maybe you finally get free. Your main goal should be to get through the door." Door is unskippable; lower-weight milestones get a budget and are skipped past it. Tunables `MILESTONE_BUDGET_TICKS` and the default `WALL_BUMP_BUDGET_TICKS = 60` ship in PR3b.
+
+### Q-026: F-014 timeline tick model (continuous absolute clock)
+
+- Context: F-014 is "stale ghosts fast-forward to active player's tick on timeline arrival." Two readings of the user's spec collapse into one canonical model after clarification: each timeline has a continuous absolute tick clock, ghosts have an absolute `startTick` within the timeline, and door destinations are pinned to (timelineId, tick) pairs. Per the user's worked example: a door whose destination is hour-5 tick 200 lands the player at tick 200 of the hour-5 timeline; ghosts whose recordings cover that tick are positioned at their `position(arrivalTick - startTick)`.
+- Options:
+  - A. Reading B (resume per-timeline). Each timeline has a saved tick-counter that resumes on re-entry. Ghosts continue from where they paused. Smallest change but does not match the user's "if I bump in one time, looping back I see the bump" determinism contract.
+  - B. Reading A (fresh start + skip completed milestones). Each visit resets simulation but ghosts spawn at the position of the latest milestone whose recorded tick has "already happened." Hybrid; messy semantics.
+  - C. Reading C (continuous global per-timeline wall-clock). Each timeline has an absolute tick coordinate. Ghosts have `startTick`; their alive interval is `[startTick, startTick + recording.length)` minus any `door_traversal` milestone tick. Doors specify `destinationTick` as an authored field. Cleanest match to the GDD narrative.
+- Recommended default: C. Required for the user's "loop back to bump" determinism contract under multi-visit scenarios and for door-destination-tick authoring.
+- Status: resolved
+- Resolution: C. Confirmed by user worked example: "If we add a door that jumps to tick 200 then of course you would start the past instances at 200 (if they didn't walk through the door by that tick)." Implementation lands across PR3c (registry refactor + ghost `startTick` + `Portal.destinationTick` field) and PR3d (game-design pass authoring specific destination ticks per door).
+
+### Q-027: Initial milestone schema (F-013)
+
+- Context: Which player events qualify as milestones during recording? The minimum viable set covers the two events called out in the user's spec; richer sets (carry pickup, throw fire, punch land, room-edge zone passes) can extend later.
+- Options:
+  - A. `wall_bump` (weight 1) + `door_traversal` (weight 5) only.
+  - B. Add `carry_pickup` / `throw_fire` / `punch_landed` (weight 2-3) for richer interactions.
+  - C. Add room-edge zone passes (north-half / south-half boundary) as weight-2 milestones for spatial structure.
+- Recommended default: A. Matches the user's stated spec literally. Schema is extensible; additions land as PR3b follow-ups if the milestone budget feels under-used.
+- Status: resolved
+- Resolution: A. `Milestone` discriminated union shipped in PR3a with `kind: 'wall_bump' | 'door_traversal'`, `tick: number`, `position: { x: number; z: number }`, `weight: number`, plus a kind-specific `meta` (wall direction, door direction).
+
 ### Q-010: Thought-bubble lookahead window length
 
 - Context: REQ-032 thought bubbles preview upcoming actions. Too short a window and the player has no time to react. Too long and the bubble shows actions far enough out that the player cannot mentally connect the icon to the eventual event.
