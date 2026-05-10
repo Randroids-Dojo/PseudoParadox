@@ -150,6 +150,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // door_traversal milestone immediately before snapshotting on a lit
     // traversal. Reset alongside `recorder` on every lit traversal.
     milestones: new MilestoneRecorder(),
+    // F-014: the initial lifetime opens at tick 0 of the Act 1 (5:00)
+    // timeline. Subsequent traversals overwrite this with the
+    // destination portal's authored `destinationTick`.
+    startTick: 0,
     originNormalized: timeOfDay.normalized(),
     // REQ-007: the lifetime opens at the active player's current generation.
     // The first lifetime opens at `INITIAL_INSTANCE_ID = 1` (You1, the GDD's
@@ -316,6 +320,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // tick-of-arrival's normalized time, matching what any later instance
       // observing this tick from outside will see (REQ-030).
       timeOfDay.advanceTicks(1);
+      // F-014: advance the active timeline's tick clock alongside the
+      // time-of-day clock. The clock starts at the destination tick of
+      // the last portal traversal (or 0 at boot) and increments by one
+      // per fixed step. Ghosts filed from the current lifetime will
+      // inherit the clock value at their filing moment as their startTick.
+      registry.advanceActiveTick();
       // Sample input once per physics step so target velocity reacts at the
       // simulation rate, not the render rate. The mapping is pure; the only
       // mutation is on the rigid body itself. The same KeyState snapshot is

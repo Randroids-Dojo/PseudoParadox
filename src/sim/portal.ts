@@ -54,12 +54,33 @@ export interface Portal {
    * timeline; until then, callers pick the value at construction.
    */
   readonly isLit: boolean;
+  /**
+   * Absolute tick within the destination timeline that this portal lands
+   * the player at (F-014 Reading C). Per the user's 2026-05-10 design
+   * pass: each door is pinned to a (timelineId, tick) destination so a
+   * loop-back through this door places the player at a specific moment
+   * within the destination timeline, and any ghost whose recording
+   * covered that moment is fast-forwarded to its position-at-that-tick.
+   * Defaults to 0 for backwards compatibility: a door whose destination
+   * tick is not authored lands the player at the start of the
+   * destination timeline (matches the pre-F-014 reset-to-tick-0
+   * behavior).
+   */
+  readonly destinationTick: number;
 }
 
 export interface CreatePortalArgs {
   door: Door;
   destinationHours: number;
   isLit: boolean;
+  /**
+   * Optional destination tick within the destination timeline (F-014).
+   * Defaults to `0` so existing portal authoring (Act 1-3 cinematic
+   * scripts, test fixtures) continues to land at tick 0 of the
+   * destination. A future game-design slice (PR3d) authors specific
+   * destination ticks per door per the GDD.
+   */
+  destinationTick?: number;
 }
 
 /**
@@ -69,7 +90,7 @@ export interface CreatePortalArgs {
  * that consume `destinationHours` directly can trust the range.
  */
 export function createPortal(args: CreatePortalArgs): Portal {
-  const { door, destinationHours, isLit } = args;
+  const { door, destinationHours, isLit, destinationTick = 0 } = args;
   if (!Number.isFinite(destinationHours)) {
     throw new Error(
       `createPortal: destinationHours must be finite, got ${destinationHours}`,
@@ -80,11 +101,17 @@ export function createPortal(args: CreatePortalArgs): Portal {
       `createPortal: destinationHours must be in [0, ${HOURS_PER_DAY}), got ${destinationHours}`,
     );
   }
+  if (!Number.isFinite(destinationTick) || destinationTick < 0) {
+    throw new Error(
+      `createPortal: destinationTick must be a finite non-negative number, got ${destinationTick}`,
+    );
+  }
   return Object.freeze({
     door,
     direction: door.direction,
     destinationHours,
     isLit,
+    destinationTick,
   });
 }
 

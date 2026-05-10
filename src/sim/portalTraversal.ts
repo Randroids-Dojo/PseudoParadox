@@ -73,6 +73,14 @@ export interface ActiveLifetime {
   /** World-space position the lifetime started at. Ghosts spawned to replay
    * THIS lifetime's recording start at this position. */
   startPosition: { x: number; z: number };
+  /**
+   * Absolute tick within the lifetime's home timeline at which this
+   * lifetime started recording (F-014). The host sets this from the
+   * source timeline's tick clock when the lifetime opens (initial
+   * spawn or arrival through a portal). Any ghost filed from this
+   * lifetime inherits the value as its `startTick`.
+   */
+  startTick: number;
   /** Recorder for this lifetime's input. Reset on every traversal. */
   recorder: InputRecorder;
   /**
@@ -100,6 +108,12 @@ export interface ActiveLifetime {
 export interface TraversalWorldHandle {
   createRigidBody: RAPIER.World["createRigidBody"];
   createCollider: RAPIER.World["createCollider"];
+  /**
+   * Needed so `setActiveTimeline` can despawn ghosts whose
+   * `door_traversal` milestone fired before the arrival tick (F-014).
+   * Mirrors `RegistryWorldHandle.removeRigidBody`.
+   */
+  removeRigidBody: RAPIER.World["removeRigidBody"];
 }
 
 /**
@@ -298,9 +312,17 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     //    the source timeline, the registry resets the ghost to tick 0 and
     //    makes it visible again (REQ-001 / REQ-003).
     if (recording.length > 0) {
+      // F-014: the ghost's recording covers ticks
+      // `[lifetime.startTick, lifetime.startTick + recording.length)`
+      // of the source timeline. The lifetime's startTick is the source
+      // timeline's tick clock at the moment the lifetime opened (when
+      // the player previously arrived at this timeline). Stored on the
+      // ghost so re-entry can compute its position-at-arrival-tick.
+      const sourceTimeline = timelineIdFromNormalized(lifetime.originNormalized);
       const ghost = createGhost({
         recording,
         milestones,
+        startTick: lifetime.startTick,
         // The ghost belongs to the timeline being LEFT BEHIND; tint on its
         // origin normalized.
         originNormalized: lifetime.originNormalized,
@@ -312,7 +334,6 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
         world,
         startPosition: { ...lifetime.startPosition },
       });
-      const sourceTimeline = timelineIdFromNormalized(lifetime.originNormalized);
       registry.add(sourceTimeline, ghost);
     }
 
@@ -358,6 +379,12 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     lifetime.startPosition = { x: destination.x, z: destination.z };
     lifetime.originNormalized = destinationNormalized;
     lifetime.instanceId = incomingInstanceId;
+    // F-014: the fresh lifetime starts at the destination's tick. The
+    // destination timeline's tick clock is set to `portal.destinationTick`
+    // by `setActiveTimeline` below, and any future filing of THIS
+    // lifetime as a ghost (next traversal) will use this value as the
+    // ghost's startTick.
+    lifetime.startTick = portal.destinationTick;
 
     // 7. Switch the registry's active timeline to the destination. This
     //    hides every ghost in the timeline just left behind (including the
@@ -366,7 +393,15 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     //    spawn pose, then makes it visible. Each timeline visit is a fresh
     //    playback (REQ-001 / REQ-003).
     const destinationHour = timelineIdFromNormalized(destinationNormalized);
-    registry.setActiveTimeline(destinationHour);
+    // F-014: hand the destination's authored tick to the registry. The
+    // registry stamps the entering timeline's tick clock and either
+    // fast-forwards each ghost or despawns it if its `door_traversal`
+    // milestone fires before the arrival tick. Pass scene + world so
+    // stale ghosts can be cleaned up.
+    registry.setActiveTimeline(destinationHour, portal.destinationTick, {
+      scene,
+      world,
+    });
 
     // 8. Fire the timeline-enter hook so the host can repaint doors and
     //    snap the time-of-day clock to the destination hour (REQ-015). The

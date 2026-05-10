@@ -104,6 +104,7 @@ const buildHarness = (initialActiveTimeline = ACT_ONE_HOUR): Harness => {
     startPosition: { x: 1, z: 2 },
     recorder: new InputRecorder(),
     milestones: new MilestoneRecorder(),
+    startTick: 0,
     originNormalized: 6 / 24,
     instanceId: 4,
   };
