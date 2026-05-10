@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-10, Static Floor Collider plus Steeper Camera
+
+- Branch: `fix-floor-and-camera`
+- PR: TBD
+- Changed: User-visible bug fix on top of the dollhouse-camera slice. Two issues. (1) The room had no physics collider for the floor: the player capsule's dynamic body fell straight through the visual floor mesh under gravity the moment the simulation started. (2) From the prior 3/4 dollhouse vantage the walls dominated the frame and the user could not read the full floor map. Fix lands as one slice. New `createRoomColliders(world)` exported from `src/scene/room.ts` spawns a single static cuboid floor collider centered at `y = -wallThickness/2` with half-extents `(50, wallThickness/2, 50)`. The 50-unit half-extent is a deliberate apron around the 10x10 visual room: with no wall colliders the player can still walk through the visual wall meshes (matches the prior visual-only-walls behavior), and the wider floor means leaving the room footprint costs the player nothing worse than a confused walk in empty space rather than falling off the world. Wall colliders are NOT added in this slice. Two reasons. With door-shaped gaps the player escapes through dark doors and walks off the original 10x10 floor (the bug we are fixing). With solid walls the existing portal trigger volumes (centered on the inner wall face, depth 0.6) sit out of reach behind the collider so lit-portal traversal would break. The wall-collider story is filed as a follow-up. `src/scene/scene.ts` lifts the camera to `(width*0.8, height*5.0, depth*0.8)` looking at `(0, height*0.25, 0)` (~60 degrees of elevation, near-isometric dollhouse) and grows `BASE_WORLD_WIDTH` / `BASE_WORLD_HEIGHT` from 16x12 to 18x18 to fit the diamond floor projection at the new angle. `src/app.ts` calls `createRoomColliders(world)` once after `buildScene()`. New constant `ROOM_WALL_THICKNESS = 0.2` exported from `room.ts` so the visual mesh and the collider share one source for slab thickness.
+- Verification: `npm run type-check` clean. `npm test` 542 passing across 49 suites. Em-dash and en-dash sweep clean. `git diff --check` clean. Manual smoke in Chrome: player capsule visibly stands on the floor at room center after load, walks under WASD, stops on key release, no fall-through. Camera at the steeper angle frames the 10x10 floor as a diamond filling most of the canvas with the four doors readable at the floor edges.
+- Assumptions: floor apron is 50x50 invisible. The user explicitly framed the bug as "fix the poop": minimum-viable fix is a floor the player stands on, not a fully-walled play volume. Steeper camera is a UX response to the user's "walls dominate the view" framing; a pan / zoom / orbit story is filed under F-010 from the prior slice.
+- GDD coverage: no REQ rows changed. Render and physics-shell fix, not a GDD requirement implementation.
+- Followups: F-011 opened (proper wall colliders with portal-trigger compatibility: either solid walls plus deeper trigger volumes, or door blockers that mirror lit-state per timeline so dark doors are physically blocked while lit doors stay enterable).
+
 ## 2026-05-10, Responsive Dollhouse Camera plus Touch Joystick
 
 - Branch: `camera-touch-controls`

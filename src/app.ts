@@ -2,6 +2,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 import { createRenderer } from "./render/renderer.ts";
 import { interpolateWarmToCool } from "./render/colorTint.ts";
 import { buildScene } from "./scene/scene.ts";
+import { createRoomColliders } from "./scene/room.ts";
 import { createPlayer } from "./scene/player.ts";
 import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
@@ -76,6 +77,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
 
   const { renderer, onResize } = createRenderer(container);
   const sceneCtx = buildScene();
+  // Spawn the static floor and wall colliders so the dynamic player
+  // capsule has something to stand on and cannot leak out through the
+  // wall meshes. The wall colliders are split with a door-width gap
+  // at each midpoint so the player can still walk into the portal
+  // trigger volume.
+  createRoomColliders(world);
   // Re-fit the orthographic dollhouse frustum on every canvas resize so the
   // room stays fully framed across window resize, device rotation, and
   // initial layout settling. Fires immediately on subscription with the

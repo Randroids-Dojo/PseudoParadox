@@ -1,9 +1,17 @@
 import * as THREE from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
 import { applyDoorLitState, createFourDoors } from "./door.ts";
 import { createActOnePortals } from "../sim/portal.ts";
 import type { Portal } from "../sim/portal.ts";
 import { ACT_ONE_HOUR } from "../sim/actOneAnchor.ts";
 import { doorLitStateAtHour } from "../sim/doorStateAtTime.ts";
+
+/**
+ * Floor / wall slab thickness used for both the visual mesh and the
+ * static physics colliders. Exported so `createRoomColliders` can size
+ * the cuboid colliders against the same constant the meshes use.
+ */
+export const ROOM_WALL_THICKNESS = 0.2;
 
 /**
  * Canonical room dimensions for the prototype.
@@ -42,7 +50,7 @@ export function buildRoom(): RoomBuild {
   group.name = "room";
 
   const { width, depth, height } = ROOM_DIMENSIONS;
-  const wallThickness = 0.2;
+  const wallThickness = ROOM_WALL_THICKNESS;
 
   const floorMaterial = new THREE.MeshStandardMaterial({
     color: 0x3a3f47,
@@ -119,4 +127,38 @@ export function buildRoom(): RoomBuild {
   }
 
   return { group, portals };
+}
+
+/**
+ * Half-extent of the static floor collider along world X and Z. Sized
+ * far larger than the room footprint so the player capsule cannot walk
+ * off the edge and fall, even after passing through a dark-door gap or
+ * the visual wall mesh (walls are visual-only this slice). The room
+ * itself is still 10x10; the extra apron is invisible because the
+ * collider has no mesh.
+ */
+const FLOOR_COLLIDER_HALF_EXTENT = 50;
+
+/**
+ * Spawns the static floor collider so the dynamic player capsule has
+ * something to stand on. Without this the body falls under gravity the
+ * moment the simulation starts. Wall colliders are intentionally NOT
+ * created in this slice: with door-shaped gaps the player would escape
+ * through dark doors, and with solid walls the portal trigger volumes
+ * (centered on the inner wall face) would sit out of reach behind the
+ * collider. The wider floor means leaving the visual room footprint
+ * costs the player nothing worse than a confused walk in empty space.
+ */
+export function createRoomColliders(world: RAPIER.World): void {
+  const thickness = ROOM_WALL_THICKNESS;
+
+  const floorBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(
+      FLOOR_COLLIDER_HALF_EXTENT,
+      thickness / 2,
+      FLOOR_COLLIDER_HALF_EXTENT,
+    ).setTranslation(0, -thickness / 2, 0),
+    floorBody,
+  );
 }
