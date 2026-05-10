@@ -13,15 +13,7 @@ import {
   type ReplayMode,
   type ReplayState,
 } from "./replayController.ts";
-
-/**
- * Fixed-step duration in seconds used by the host's physics loop and by
- * the hybrid replay controller's running expected-position integral.
- * Both numbers must agree; the host's `fixedStepSeconds` in `src/app.ts`
- * is the source of truth and this constant mirrors it. If the host ever
- * tunes the step rate, update both call sites.
- */
-const FIXED_STEP_SECONDS = 1 / 60;
+import { FIXED_STEP_SECONDS } from "./simulationStep.ts";
 import type { InstanceId } from "./instanceId.ts";
 import {
   INITIAL_CONSCIOUSNESS,

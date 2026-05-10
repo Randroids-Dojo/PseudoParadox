@@ -19,6 +19,7 @@ import { createWallBumpDetector } from "./sim/wallBumpDetector.ts";
 import { INITIAL_INSTANCE_ID } from "./sim/instanceId.ts";
 import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
 import { despawnGhostsAtLitPortals } from "./sim/ghostDespawn.ts";
+import { FIXED_STEP_SECONDS } from "./sim/simulationStep.ts";
 import { wireTraversal, type ActiveLifetime } from "./sim/portalTraversal.ts";
 import { createTimelineRegistry } from "./sim/timelineRegistry.ts";
 import {
@@ -283,8 +284,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
   window.addEventListener("keydown", onResetKey as EventListener);
 
   // Track the most recent frame time so the physics integrator can use
-  // a stable fixed step independent of the browser's vsync jitter.
-  const fixedStepSeconds = 1 / 60;
+  // a stable fixed step independent of the browser's vsync jitter. The
+  // step rate is shared with the hybrid replay controller via
+  // `src/sim/simulationStep.ts` so the two cannot drift apart.
+  const fixedStepSeconds = FIXED_STEP_SECONDS;
   world.timestep = fixedStepSeconds;
 
   let lastFrameMs = performance.now();

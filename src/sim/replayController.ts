@@ -171,13 +171,23 @@ export function advanceReplay(
     }
   }
 
-  // 4. Drift check. Switch to path-follow if drifted and a pending
-  //    milestone exists to steer toward.
+  // 4. Drift check + sticky path-follow. The ghost stays in
+  //    `path-following` once engaged until the milestone arrival check
+  //    (step 3) advances the milestone index and re-anchors. Without
+  //    stickiness the controller would fall back to recorded input as
+  //    soon as drift dropped under the threshold mid-correction, which
+  //    can leave the ghost stranded short of the milestone it was
+  //    supposed to reach. The first switch to path-follow still
+  //    requires drift > threshold; subsequent ticks keep steering
+  //    toward the same pending milestone until it is reached.
   const drift = Math.hypot(
     currentBodyPos.x - baseExpected.x,
     currentBodyPos.z - baseExpected.z,
   );
-  if (pending !== null && drift > DRIFT_THRESHOLD) {
+  const shouldPathFollow =
+    pending !== null &&
+    (state.lastMode === "path-following" || drift > DRIFT_THRESHOLD);
+  if (shouldPathFollow && pending !== null) {
     const dx = pending.position.x - currentBodyPos.x;
     const dz = pending.position.z - currentBodyPos.z;
     const len = Math.hypot(dx, dz);

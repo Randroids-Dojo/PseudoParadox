@@ -193,6 +193,48 @@ describe("advanceReplay: skip rule (Q-025 default A)", () => {
   });
 });
 
+describe("advanceReplay: path-follow stickiness", () => {
+  it("stays in path-following on subsequent ticks even if drift drops back inside threshold", () => {
+    const recording = buildRecording([NEUTRAL, NEUTRAL]);
+    const initial = createReplayState({ x: 0, z: 0 });
+    const ms = [wallBump({ tick: 0, position: { x: 5, z: 0 } })];
+    // First tick: drift > threshold, switch to path-follow.
+    const r1 = advanceReplay(initial, recording, ms, { x: 1, z: 0 }, DT);
+    expect(r1.state.lastMode).toBe("path-following");
+    // Second tick: ghost has corrected back near expectedPos so drift drops.
+    // Without stickiness the controller would fall back to input replay
+    // before reaching the milestone.
+    const r2 = advanceReplay(
+      r1.state,
+      recording,
+      ms,
+      { x: r1.state.expectedPos.x, z: r1.state.expectedPos.z },
+      DT,
+    );
+    expect(r2.state.lastMode).toBe("path-following");
+  });
+
+  it("returns to replaying-input only after the milestone is reached", () => {
+    const recording = buildRecording([NEUTRAL, NEUTRAL, NEUTRAL]);
+    const initial = createReplayState({ x: 0, z: 0 });
+    const ms = [wallBump({ tick: 0, position: { x: 5, z: 0 } })];
+    // Drift triggers path-follow.
+    const r1 = advanceReplay(initial, recording, ms, { x: 1, z: 0 }, DT);
+    expect(r1.state.lastMode).toBe("path-following");
+    // Body within ARRIVAL_RADIUS of the milestone: arrival fires, mode
+    // returns to input replay.
+    const r2 = advanceReplay(
+      r1.state,
+      recording,
+      ms,
+      { x: 5 + ARRIVAL_RADIUS / 2, z: 0 },
+      DT,
+    );
+    expect(r2.state.lastMode).toBe("replaying-input");
+    expect(r2.state.milestoneIdx).toBe(1);
+  });
+});
+
 describe("advanceReplay: drift threshold semantics", () => {
   it("drift exactly at the threshold does not switch (strict greater-than)", () => {
     const recording = buildRecording([NEUTRAL]);
