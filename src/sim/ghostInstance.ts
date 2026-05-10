@@ -2,11 +2,26 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { PLAYER_CAPSULE } from "../scene/player.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
-import { replayAtTick, type InputRecording } from "./inputRecorder.ts";
+import { type InputRecording } from "./inputRecorder.ts";
 import {
   EMPTY_MILESTONE_RECORDING,
   type MilestoneRecording,
 } from "./milestone.ts";
+import {
+  advanceReplay,
+  createReplayState,
+  type ReplayMode,
+  type ReplayState,
+} from "./replayController.ts";
+
+/**
+ * Fixed-step duration in seconds used by the host's physics loop and by
+ * the hybrid replay controller's running expected-position integral.
+ * Both numbers must agree; the host's `fixedStepSeconds` in `src/app.ts`
+ * is the source of truth and this constant mirrors it. If the host ever
+ * tunes the step rate, update both call sites.
+ */
+const FIXED_STEP_SECONDS = 1 / 60;
 import type { InstanceId } from "./instanceId.ts";
 import {
   INITIAL_CONSCIOUSNESS,
@@ -103,6 +118,14 @@ export interface GhostInstance {
   readonly thoughtBubble: ThoughtBubble;
   /** Number of `advanceTick` calls applied so far. Starts at 0. */
   readonly tickIndex: number;
+  /**
+   * Most recent replay mode the hybrid controller used (F-013 PR3b).
+   * `'replaying-input'` while the ghost is following the recorded input
+   * within drift threshold; `'path-following'` while the ghost has
+   * drifted off course and is steering toward the next pending
+   * milestone. Reset to `'replaying-input'` on `reset()`.
+   */
+  readonly replayMode: ReplayMode;
   /**
    * Advance the ghost one fixed step: read the recording at the current tick,
    * write the resulting planar velocity onto the body (preserving y), and
@@ -209,17 +232,37 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
   // Mutable counter behind a getter on the returned object so the tick index
   // is observable but not externally writable. `advanceTick` is the only
   // mutation site, which makes ordering of replay calls verifiable.
-  let tickIndex = 0;
+  // F-013 PR3b: the controller tracks the milestone index, the running
+  // expected position, and the most recent replay mode (input vs path).
+  // `tickIndex` is mirrored from `replayState.tickIndex` so existing
+  // call sites that read `ghost.tickIndex` keep working.
+  let replayState: ReplayState = createReplayState(startPosition);
   // REQ-033 partial: ghosts open conscious. The host's punch resolver
   // mutates this through the returned object; `reset()` returns it to the
   // seed so each timeline visit is a fresh playback.
   let consciousness: Consciousness = INITIAL_CONSCIOUSNESS;
 
   const advanceTick = (): void => {
-    const velocity = replayAtTick(recording, tickIndex);
+    // F-013 PR3b: hybrid replay. The controller picks between writing
+    // the recorded velocity (default) or steering toward the next
+    // pending milestone (when drift exceeds DRIFT_THRESHOLD), and
+    // skips stale low-weight milestones. With an empty milestone log
+    // the controller naturally stays in input-replay mode forever
+    // (the path-follow branch is gated on a pending milestone).
+    const t = body.translation();
+    const result = advanceReplay(
+      replayState,
+      recording,
+      milestones.milestones,
+      { x: t.x, z: t.z },
+      FIXED_STEP_SECONDS,
+    );
     const current = body.linvel();
-    body.setLinvel({ x: velocity.x, y: current.y, z: velocity.z }, true);
-    tickIndex += 1;
+    body.setLinvel(
+      { x: result.velocity.x, y: current.y, z: result.velocity.z },
+      true,
+    );
+    replayState = result.state;
   };
 
   const syncMeshFromBody = (): void => {
@@ -228,7 +271,11 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
   };
 
   const reset = (): void => {
-    tickIndex = 0;
+    // F-013 PR3b: rewind the replay controller back to its tick-0
+    // starting state alongside the body and consciousness reset. The
+    // ghost's milestones index returns to 0 so every timeline visit
+    // re-walks the milestone sequence from the top.
+    replayState = createReplayState(startPosition);
     // REQ-033 partial: re-entering a timeline is a fresh playback (REQ-001 /
     // REQ-003). Reset consciousness to the seed so a ghost that was knocked
     // out during a prior visit is conscious again on return.
@@ -256,7 +303,10 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     milestones,
     thoughtBubble,
     get tickIndex(): number {
-      return tickIndex;
+      return replayState.tickIndex;
+    },
+    get replayMode(): ReplayMode {
+      return replayState.lastMode;
     },
     get consciousness(): Consciousness {
       return consciousness;
