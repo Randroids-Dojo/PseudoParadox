@@ -12,15 +12,16 @@ export interface SceneContext {
 /**
  * Base world-space rect that the orthographic camera must contain at zoom 1.
  *
- * The room is 10x10x4. Viewed from a 3/4 dollhouse vantage the projected
- * footprint is roughly the room's diagonal in width and the depth+height
- * combination in vertical extent. These constants pad that with a small
+ * The room is 10x10x4. Viewed from a high 3/4 dollhouse vantage (~60
+ * degrees of elevation) the floor projects to a diamond ~14 units wide
+ * and ~12 units tall, and the walls add another ~2 units of height
+ * above the back floor edge. These constants pad that with a small
  * margin so the room never sits flush against the canvas edges. The
- * frustum is then expanded along whichever axis the canvas is larger on,
- * so the room stays fully visible regardless of aspect ratio.
+ * frustum is then expanded along whichever axis the canvas is larger
+ * on, so the room stays fully visible regardless of aspect ratio.
  */
-const BASE_WORLD_WIDTH = 16;
-const BASE_WORLD_HEIGHT = 12;
+const BASE_WORLD_WIDTH = 18;
+const BASE_WORLD_HEIGHT = 18;
 
 /**
  * Computes the orthographic frustum that contains a worldW x worldH rect
@@ -79,12 +80,13 @@ export function buildScene(): SceneContext {
   // distance from the room (~25 units away in world space).
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
 
-  // Dollhouse 3/4 vantage. Camera sits high and back so we see the floor,
-  // three walls, and the door silhouettes. Distance does not affect the
-  // image scale under orthographic projection, only the frustum bounds do,
-  // so we choose a distance that keeps the room comfortably inside near/far.
-  camera.position.set(width * 1.4, height * 2.2, depth * 1.4);
-  camera.lookAt(0, height * 0.4, 0);
+  // High dollhouse vantage at roughly 60 degrees of elevation so the
+  // floor dominates the frame and the walls become short stubs at the
+  // floor edges. Looking at world origin (the floor center) keeps the
+  // room visually balanced; the small upward shift in the look target
+  // accounts for the wall mesh extending up from the floor.
+  camera.position.set(width * 0.8, height * 5.0, depth * 0.8);
+  camera.lookAt(0, height * 0.25, 0);
 
   const resizeCamera = (canvasWidth: number, canvasHeight: number): void => {
     const f = computeFrustum(

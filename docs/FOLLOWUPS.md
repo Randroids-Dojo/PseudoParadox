@@ -27,6 +27,14 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Nice To Have
 
+### F-011: Wall colliders compatible with portal trigger volumes
+
+- Priority: nice-to-have
+- Context: The static-floor slice (PR after #44) shipped a floor collider but no wall colliders. Two failed approaches were tried first. (1) Walls with door-shaped gaps: the gap let the player walk through dark doors and off the world. (2) Solid walls flush with the wall mesh: the existing portal trigger volumes (centered on the inner wall face, depth 0.6) sat out of reach behind the collider so lit-portal traversal would break (player capsule center cannot enter the trigger zone without colliding with the wall first). The clean answer needs either (a) solid walls plus deeper trigger volumes wired to fire from positions the capsule can reach, or (b) door blockers that mirror the timeline-driven lit state so dark doors are physically blocked while lit doors stay enterable. Either way the room becomes a real bounded play volume.
+- Blocker: not blocking; the wide invisible floor apron means the player cannot fall off, and the visual wall mesh still reads as a room boundary even though it does not collide.
+- Unblock condition: a slice that picks one of the two strategies above. Strategy (a) is simpler if `PORTAL_TRIGGER_DEPTH` can be widened safely; strategy (b) keeps the trigger geometry untouched but needs a per-tick lit-state read that updates the door blockers when the active timeline changes.
+- PR / Dot reference (when picked up):
+
 ### F-009: Touch buttons for pickup / throw / punch / hard-reset
 
 - Priority: nice-to-have
