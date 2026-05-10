@@ -390,6 +390,7 @@ describe("drag regression (REQ-035): carry survives lit-portal traversal", () =>
       startPosition: { x: 0, z: 0 },
       recorder: new InputRecorder(),
       milestones: new MilestoneRecorder(),
+      startTick: 0,
       originNormalized: 0,
       instanceId: 1,
     };
@@ -501,6 +502,7 @@ describe("drag regression (REQ-035): hard reset clears carry state mid-drag", ()
       startPosition: { x: 1, z: 2 },
       recorder: new InputRecorder(),
       milestones: new MilestoneRecorder(),
+      startTick: 0,
       originNormalized: 6 / 24,
       instanceId: 4,
     };

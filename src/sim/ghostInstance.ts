@@ -89,6 +89,28 @@ export interface GhostInstance {
    */
   readonly milestones: MilestoneRecording;
   /**
+   * Absolute tick within the ghost's home timeline at which the ghost's
+   * recording starts (F-014 Reading C). On arrival at this timeline at
+   * tick `T`, the ghost's playback state is at relative tick `T - startTick`.
+   * A ghost with `startTick = 0` records from the very start of its
+   * timeline (matches the pre-F-014 default and the Act 1 cinematic
+   * actors filed at boot before any player visit). Frozen at creation.
+   */
+  readonly startTick: number;
+  /**
+   * Fast-forward the ghost to absolute tick `absoluteTick` within its
+   * home timeline (F-014 Reading C). Virtually replays the recording
+   * from tick 0 to `relativeTick = absoluteTick - startTick`, advancing
+   * the controller's milestone state and snapping the Rapier body to
+   * the resulting position. No-op when `absoluteTick <= startTick`
+   * (ghost has not started yet from this arrival's POV). The caller
+   * (typically the registry's `setActiveTimeline` path) is responsible
+   * for despawning ghosts whose door_traversal milestone fires before
+   * `absoluteTick` BEFORE invoking this method; this method itself
+   * does not consult lit-state.
+   */
+  fastForwardTo: (absoluteTick: number) => void;
+  /**
    * Two-state consciousness flag (REQ-033 partial). A ghost opens at
    * `'conscious'` regardless of how its recording resolved in the source
    * timeline; the per-tick punch resolver in the host can flip this to
@@ -149,6 +171,15 @@ export interface CreateGhostOptions {
    */
   milestones?: MilestoneRecording;
   /**
+   * Absolute start tick within the ghost's home timeline (F-014).
+   * Defaults to `0` so existing callers (Act 1 cinematic, ghost test
+   * fixtures, pre-F-014 traversal paths) file ghosts at the start of
+   * the destination timeline. The traversal handler in `portalTraversal.ts`
+   * passes the active timeline's tick clock at the moment of filing so
+   * a ghost's playback state aligns with the timeline it was recorded in.
+   */
+  startTick?: number;
+  /**
    * Normalized time-of-day in [0, 1] used to tint the ghost's mesh via
    * `applyInstanceTint`. Typically the `TimeOfDay.normalized()` reading at
    * the moment the ghost was spawned (which represents the recording's
@@ -181,6 +212,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
   const {
     recording,
     milestones = EMPTY_MILESTONE_RECORDING,
+    startTick = 0,
     originNormalized,
     instanceId,
     scene,
@@ -262,6 +294,47 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     mesh.position.set(t.x, t.y, t.z);
   };
 
+  const fastForwardTo = (absoluteTick: number): void => {
+    // F-014 Reading C: virtually replay through the controller from
+    // tick 0 to `relativeTick`, integrating velocity * dt into a
+    // virtual position. The Rapier body is snapped to the resulting
+    // position at the end; no physics steps run during the fast-forward
+    // so the path matches the milestone-aware unobstructed trajectory.
+    // A negative relativeTick (caller arriving before this ghost's
+    // startTick) is a no-op because the ghost has not started yet from
+    // this arrival's POV.
+    const relativeTick = absoluteTick - startTick;
+    if (relativeTick <= 0) {
+      replayState = createReplayState(startPosition);
+      body.setTranslation(
+        { x: startPosition.x, y: restY, z: startPosition.z },
+        true,
+      );
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      syncMeshFromBody();
+      return;
+    }
+    let virtualX = startPosition.x;
+    let virtualZ = startPosition.z;
+    let state = createReplayState(startPosition);
+    for (let i = 0; i < relativeTick; i += 1) {
+      const result = advanceReplay(
+        state,
+        recording,
+        milestones.milestones,
+        { x: virtualX, z: virtualZ },
+        FIXED_STEP_SECONDS,
+      );
+      virtualX += result.velocity.x * FIXED_STEP_SECONDS;
+      virtualZ += result.velocity.z * FIXED_STEP_SECONDS;
+      state = result.state;
+    }
+    replayState = state;
+    body.setTranslation({ x: virtualX, y: restY, z: virtualZ }, true);
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    syncMeshFromBody();
+  };
+
   const reset = (): void => {
     // F-013 PR3b: rewind the replay controller back to its tick-0
     // starting state alongside the body and consciousness reset. The
@@ -293,6 +366,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     instanceId,
     recording,
     milestones,
+    startTick,
     thoughtBubble,
     get tickIndex(): number {
       return replayState.tickIndex;
@@ -309,5 +383,6 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     advanceTick,
     syncMeshFromBody,
     reset,
+    fastForwardTo,
   };
 }

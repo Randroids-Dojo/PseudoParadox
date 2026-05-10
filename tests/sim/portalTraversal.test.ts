@@ -126,6 +126,7 @@ const buildHarness = (): Harness => {
     startPosition: { x: 0, z: 0 },
     recorder: new InputRecorder(),
     milestones: new MilestoneRecorder(),
+    startTick: 0,
     originNormalized: 0,
     instanceId: 1,
   };

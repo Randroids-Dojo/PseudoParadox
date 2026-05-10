@@ -103,13 +103,45 @@ export interface TimelineRegistry {
    */
   add: (timeline: TimelineId, ghost: GhostInstance) => void;
   /**
-   * Switch the active timeline. Hides every ghost in the leaving bucket
-   * (their bodies are also stilled so they do not coast under residual
-   * velocity) and resets every ghost in the entering bucket back to its
-   * tick-0 spawn pose and makes it visible. Idempotent on a no-op switch
-   * (next === current).
+   * Switch the active timeline (F-014 Reading C). Hides every ghost in
+   * the leaving bucket (their bodies are also stilled so they do not
+   * coast under residual velocity); sets the entering bucket's tick
+   * clock to `arrivalTick`; for each ghost in the entering bucket:
+   * (a) despawns the ghost (via `disposeOptions.scene` and `.world`,
+   * if supplied) when its recording contained a `door_traversal`
+   * milestone whose absolute tick is at or before `arrivalTick` (the
+   * ghost already walked through its door before the player arrived);
+   * (b) otherwise fast-forwards the ghost to `arrivalTick` so its body
+   * sits at the position the recording would produce at the moment of
+   * arrival. `arrivalTick` defaults to `0` so existing callers that
+   * pre-date F-014 continue to land at the start of the destination
+   * timeline. `disposeOptions` is optional: when omitted, stale ghosts
+   * are kept in the bucket but hidden (the host's F-012 lit-portal
+   * despawn pass cleans them up on the next tick if they overlap a
+   * trigger). Tests that do not exercise stale-door despawn can omit
+   * it. Idempotent on a no-op switch (next === current and
+   * arrivalTick === current tick clock).
    */
-  setActiveTimeline: (next: TimelineId) => void;
+  setActiveTimeline: (
+    next: TimelineId,
+    arrivalTick?: number,
+    disposeOptions?: { scene: THREE.Scene; world: RegistryWorldHandle },
+  ) => void;
+  /**
+   * Current tick clock value for a timeline (F-014). Starts at `0` for
+   * any timeline that has not yet been visited; updated on
+   * `setActiveTimeline` and `advanceActiveTick`. Returns `0` for an
+   * unvisited timeline.
+   */
+  tickFor: (timeline: TimelineId) => number;
+  /**
+   * Advance the active timeline's tick clock by one. The host's
+   * fixed-step loop calls this once per simulation step alongside
+   * `world.step()` so the active timeline's clock tracks elapsed
+   * playback. No-op semantics on unvisited timelines (which cannot be
+   * active by construction).
+   */
+  advanceActiveTick: () => void;
   /**
    * Ghosts that should tick and render this frame. Equivalent to
    * `ghostsFor(activeTimeline)` but exposed as a separate method so a
@@ -176,6 +208,12 @@ export function createTimelineRegistry(
   }
 
   const buckets = new Map<TimelineId, TimelineBucket>();
+  // F-014: per-timeline absolute tick clock. A timeline that has not
+  // been visited has no entry (treated as `0`). On `setActiveTimeline`
+  // the entering timeline's clock is set to `arrivalTick`. During play
+  // the host calls `advanceActiveTick` once per fixed step to push the
+  // active timeline's clock forward.
+  const tickClocks = new Map<TimelineId, number>();
   let activeTimeline: TimelineId = initialTimeline;
 
   const bucketFor = (timeline: TimelineId): TimelineBucket => {
@@ -205,6 +243,27 @@ export function createTimelineRegistry(
     ghost.mesh.visible = true;
   };
 
+  /**
+   * F-014: does the ghost's recording contain a `door_traversal`
+   * milestone whose absolute tick is at or before `arrivalTick`? If so
+   * the ghost already left before the player arrived and should
+   * despawn. Returns false for ghosts whose recording has no
+   * door_traversal milestone (they stay alive at end-of-recording
+   * position once their relative tick exceeds the recording length).
+   */
+  const ghostLeftBefore = (
+    ghost: GhostInstance,
+    arrivalTick: number,
+  ): boolean => {
+    for (const m of ghost.milestones.milestones) {
+      if (m.kind === "door_traversal") {
+        const abs = ghost.startTick + m.tick;
+        if (abs <= arrivalTick) return true;
+      }
+    }
+    return false;
+  };
+
   const add: TimelineRegistry["add"] = (timeline, ghost) => {
     const bucket = bucketFor(timeline);
     bucket.ghosts.push(ghost);
@@ -216,17 +275,77 @@ export function createTimelineRegistry(
     }
   };
 
-  const setActiveTimeline: TimelineRegistry["setActiveTimeline"] = (next) => {
-    if (next === activeTimeline) return;
+  const setActiveTimeline: TimelineRegistry["setActiveTimeline"] = (
+    next,
+    arrivalTick,
+    disposeOptions,
+  ) => {
+    const currentTick = tickClocks.get(activeTimeline) ?? 0;
+    const targetTick = arrivalTick ?? 0;
+    if (next === activeTimeline && targetTick === currentTick) return;
     const leaving = bucketFor(activeTimeline);
     for (const ghost of leaving.ghosts) {
       hideGhost(ghost);
     }
+    // F-014: stamp the entering timeline's tick clock to the arrival
+    // tick. If the player traversed to (timeline, tick) the destination
+    // clock reads `tick`; subsequent `advanceActiveTick` calls push it
+    // forward during play.
+    tickClocks.set(next, targetTick);
     const entering = bucketFor(next);
-    for (const ghost of entering.ghosts) {
-      showAndResetGhost(ghost);
+    if (targetTick === 0) {
+      // Backwards-compatible path: arrivalTick=0 means start-of-timeline,
+      // so every ghost is at its tick-0 spawn pose. Matches the
+      // pre-F-014 reset semantics. No despawn check needed (a
+      // door_traversal at tick 0 with startTick 0 would only fire
+      // before arrival if both are 0; that recording would have length
+      // 0 which the traversal handler refuses to file).
+      for (const ghost of entering.ghosts) {
+        showAndResetGhost(ghost);
+      }
+    } else {
+      // F-014 mid-timeline arrival: each ghost either despawns (its
+      // door_traversal already fired before arrivalTick) or
+      // fast-forwards to its position-at-arrivalTick.
+      const survivors: GhostInstance[] = [];
+      for (const ghost of entering.ghosts) {
+        if (ghostLeftBefore(ghost, targetTick)) {
+          // The ghost's door_traversal milestone fires at or before
+          // arrival, so it has already left this timeline. Never
+          // fast-forward or re-show it. With disposeOptions present
+          // we tear down its mesh / body / bubble immediately and
+          // drop it from the bucket. Without disposeOptions (legacy
+          // callers that did not pass scene + world) we hide the
+          // mesh but keep the ghost in the bucket so a later
+          // `clearAllGhosts(scene, world)` can still find it and
+          // tear down its body and mesh, avoiding a Rapier-body
+          // leak.
+          if (disposeOptions) {
+            disposeOptions.scene.remove(ghost.mesh);
+            disposeOptions.world.removeRigidBody(ghost.body);
+            ghost.thoughtBubble.dispose();
+            continue;
+          }
+          ghost.mesh.visible = false;
+          survivors.push(ghost);
+          continue;
+        }
+        ghost.fastForwardTo(targetTick);
+        ghost.mesh.visible = true;
+        survivors.push(ghost);
+      }
+      entering.ghosts.length = 0;
+      entering.ghosts.push(...survivors);
     }
     activeTimeline = next;
+  };
+
+  const tickFor: TimelineRegistry["tickFor"] = (timeline) =>
+    tickClocks.get(timeline) ?? 0;
+
+  const advanceActiveTick: TimelineRegistry["advanceActiveTick"] = () => {
+    const current = tickClocks.get(activeTimeline) ?? 0;
+    tickClocks.set(activeTimeline, current + 1);
   };
 
   const ghostsFor: TimelineRegistry["ghostsFor"] = (timeline) => {
@@ -272,6 +391,10 @@ export function createTimelineRegistry(
       }
       bucket.ghosts.length = 0;
     }
+    // F-014: clear all per-timeline tick clocks alongside the ghost
+    // wipe so a fresh game session does not inherit the previous run's
+    // clock state.
+    tickClocks.clear();
     activeTimeline = nextActiveTimeline;
   };
 
@@ -302,5 +425,7 @@ export function createTimelineRegistry(
     activeGhosts,
     clearAllGhosts,
     removeGhost,
+    tickFor,
+    advanceActiveTick,
   };
 }

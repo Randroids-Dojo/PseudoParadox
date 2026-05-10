@@ -216,6 +216,10 @@ export function hardReset(options: HardResetOptions): void {
   lifetime.startPosition = { x: ROOM_CENTER_X, z: ROOM_CENTER_Z };
   lifetime.originNormalized = ACT_ONE_NORMALIZED;
   lifetime.instanceId = INITIAL_INSTANCE_ID;
+  // F-014: hard reset returns the lifetime's start tick to 0 so the
+  // next spawned ghost files at the Act 1 anchor. `clearAllGhosts`
+  // wipes every timeline's tick clock so the play session opens fresh.
+  lifetime.startTick = 0;
 
   // 5. Snap the time-of-day clock back to the Act 1 anchor so the room's
   // background tint reads as 5:00 amber on the next render frame.
