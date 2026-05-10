@@ -219,7 +219,7 @@ describe("setActiveTimeline fast-forward and despawn (F-014)", () => {
     expect(scene.children).not.toContain(ghost.mesh);
   });
 
-  it("ghostLeftBefore without disposeOptions hides the ghost (no fast-forward, no survivors)", () => {
+  it("ghostLeftBefore without disposeOptions hides the ghost but keeps it tracked for later teardown", () => {
     const scene = new THREE.Scene();
     const world = buildWorld();
     const r = createTimelineRegistry({ initialTimeline: 0 });
@@ -237,11 +237,16 @@ describe("setActiveTimeline fast-forward and despawn (F-014)", () => {
     });
     r.add(5, ghost);
     // Arrival at 60 (door_traversal absolute tick = 50, in the past)
-    // without disposeOptions: the ghost must be dropped from the
-    // bucket and hidden, NOT fast-forwarded back into view.
+    // without disposeOptions: the ghost must be hidden but kept in
+    // the bucket so a future clearAllGhosts can still tear down its
+    // body / mesh. Dropping the ghost from the bucket here would
+    // leak the Rapier body and the THREE mesh.
     r.setActiveTimeline(5, 60);
-    expect(r.ghostsFor(5)).toHaveLength(0);
+    expect(r.ghostsFor(5)).toHaveLength(1);
     expect(ghost.mesh.visible).toBe(false);
+    // clearAllGhosts finds and disposes the hidden ghost.
+    r.clearAllGhosts(scene, world, 0);
+    expect(r.ghostsFor(5)).toHaveLength(0);
   });
 
   it("clearAllGhosts wipes every timeline's tick clock", () => {
