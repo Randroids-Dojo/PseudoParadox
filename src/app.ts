@@ -13,6 +13,7 @@ import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
 import { INITIAL_INSTANCE_ID } from "./sim/instanceId.ts";
 import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
+import { despawnGhostsAtLitPortals } from "./sim/ghostDespawn.ts";
 import { wireTraversal, type ActiveLifetime } from "./sim/portalTraversal.ts";
 import { createTimelineRegistry } from "./sim/timelineRegistry.ts";
 import {
@@ -582,6 +583,19 @@ export async function startApp(container: HTMLElement): Promise<void> {
         return portalAuthoredLit(portal);
       };
       inFlightRegistry.step(bodyLitGate);
+      // F-012: despawn any ghost in the active timeline whose body has
+      // crossed a lit portal trigger this tick. Mirrors what the active
+      // player did on the original recording (walked through the door
+      // and disappeared from this timeline). The list is snapshotted
+      // because `removeGhost` mutates the underlying bucket.
+      despawnGhostsAtLitPortals(
+        registry.activeGhosts().slice(),
+        portalTriggers.triggers,
+        bodyLitGate,
+        registry,
+        sceneCtx.scene,
+        world,
+      );
       physicsAccumulatorMs -= fixedStepMs;
       steps += 1;
     }

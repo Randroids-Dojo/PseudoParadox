@@ -132,6 +132,21 @@ export interface TimelineRegistry {
     world: RegistryWorldHandle,
     nextActiveTimeline: TimelineId,
   ) => void;
+  /**
+   * Despawn a single ghost from whichever bucket it sits in: remove its
+   * mesh from `scene`, dispose its thought bubble, remove its rigid body
+   * (and colliders) from `world`, and drop it from its bucket. Returns
+   * `true` if the ghost was found and removed, `false` if it was not
+   * registered (in which case nothing was disposed). Used by F-012:
+   * when a ghost's recorded path crosses a lit portal trigger, the host
+   * despawns the ghost so its body does not stand "stuck at the door"
+   * after the recording ends.
+   */
+  removeGhost: (
+    ghost: GhostInstance,
+    scene: THREE.Scene,
+    world: RegistryWorldHandle,
+  ) => boolean;
 }
 
 export interface CreateTimelineRegistryOptions {
@@ -260,6 +275,23 @@ export function createTimelineRegistry(
     activeTimeline = nextActiveTimeline;
   };
 
+  const removeGhost: TimelineRegistry["removeGhost"] = (
+    ghost,
+    scene,
+    world,
+  ) => {
+    for (const bucket of buckets.values()) {
+      const idx = bucket.ghosts.indexOf(ghost);
+      if (idx === -1) continue;
+      bucket.ghosts.splice(idx, 1);
+      scene.remove(ghost.mesh);
+      world.removeRigidBody(ghost.body);
+      ghost.thoughtBubble.dispose();
+      return true;
+    }
+    return false;
+  };
+
   return {
     get activeTimeline(): TimelineId {
       return activeTimeline;
@@ -269,5 +301,6 @@ export function createTimelineRegistry(
     setActiveTimeline,
     activeGhosts,
     clearAllGhosts,
+    removeGhost,
   };
 }

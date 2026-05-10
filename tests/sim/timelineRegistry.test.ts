@@ -246,3 +246,63 @@ describe("createTimelineRegistry: end-to-end Act 2 first-loop shape", () => {
     expect(active[0]).toBe(ghost);
   });
 });
+
+describe("createTimelineRegistry: removeGhost (F-012)", () => {
+  it("removes a ghost from its bucket and disposes its scene/world resources", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+
+    registry.add(5, ghost);
+    expect(registry.activeGhosts()).toHaveLength(1);
+    expect(scene.children).toContain(ghost.mesh);
+
+    const removed = registry.removeGhost(ghost, scene, world);
+    expect(removed).toBe(true);
+    expect(registry.activeGhosts()).toHaveLength(0);
+    expect(registry.ghostsFor(5)).toHaveLength(0);
+    expect(scene.children).not.toContain(ghost.mesh);
+  });
+
+  it("returns false when the ghost is not in any bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const stranger = spawnTestGhost(scene, world, { x: 0, z: 0 });
+
+    const removed = registry.removeGhost(stranger, scene, world);
+    expect(removed).toBe(false);
+  });
+
+  it("removes from non-active buckets too", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+
+    registry.add(6, ghost);
+    expect(registry.ghostsFor(6)).toHaveLength(1);
+
+    const removed = registry.removeGhost(ghost, scene, world);
+    expect(removed).toBe(true);
+    expect(registry.ghostsFor(6)).toHaveLength(0);
+  });
+
+  it("subsequent activeGhosts excludes the removed ghost on the same tick", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const a = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    const b = spawnTestGhost(scene, world, { x: 1, z: 1 });
+
+    registry.add(5, a);
+    registry.add(5, b);
+    expect(registry.activeGhosts()).toHaveLength(2);
+
+    registry.removeGhost(a, scene, world);
+    const remaining = registry.activeGhosts();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]).toBe(b);
+  });
+});
