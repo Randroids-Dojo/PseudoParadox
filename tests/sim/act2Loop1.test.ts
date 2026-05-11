@@ -202,10 +202,14 @@ describe("REQ-016 Act 2 first loop integration", () => {
     // matter to the predicate.
     let tick = 0;
     detector.step(0, 0, tick++); // outside any trigger
-    for (let i = 0; i < 5; i++) {
+    // F-015: 40-frame east-walk (was 5) so the recorded
+    // door_traversal milestone fires at tick 40, past the West
+    // portal's destinationTick = 30. With the old 5-frame
+    // recording, ghost-A would be despawned on loop-back to 5:00.
+    for (let i = 0; i < 40; i++) {
       lifetime.recorder.record(inputState({ right: true }), 5 / 24);
     }
-    expect(lifetime.recorder.length).toBe(5);
+    expect(lifetime.recorder.length).toBe(40);
     const eastRecorderBeforeTraversal = lifetime.recorder;
 
     // Cross the East trigger at 5:00. East is lit at 5:00, so traversal
@@ -218,7 +222,7 @@ describe("REQ-016 Act 2 first loop integration", () => {
     const fiveBucketAfterEast = registry.ghostsFor(5);
     expect(fiveBucketAfterEast).toHaveLength(1);
     const ghostA = fiveBucketAfterEast[0];
-    expect(ghostA.recording.length).toBe(5);
+    expect(ghostA.recording.length).toBe(40);
     expect(ghostA.instanceId).toBe(1);
     // Hidden because timeline 5 is no longer active.
     expect(ghostA.mesh.visible).toBe(false);
@@ -257,10 +261,12 @@ describe("REQ-016 Act 2 first loop integration", () => {
     expect(lifetime.recorder.length).toBe(0);
     expect(lifetime.originNormalized).toBeCloseTo(5 / 24, 6);
 
-    // Ghost-A (recorded at 5:00) is now active again: visible, reset to
-    // tick 0, and present in `activeGhosts()`.
+    // Ghost-A (recorded at 5:00) is now active again: visible,
+    // fast-forwarded to West's `destinationTick = 30` (F-014), and
+    // present in `activeGhosts()`. The reset-to-tick-0 contract
+    // from pre-F-014 no longer applies.
     expect(ghostA.mesh.visible).toBe(true);
-    expect(ghostA.tickIndex).toBe(0);
+    expect(ghostA.tickIndex).toBe(30);
     expect(registry.activeGhosts()).toContain(ghostA);
 
     // Phase 3: drive ghost-A's playback forward to exhaustion. Each
@@ -272,7 +278,13 @@ describe("REQ-016 Act 2 first loop integration", () => {
     for (let i = 0; i < ghostA.recording.length; i++) {
       ghostA.advanceTick();
     }
-    expect(ghostA.tickIndex).toBe(ghostA.recording.length);
+    // F-014: ghost-A starts at tickIndex=30 after the loop-back
+    // (West portal `destinationTick = 30`), so after `recording.length`
+    // advanceTick calls it ends at tickIndex=70 (>= recording.length).
+    // The at-rest predicate cares about >= not ==.
+    expect(ghostA.tickIndex).toBeGreaterThanOrEqual(
+      ghostA.recording.length,
+    );
 
     // Phase 4: build a snapshot from the live state and feed it to the
     // observer. The observer should walk the chain from `not-started`
@@ -324,11 +336,14 @@ describe("REQ-016 Act 2 first loop integration", () => {
     }
 
     detector.step(HALF_WIDTH - 0.4, 0, tick++);
-    detector.step(0, 0, tick++);
-    for (let i = 0; i < 2; i++) {
-      lifetime.recorder.record(inputState({ left: true }), 6 / 24);
-    }
-    detector.step(-(HALF_WIDTH - 0.4), 0, tick++);
+    // F-015: skip the West traversal and re-enter 5:00 directly with
+    // arrivalTick=0 so ghost-A is reset to tick 0. The byte-identical
+    // replay test is about determinism, not traversal mechanics; the
+    // West portal's F-014 fast-forward (destinationTick=30) would
+    // start the replay at tick 30 which the determinism loop below
+    // is not built to handle. The full traversal path is exercised
+    // by the first integration test in this file.
+    registry.setActiveTimeline(5, 0);
 
     expect(registry.activeTimeline).toBe(5);
     const ghostA = registry.ghostsFor(5)[0];

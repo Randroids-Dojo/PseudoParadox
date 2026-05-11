@@ -245,7 +245,7 @@ const runLoopOne = (
   const { lifetime, registry } = harness;
   let tick = startTick;
   detector.step(0, 0, tick++);
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 40; i++) {
     lifetime.recorder.record(inputState({ right: true }), 5 / 24);
   }
   detector.step(HALF_WIDTH - 0.4, 0, tick++);
@@ -287,7 +287,12 @@ describe("REQ-017 Act 2 second loop integration", () => {
     expect(registry.activeTimeline).toBe(5);
     expect(registry.ghostsFor(5)).toHaveLength(1);
     expect(registry.ghostsFor(6)).toHaveLength(1);
-    expect(ghostA.tickIndex).toBe(ghostA.recording.length);
+    // F-014: ghost-A starts at tickIndex = West.destinationTick (30)
+    // after loop-back, so after `recording.length` advanceTick calls
+    // it ends at tickIndex = 70. The at-rest predicate cares about >=.
+    expect(ghostA.tickIndex).toBeGreaterThanOrEqual(
+      ghostA.recording.length,
+    );
     expect(isAct2Loop1(buildActStateSnapshot(registry, player))).toBe(true);
 
     // Open the observer here and feed the loop-1 snapshot so the

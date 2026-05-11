@@ -262,7 +262,7 @@ const runLoopOne = (
   const { lifetime, registry } = harness;
   let tick = startTick;
   detector.step(0, 0, tick++);
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 40; i++) {
     lifetime.recorder.record(inputState({ right: true }), 5 / 24);
   }
   detector.step(HALF_WIDTH - 0.4, 0, tick++);
@@ -403,7 +403,7 @@ const runChaseToActive5 = (
 
   let tick = startTick;
   detector.step(0, 0, tick++);
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 40; i++) {
     lifetime.recorder.record(inputState({ right: true }), 5 / 24);
   }
   detector.step(HALF_WIDTH - 0.4, 0, tick++);

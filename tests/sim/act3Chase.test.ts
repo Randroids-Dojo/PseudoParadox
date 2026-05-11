@@ -253,7 +253,7 @@ const runLoopOne = (
   const { lifetime, registry } = harness;
   let tick = startTick;
   detector.step(0, 0, tick++);
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 40; i++) {
     lifetime.recorder.record(inputState({ right: true }), 5 / 24);
   }
   detector.step(HALF_WIDTH - 0.4, 0, tick++);
@@ -448,7 +448,7 @@ describe("REQ-019 Act 3 chase integration", () => {
     // ---------------------------------------------------------------
     let tick = tickAfterLoop2 + 100;
     detector.step(0, 0, tick++);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 40; i++) {
       lifetime.recorder.record(inputState({ right: true }), 5 / 24);
     }
     detector.step(HALF_WIDTH - 0.4, 0, tick++);

@@ -199,25 +199,20 @@ export const ACT_ONE_PORTAL_SPECS: readonly ActOnePortalSpec[] = Object.freeze([
     isLit: false,
     destinationTick: 0,
   }),
-  // West at 6:00 sends back to 5:00. The design intent (per the
-  // user's load-bearing loop-back-bump invariant) is to land the
-  // player mid-recording of their past-self ghost so they can see
-  // the past-self repeat the bump. A non-zero value (e.g. 30 ticks
-  // = 0.5 s) achieves this in real play where east-walk recordings
-  // are ~80 frames. In this slice the scripted Acts 2-3 integration
-  // tests use 4-5 frame east-walks (artificial scaffolding) and
-  // their `door_traversal` milestones fire at tick 5, so any
-  // non-zero destinationTick > 5 despawns those ghosts on
-  // loop-back (the Reading-C semantic from Q-026). Migrating the
-  // 13 scripted tests to 30+ frame recordings is the unblock; that
-  // is filed as a follow-up. PR3d's smoke test exercises the
-  // mechanism against a separately-configured portal so the
-  // production default can stay at 0 until the migration ships.
+  // West at 6:00 sends back to 5:00 at tick 30 so the player lands
+  // mid-recording of their past-self ghost (the load-bearing
+  // loop-back-bump invariant). 30 ticks = 0.5 s at 60 Hz: enough
+  // time for the past-self to leave spawn and start walking, so
+  // the returning player can see and bump the ghost mid-walk. The
+  // scripted Acts 2-3 integration tests were migrated under F-015
+  // to 40-frame east-walk recordings so their `door_traversal`
+  // milestones fire at tick 40 > arrival 30 (past-self survives
+  // the loop-back per Reading C / Q-026).
   Object.freeze({
     direction: "west",
     destinationHours: 5,
     isLit: false,
-    destinationTick: 0,
+    destinationTick: 30,
   }),
 ]);
 
