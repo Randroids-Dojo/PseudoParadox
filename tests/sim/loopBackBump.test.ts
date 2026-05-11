@@ -186,6 +186,48 @@ describe("F-014 loop-back-bump invariant (PR3d smoke)", () => {
     expect(scene.children).not.toContain(pastSelf.mesh);
   });
 
+  it("PastSelf with door_traversal EXACTLY AT arrivalTick is despawned (at-or-before boundary)", () => {
+    // Pins the equality boundary called out by Reading C: "at or
+    // before arrival" includes the exact-match case. Guards against
+    // a future `<` vs `<=` regression in `ghostLeftBefore`.
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+
+    const recorder = new InputRecorder();
+    for (let i = 0; i < 30; i += 1) {
+      recorder.record({ ...NEUTRAL, right: true }, 5 / 24);
+    }
+    const milestones = new MilestoneRecorder();
+    milestones.record({
+      kind: "door_traversal",
+      tick: 30,
+      position: { x: 4.4, z: 0 },
+      weight: DOOR_TRAVERSAL_WEIGHT,
+      door: "east",
+    });
+
+    const pastSelf = createGhost({
+      recording: recorder.snapshot(),
+      milestones: milestones.snapshot(),
+      originNormalized: 5 / 24,
+      instanceId: 1,
+      startTick: 0,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    registry.add(5, pastSelf);
+
+    // arrivalTick === door_traversal.tick. Absolute milestone tick
+    // 0 + 30 = 30. The despawn predicate fires on `<=` so 30 <= 30
+    // removes PastSelf.
+    registry.setActiveTimeline(6, 0);
+    registry.setActiveTimeline(5, 30, { scene, world });
+    expect(registry.ghostsFor(5)).toHaveLength(0);
+    expect(scene.children).not.toContain(pastSelf.mesh);
+  });
+
   it("PastSelf with startTick != 0 is correctly fast-forwarded by absolute arrival", () => {
     // Models the second loop iteration: a ghost filed in the middle
     // of a timeline (startTick > 0). Reading C: alive interval is
