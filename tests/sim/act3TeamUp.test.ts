@@ -41,6 +41,7 @@ import {
 } from "../../src/sim/applyCarry.ts";
 import { resolveCarryToggle, type Carryable } from "../../src/sim/carryState.ts";
 import { nextInstanceId } from "../../src/sim/instanceId.ts";
+import { runLoopOne } from "./_helpers/actLoops.ts";
 
 /**
  * REQ-020 Act 3 team-up beat integration test
@@ -236,39 +237,6 @@ const buildActStateSnapshot = (
   };
 };
 
-/**
- * Drive the Act 2 first loop sequence to set the world up for loop 2.
- * Mirror of the helper in `act3Chase.test.ts` and `act3Setup.test.ts`;
- * lifted again because slice-discipline asks the third repetition before
- * extracting. This is now the third use; a follow-up extraction slice
- * will fold the three into a shared `tests/sim/_helpers/act2Loops.ts`
- * module rather than smuggling the extraction in here (per
- * slice-discipline: refactors are their own slice, not "while I'm
- * here" cleanups).
- */
-const runLoopOne = (
-  harness: Harness,
-  detector: ReturnType<typeof createPortalTriggerSet>,
-  startTick: number,
-): { tick: number; ghostA: GhostInstance } => {
-  const { lifetime, registry } = harness;
-  let tick = startTick;
-  detector.step(0, 0, tick++);
-  for (let i = 0; i < 40; i++) {
-    lifetime.recorder.record(inputState({ right: true }), 5 / 24);
-  }
-  detector.step(HALF_WIDTH - 0.4, 0, tick++);
-  detector.step(0, 0, tick++);
-  for (let i = 0; i < 4; i++) {
-    lifetime.recorder.record(inputState({ left: true }), 6 / 24);
-  }
-  detector.step(-(HALF_WIDTH - 0.4), 0, tick++);
-  const ghostA = registry.ghostsFor(5)[0];
-  for (let i = 0; i < ghostA.recording.length; i++) {
-    ghostA.advanceTick();
-  }
-  return { tick, ghostA };
-};
 
 /**
  * Drive the Act 2 second loop sequence on top of a loop-1 setup. Mirror

@@ -35,6 +35,7 @@ import {
   applyCarryPickup,
 } from "../../src/sim/applyCarry.ts";
 import { resolveCarryToggle, type Carryable } from "../../src/sim/carryState.ts";
+import { runLoopOne } from "./_helpers/actLoops.ts";
 
 /**
  * REQ-017 Act 2 second loop integration test
@@ -228,42 +229,6 @@ const buildActStateSnapshot = (
   };
 };
 
-/**
- * Drive the Act 2 first loop sequence to set the world up for loop 2.
- * Reuses the same scripted-input pattern as `act2Loop1.test.ts`. After
- * this call returns: registry has ghost-A in bucket 5 (the You-1
- * East-bound recording), ghost-B in bucket 6 (the You-1 West-bound
- * recording), active timeline is 5, and ghost-A has been replayed to
- * exhaustion (`tickIndex >= recordingLength`). The active player sits
- * back at the room center after the West-traversal teleport.
- */
-const runLoopOne = (
-  harness: Harness,
-  detector: ReturnType<typeof createPortalTriggerSet>,
-  startTick: number,
-): { tick: number; ghostA: GhostInstance } => {
-  const { lifetime, registry } = harness;
-  let tick = startTick;
-  detector.step(0, 0, tick++);
-  for (let i = 0; i < 40; i++) {
-    lifetime.recorder.record(inputState({ right: true }), 5 / 24);
-  }
-  detector.step(HALF_WIDTH - 0.4, 0, tick++);
-  // Ghost-A files into bucket 5; active timeline is now 6.
-  detector.step(0, 0, tick++);
-  for (let i = 0; i < 4; i++) {
-    lifetime.recorder.record(inputState({ left: true }), 6 / 24);
-  }
-  detector.step(-(HALF_WIDTH - 0.4), 0, tick++);
-  // Ghost-B files into bucket 6; active timeline switches back to 5.
-  // Ghost-A is reset (tick 0, visible) on entering-bucket reset.
-  const ghostA = registry.ghostsFor(5)[0];
-  // Drive ghost-A's playback to exhaustion so allGhostsAtRest is true.
-  for (let i = 0; i < ghostA.recording.length; i++) {
-    ghostA.advanceTick();
-  }
-  return { tick, ghostA };
-};
 
 describe("REQ-017 Act 2 second loop integration", () => {
   it("knocking out You-1 on return to 5:00, dragging the body East to 6:00, then resolving the You-2 punch transitions the observer to act-2-loop-2", () => {
