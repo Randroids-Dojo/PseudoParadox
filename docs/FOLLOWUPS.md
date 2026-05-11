@@ -48,6 +48,14 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Resolved: PR3c (Reading-C tick model). The registry now carries a per-timeline tick clock (`tickFor`, `advanceActiveTick`); `GhostInstance.startTick` plus `fastForwardTo(absoluteTick)` lets the host virtually walk a ghost to any arrival tick; `Portal.destinationTick` (default 0) plus `setActiveTimeline(next, arrivalTick, disposeOptions?)` pins door destinations to (timelineId, tick) pairs and despawns stale ghosts whose `door_traversal` milestone fires before arrival. PR3d will author specific non-zero destination ticks per the GDD and add the end-to-end loop-back-bump smoke.
 - PR / Dot reference: #50 (PR3c).
 
+### F-015: Migrate scripted Acts 2-3 tests to 30-plus frame recordings
+
+- Priority: blocks-release
+- Context: The thirteen Acts 2-3 integration tests in `tests/sim/act2*.test.ts`, `tests/sim/act3*.test.ts`, and `tests/sim/endToEndCompletability.test.ts` use 4-to-5 frame east-walk recordings as scaffolding (the actual position change is tiny; the test drives the trigger fire via `detector.step` teleports). When these ghosts are filed via `wireTraversal`, their `door_traversal` milestone fires at tick 5. Per the Reading-C semantic from Q-026, any West portal `destinationTick > 5` despawns these ghosts on loop-back at 5:00. PR3d ships the West portal's `destinationTick = 0` so the existing tests keep passing, but the GDD's intended UX (the loop-back-bump where you see your past self mid-walk) needs a non-zero value (the design heuristic suggested 30 ticks). Unblocking that authoring requires migrating the thirteen tests so their east-walk recordings exceed the chosen West destinationTick.
+- Blocker: each test has assertions about `recording.length`, `tickIndex` after re-enter, and downstream predicate semantics that bake in the tick-0 reset. A migration slice rewrites the scripted recordings to be longer (e.g. 40 frames) and updates the assertions accordingly.
+- Unblock condition: a dedicated slice that walks each test, inflates the east-walk recordings to past the chosen West destinationTick, updates `recording.length` and `tickIndex` assertions, and re-verifies the act predicates still fire on the new shapes.
+- PR / Dot reference (when picked up):
+
 ## Nice To Have
 
 ### F-011: Wall colliders compatible with portal trigger volumes
