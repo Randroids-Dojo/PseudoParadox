@@ -39,10 +39,13 @@ import type { CarryState } from "./carryState.ts";
  *      author per-time spawn poses in the next slice).
  *   4. Re-stamps the active player's body color tint and `originNormalized` to
  *      the destination's time-of-day (REQ-030).
- *   5. Resets the active player's lifetime: a fresh InputRecorder keyed at
- *      tick 0 of the destination timeline, and a fresh start position equal
- *      to the destination spawn pose. Subsequent recording is for the new
- *      lifetime; the previous lifetime's recording was already snapshotted.
+ *   5. Resets the active player's lifetime: a fresh InputRecorder, a
+ *      `startTick` equal to the portal's `destinationTick` (F-014), and a
+ *      fresh start position at the destination spawn pose. The lifetime's
+ *      `startTick` anchors the next ghost spawn so its alive interval in
+ *      the destination timeline begins at the arrival tick, not at 0.
+ *      Subsequent recording is for the new lifetime; the previous
+ *      lifetime's recording was already snapshotted.
  *
  * Dark portals (REQ-010) MUST NOT teleport the player. The handler filters
  * `enter` events on `isLit(portal)` and ignores the rest.
@@ -308,9 +311,12 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     //    File the ghost into the SOURCE timeline (the timeline being LEFT
     //    BEHIND, derived from the lifetime's origin). The registry hides it
     //    immediately because the active timeline is about to switch to the
-    //    destination on step 6 below; the next time the player returns to
-    //    the source timeline, the registry resets the ghost to tick 0 and
-    //    makes it visible again (REQ-001 / REQ-003).
+    //    destination on step 6 below. On a future return to the source
+    //    timeline, the registry either fast-forwards the ghost to
+    //    `position(arrivalTick - startTick)` (F-014) or, if the ghost's
+    //    door_traversal milestone fires at or before arrivalTick, despawns
+    //    it (the ghost already left this timeline before the player came
+    //    back; Reading C from Q-026).
     if (recording.length > 0) {
       // F-014: the ghost's recording covers ticks
       // `[lifetime.startTick, lifetime.startTick + recording.length)`
@@ -389,9 +395,12 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
     // 7. Switch the registry's active timeline to the destination. This
     //    hides every ghost in the timeline just left behind (including the
     //    one spawned in step 2 if it was filed into a non-active bucket),
-    //    and resets every ghost in the entering timeline to tick 0 with its
-    //    spawn pose, then makes it visible. Each timeline visit is a fresh
-    //    playback (REQ-001 / REQ-003).
+    //    stamps the entering timeline's tick clock to
+    //    `portal.destinationTick`, and (F-014) either despawns or
+    //    fast-forwards each ghost in the entering bucket per its
+    //    door_traversal milestone vs the arrival tick (Reading C / Q-026).
+    //    On `destinationTick === 0` the legacy reset-to-spawn-pose path
+    //    runs (matches the pre-F-014 behavior).
     const destinationHour = timelineIdFromNormalized(destinationNormalized);
     // F-014: hand the destination's authored tick to the registry. The
     // registry stamps the entering timeline's tick clock and either
