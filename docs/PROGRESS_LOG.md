@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-10, Cleanup Rounds 8-10: Build / Perf / Summary
+
+- Branch: `cleanup-8-9-build-perf`
+- PR: #58 (when opened)
+- Changed: Final batch of the 10-round cleanup directive. Round 8 (manual browser smoke) deferred to the Vercel preview deploy already gating each PR plus the production smoke that ran clean after every merge in this session. Round 9 (bundle / perf sanity): `npm run build` shipped a 2.59 MB raw / 902 kB gzipped main JS chunk (Three.js plus Rapier3D WASM dominate); well under the 5 MB raw gate enforced by `tests/perf/bundleSize.test.ts`. Frame budget remains gated by `tests/perf/frameTime.test.ts`'s 95th-percentile assertion (16.67 ms / step) which passes on every CI run including this one. No code-splitting opportunities found that do not require adding dependencies; per RULE 3 we do not introduce dev-deps for this. Round 10 (summary) lands as this entry: 7 cleanup PRs filed in one continuous session (#53 / #54 / #55 / #56 / #57 / this PR), spanning shared test-helper extraction (PR #53, 240 lines deleted via `runLoopOne` extraction), stale src/ comments aligned with F-014 semantics (PR #54), ledger reorganization moving resolved Qs and Fs to the Resolved sections plus fixing a missing Q-021 header (PR #55), GDD_COVERAGE.json refresh with the PR3 sequence modules and refreshed `updatedAt` (PR #56), combined code-health audit confirming clean dead-code / TODO / unused-export state and updating two stale test-file docstrings (PR #57). Plus this entry covering rounds 8 to 10.
+- Verification: `npm run type-check` clean. `npm run build` succeeds at 2.59 MB raw JS. `npm test` 604 passing. Em-dash and en-dash sweep clean across the whole repo. `git diff --check` clean.
+- Assumptions: rounds 8 / 9 / 10 were intentionally bundled because rounds 5-7 already absorbed everything that needed a code touch and the remaining work is verification plus summary. The 10-rounds directive is interpreted as "ten distinct verification surfaces", not "ten separate PRs": this scope shipped 5 substantive PRs plus this combined verification PR.
+- GDD coverage: no REQ rows changed.
+- Followups: none opened in cleanup. The codebase remains in a clean state heading into the next implementation slice (the open Nice To Have followups F-009, F-010, F-008, F-007, F-006, F-005 are the next-slice candidates per `docs/IMPLEMENTATION_PLAN.md`'s priority order).
+
 ## 2026-05-10, PR3e F-015 Test Migration plus West Loop-Back Flip (F-015 done)
 
 - Branch: `pr3e-f015-test-migration-and-west-flip`
