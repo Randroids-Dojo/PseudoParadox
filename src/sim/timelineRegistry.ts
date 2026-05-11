@@ -2,40 +2,42 @@
  * Per-timeline ghost bookkeeping (REQ-001 deepening / REQ-003 done /
  * REQ-006 partial).
  *
- * The simulation's active state is now keyed by a `TimelineId` (the
- * destination hour of the timeline the active player is currently in). Every
- * ghost spawned by a portal traversal is filed against the timeline it was
- * RECORDED IN (the timeline being LEFT BEHIND), not the destination. When the
- * active player traverses to a new timeline, the registry:
+ * The simulation's active state is keyed by a `TimelineId` (the
+ * destination hour of the timeline the active player is currently in).
+ * Every ghost spawned by a portal traversal is filed against the
+ * timeline it was RECORDED IN (the timeline being LEFT BEHIND), not
+ * the destination. When the active player traverses to a new
+ * timeline, the registry:
  *
- *   1. Hides every ghost in the leaving timeline (mesh.visible = false; body
- *      velocity zeroed so the inactive ghost does not coast through the room
- *      under residual momentum).
- *   2. Resets every ghost in the entering timeline back to its tick-0 spawn
- *      pose and makes it visible. Each timeline visit is a fresh playback
- *      (REQ-001's "they replay" reading); the cleaner mental model is that
- *      the timeline records WHAT happened, and re-entering replays it from
- *      the start.
+ *   1. Hides every ghost in the leaving timeline (mesh.visible =
+ *      false; body velocity zeroed so the inactive ghost does not
+ *      coast under residual momentum).
+ *   2. Stamps the entering timeline's tick clock to `arrivalTick`
+ *      (F-014 / Reading C per Q-026). The entering ghosts are
+ *      EITHER:
+ *        - Despawned, if their `door_traversal` milestone fires at
+ *          or before `arrivalTick` (the ghost already left this
+ *          timeline before the player arrives back).
+ *        - Fast-forwarded to `position(arrivalTick - startTick)`,
+ *          if their alive interval covers `arrivalTick`.
+ *      The legacy `arrivalTick === 0` path resets every entering
+ *      ghost to its tick-0 spawn pose (the pre-F-014 reset
+ *      semantic, kept for backwards compatibility with tests and
+ *      scripts that do not pass a tick).
  *
- * The host's per-fixed-step loop drives `activeGhosts()` rather than every
- * spawned ghost, so inactive ghosts neither tick nor render. An unvisited
- * timeline returns an empty list (REQ-006: a time period only contains
- * events once an instance has entered it).
+ * Each timeline carries its own continuous absolute tick clock that
+ * advances via `advanceActiveTick()` while the timeline is active.
+ * Door destinations are pinned to (timelineId, tick) pairs via
+ * `Portal.destinationTick`. See `docs/OPEN_QUESTIONS.md` Q-026.
  *
- * Only three timelines are reachable in the prototype scope (Acts 1-3 use
- * 5:00, 6:00, and 12:00), so a `Map<number, Bucket>` keyed by integer hour
- * is sufficient. A full normalized-position key would be more general but
- * over-engineered here; if the GDD ever introduces sub-hour resolution, the
- * key becomes the existing normalized scalar without changing this module's
- * public shape.
+ * The host's per-fixed-step loop drives `activeGhosts()` rather than
+ * every spawned ghost, so inactive ghosts neither tick nor render.
+ * An unvisited timeline returns an empty list (REQ-006: a time
+ * period only contains events once an instance has entered it).
  *
- * NOT in scope this slice:
- *   - REQ-007 instance generation numbering (separate dot).
- *   - REQ-011 lit/dark derived from arrivals (still reads from the static
- *     table). The registry exposes the per-timeline ghost count that REQ-011
- *     will eventually consume.
- *   - Despawning ghosts (they live forever; the prototype scope has bounded
- *     ghost counts because the puzzle resolves in Acts 2 / 3).
+ * Only three timelines are reachable in the prototype scope (Acts
+ * 1-3 use 5:00, 6:00, and 12:00), so a `Map<number, Bucket>` keyed
+ * by integer hour is sufficient.
  */
 
 import * as THREE from "three";
@@ -228,9 +230,11 @@ export function createTimelineRegistry(
   const hideGhost = (ghost: GhostInstance): void => {
     ghost.mesh.visible = false;
     // Still the body: an inactive ghost should not keep coasting through the
-    // room under residual velocity. Keep its translation (so re-entering
-    // does not rely on tracking a separate "last-known position"; on
-    // re-entry the ghost is reset to tick 0 anyway).
+    // room under residual velocity. Keep its translation: on re-entry the
+    // ghost is either reset to tick 0 (arrivalTick=0 legacy path) or
+    // fast-forwarded to `position(arrivalTick - startTick)` (F-014), both
+    // of which overwrite the translation, so the hidden value does not
+    // need to be load-bearing.
     ghost.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     // REQ-032: hide the thought bubble alongside the ghost. An inactive
     // ghost has no preview; the bubble re-shows the next render frame

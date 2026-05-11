@@ -216,8 +216,9 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // traversal of). `registry.activeGhosts()` returns only the ghosts in the
   // timeline the active player is currently inside; the per-fixed-step
   // loop below ticks and renders only that bucket. On every lit-portal
-  // traversal the registry hides the leaving timeline's ghosts and resets
-  // the entering timeline's ghosts to tick 0 (REQ-001 / REQ-003).
+  // traversal the registry hides the leaving timeline's ghosts and stamps
+  // the entering timeline's tick clock to `portal.destinationTick`,
+  // either despawning or fast-forwarding each entering ghost per F-014.
   const registry = createTimelineRegistry({ initialTimeline: ACT_ONE_HOUR });
 
   // REQ-012: mount the Act 1 cinematic into the 12:00 timeline bucket at
@@ -225,8 +226,9 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // body) are filed via `registry.add(12, ghost)`. The active timeline at
   // boot is 5:00, so each cinematic ghost is hidden by `add` and stays
   // hidden until the active player visits 12:00 (entering the South door
-  // from 5:00). On `setActiveTimeline(12)` the registry resets each ghost
-  // to its tick-0 spawn pose and runs their hand-authored recordings.
+  // from 5:00). The South portal's `destinationTick = 0` so on
+  // `setActiveTimeline(12, 0)` the legacy reset-to-spawn path fires and
+  // each cinematic ghost plays from its tick-0 spawn pose.
   // See `docs/gdd/40-act-progress-and-narrative-beats.md` section 5.
   mountAct1Cinematic({ registry, scene: sceneCtx.scene, world });
 
