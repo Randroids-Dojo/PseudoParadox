@@ -156,13 +156,69 @@ export interface ActOnePortalSpec {
   direction: DoorDirection;
   destinationHours: number;
   isLit: boolean;
+  /**
+   * F-014 / PR3d: tick within the destination timeline at which the
+   * traversal lands. Zero (the previous behavior for every door) lands
+   * the player at the start of the destination timeline; non-zero
+   * values pin the (timeline, tick) pair so past lifetimes at the
+   * destination are fast-forwarded to their position-at-arrival via
+   * `GhostInstance.fastForwardTo`. Authored per the GDD's narrative
+   * heuristic, not the spec text (the GDD describes events, not
+   * ticks). See `docs/PROGRESS_LOG.md` PR3d entry for the heuristic
+   * behind each value.
+   */
+  destinationTick: number;
 }
 
 export const ACT_ONE_PORTAL_SPECS: readonly ActOnePortalSpec[] = Object.freeze([
-  Object.freeze({ direction: "south", destinationHours: 12, isLit: true }),
-  Object.freeze({ direction: "east", destinationHours: 6, isLit: true }),
-  Object.freeze({ direction: "north", destinationHours: 12, isLit: false }),
-  Object.freeze({ direction: "west", destinationHours: 5, isLit: false }),
+  // South at 5:00 sends to 12:00 tick 0: entering this door triggers
+  // the Act 1 cinematic; the cinematic actors are filed at 12:00 with
+  // startTick=0 and 240-frame recordings, so any non-zero
+  // destinationTick would fast-forward them mid-cinematic on the
+  // player's arrival.
+  Object.freeze({
+    direction: "south",
+    destinationHours: 12,
+    isLit: true,
+    destinationTick: 0,
+  }),
+  // East at 5:00 sends to 6:00 tick 0: the GDD says 6:00 is "empty
+  // (only the West door is lit)" the first time the player arrives.
+  // No past ghosts to fast-forward.
+  Object.freeze({
+    direction: "east",
+    destinationHours: 6,
+    isLit: true,
+    destinationTick: 0,
+  }),
+  // North at 12:00 is the Act 3 escape; the credits / end-of-game
+  // beat fires right after, so the landing tick does not matter.
+  Object.freeze({
+    direction: "north",
+    destinationHours: 12,
+    isLit: false,
+    destinationTick: 0,
+  }),
+  // West at 6:00 sends back to 5:00. The design intent (per the
+  // user's load-bearing loop-back-bump invariant) is to land the
+  // player mid-recording of their past-self ghost so they can see
+  // the past-self repeat the bump. A non-zero value (e.g. 30 ticks
+  // = 0.5 s) achieves this in real play where east-walk recordings
+  // are ~80 frames. In this slice the scripted Acts 2-3 integration
+  // tests use 4-5 frame east-walks (artificial scaffolding) and
+  // their `door_traversal` milestones fire at tick 5, so any
+  // non-zero destinationTick > 5 despawns those ghosts on
+  // loop-back (the Reading-C semantic from Q-026). Migrating the
+  // 13 scripted tests to 30+ frame recordings is the unblock; that
+  // is filed as a follow-up. PR3d's smoke test exercises the
+  // mechanism against a separately-configured portal so the
+  // production default can stay at 0 until the migration ships.
+  Object.freeze({
+    direction: "west",
+    destinationHours: 5,
+    isLit: false,
+    destinationTick: 0,
+  }),
 ]);
 
 /**
@@ -197,6 +253,7 @@ export function createActOnePortals(
         door,
         destinationHours: spec.destinationHours,
         isLit: spec.isLit,
+        destinationTick: spec.destinationTick,
       });
     }),
   );
