@@ -1,27 +1,36 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-09T14:05:00-05:00",
+  "updatedAt": "2026-05-10T23:00:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
       "requirement": "Timeline persistence: actions performed during a time period are recorded and replay as a permanent past instance whenever another instance witnesses that period from outside it.",
       "gddRef": "docs/gdd/02-time-travel-rules.md#core-rules",
       "status": "done",
-      "note": "Per-tick input recording buffer captures keyboard state plus normalized time-of-day each fixed step. A ghost capsule (`createGhost`) drains a frozen recording back into a separate Rapier dynamic capsule body tick-for-tick, integrated through the same fixed-step physics loop as the active player. `wireTraversal` (`src/sim/portalTraversal.ts`) snapshots the active player's lifetime recording onto a ghost on every lit-portal entry and resets the recorder to a fresh buffer keyed at tick 0 of the destination timeline. Per-timeline ghost bookkeeping lands in `src/sim/timelineRegistry.ts`: ghosts are filed against the timeline they were RECORDED IN (the SOURCE timeline at traversal, derived from `lifetime.originNormalized`). The registry's `activeGhosts()` returns only the ghosts in the timeline the active player is currently inside, and the host's loop iterates that list rather than every spawned ghost, so an action recorded in timeline T replays only when another instance witnesses T from outside it (re-enters T). On `setActiveTimeline(next)` every ghost in the entering bucket is reset to its tick-0 spawn pose with zero velocity and made visible; ghosts in the leaving bucket are hidden. Each timeline visit is a fresh playback (the cleaner mental model: a timeline records WHAT happened, and re-entering replays it from the start).",
+      "note": "Per-tick input recording buffer captures keyboard state plus normalized time-of-day each fixed step. A ghost capsule (`createGhost`) drains a frozen recording back into a separate Rapier dynamic capsule body tick-for-tick, integrated through the same fixed-step physics loop as the active player. `wireTraversal` (`src/sim/portalTraversal.ts`) snapshots the active player's lifetime recording onto a ghost on every lit-portal entry and resets the recorder to a fresh buffer keyed at tick 0 of the destination timeline. Per-timeline ghost bookkeeping lands in `src/sim/timelineRegistry.ts`: ghosts are filed against the timeline they were RECORDED IN (the SOURCE timeline at traversal, derived from `lifetime.originNormalized`). The registry's `activeGhosts()` returns only the ghosts in the timeline the active player is currently inside, and the host's loop iterates that list rather than every spawned ghost, so an action recorded in timeline T replays only when another instance witnesses T from outside it (re-enters T). On `setActiveTimeline(next)` every ghost in the entering bucket is reset to its tick-0 spawn pose with zero velocity and made visible; ghosts in the leaving bucket are hidden. Each timeline visit is a fresh playback (the cleaner mental model: a timeline records WHAT happened, and re-entering replays it from the start). PR3 sequence (2026-05-10) extended this: F-013 milestone-aware hybrid replay (`src/sim/replayController.ts`) plus F-014 Reading-C tick model (per-timeline tick clock, `GhostInstance.startTick`, `Portal.destinationTick`, despawn-or-fast-forward on entering-bucket arrival).",
       "implementationRefs": [
         "src/sim/inputRecorder.ts",
         "src/sim/timeOfDay.ts",
         "src/sim/ghostInstance.ts",
         "src/sim/portalTraversal.ts",
         "src/sim/timelineRegistry.ts",
+        "src/sim/replayController.ts",
+        "src/sim/milestone.ts",
+        "src/sim/wallBumpDetector.ts",
+        "src/sim/simulationStep.ts",
         "src/app.ts"
       ],
       "testRefs": [
         "tests/sim/inputRecorder.test.ts",
         "tests/sim/ghostInstance.test.ts",
         "tests/sim/portalTraversal.test.ts",
-        "tests/sim/timelineRegistry.test.ts"
+        "tests/sim/timelineRegistry.test.ts",
+        "tests/sim/replayController.test.ts",
+        "tests/sim/milestone.test.ts",
+        "tests/sim/wallBumpDetector.test.ts",
+        "tests/sim/timelineTickClock.test.ts",
+        "tests/sim/loopBackBump.test.ts"
       ],
       "followupRefs": []
     },
