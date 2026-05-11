@@ -76,6 +76,11 @@ export const runLoopOne = (
   }
   detector.step(-(HALF_WIDTH - 0.4), 0, tick++);
   const ghostA = registry.ghostsFor(5)[0];
+  if (!ghostA) {
+    throw new Error(
+      "runLoopOne precondition failed: expected at least one ghost in bucket 5 after west traversal back to 5:00",
+    );
+  }
   for (let i = 0; i < ghostA.recording.length; i++) {
     ghostA.advanceTick();
   }
