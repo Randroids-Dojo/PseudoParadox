@@ -42,6 +42,7 @@ import {
 } from "../../src/sim/applyCarry.ts";
 import { resolveCarryToggle, type Carryable } from "../../src/sim/carryState.ts";
 import { nextInstanceId } from "../../src/sim/instanceId.ts";
+import { runLoopOne } from "./_helpers/actLoops.ts";
 
 /**
  * REQ-040 end-to-end completability gate.
@@ -204,30 +205,6 @@ const buildActStateSnapshot = (
     activePlayerCrossedNorthAt12:
       options.activePlayerCrossedNorthAt12 ?? false,
   };
-};
-
-const runLoopOne = (
-  harness: Harness,
-  detector: ReturnType<typeof createPortalTriggerSet>,
-  startTick: number,
-): { tick: number; ghostA: GhostInstance } => {
-  const { lifetime, registry } = harness;
-  let tick = startTick;
-  detector.step(0, 0, tick++);
-  for (let i = 0; i < 40; i++) {
-    lifetime.recorder.record(inputState({ right: true }), 5 / 24);
-  }
-  detector.step(HALF_WIDTH - 0.4, 0, tick++);
-  detector.step(0, 0, tick++);
-  for (let i = 0; i < 4; i++) {
-    lifetime.recorder.record(inputState({ left: true }), 6 / 24);
-  }
-  detector.step(-(HALF_WIDTH - 0.4), 0, tick++);
-  const ghostA = registry.ghostsFor(5)[0];
-  for (let i = 0; i < ghostA.recording.length; i++) {
-    ghostA.advanceTick();
-  }
-  return { tick, ghostA };
 };
 
 const runLoopTwo = (
