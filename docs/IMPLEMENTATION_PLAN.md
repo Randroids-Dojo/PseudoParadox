@@ -69,9 +69,9 @@ Closing the loop without all three is the Flatline failure mode: shipping a comp
 
 Use `docs/gdd/` as the product scope. The current high-level remaining areas are reflected in `docs/GDD_COVERAGE.json`, with active spillover in `docs/FOLLOWUPS.md`.
 
-## Next Up: Goal-Oriented Replay plus Reading-C Tick Model (F-013, F-014)
+## Shipped: Goal-Oriented Replay plus Reading-C Tick Model (F-013, F-014, F-015)
 
-A four-PR sequence that replaces raw `KeyState` ghost replay with milestone-driven hybrid replay (F-013) and shifts the timeline registry from "reset to tick 0 each visit" to a continuous per-timeline tick clock (F-014). All four design knobs are resolved as Q-024, Q-025, Q-026, Q-027. Ship in order; each PR is independently deployable.
+The five-PR sequence (PR3a / PR3b / PR3c / PR3d / PR3e) merged 2026-05-10 across PRs #48 / #49 / #50 / #51 / #52. F-013 (milestone-driven hybrid replay), F-014 (Reading-C per-timeline tick clock), and F-015 (Acts 2-3 test migration plus West.destinationTick = 30) all resolved. See the slice notes below for what each PR shipped; the original "Next Up" framing is preserved verbatim for institutional memory.
 
 ### PR3a: Milestone capture during recording
 

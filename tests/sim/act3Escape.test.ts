@@ -660,9 +660,12 @@ describe("REQ-023 Act 3 escape integration", () => {
     // Phase 13: advance every cinematic-actor ghost in the 12:00 bucket
     // past the end of its recording. The Act 1 cinematic ghosts were
     // filed into bucket 12 at boot via `mountAct1Cinematic`; the
-    // South-traversal in Phase 6 above triggered `setActiveTimeline(12)`
-    // which reset every ghost in bucket 12 to tick 0 and made them
-    // visible. Driving `advanceTick` for each ghost's full recording
+    // South-traversal in Phase 6 above triggered
+    // `setActiveTimeline(12, 0)` (South.destinationTick = 0 per the
+    // PR3d authoring) which reset every ghost in bucket 12 to its
+    // tick-0 spawn pose and made them visible (the F-014 legacy
+    // backwards-compat path on arrivalTick = 0). Driving `advanceTick`
+    // for each ghost's full recording
     // length brings their `tickIndex >= recordingLength`, which
     // `litStateForTimeline`'s `DEFAULT_BLOCKED_BY_ARRIVALS` reads as
     // "no cinematic actor in flight" (the predicate is

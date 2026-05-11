@@ -87,8 +87,13 @@ import { runLoopOne } from "./_helpers/actLoops.ts";
  *     into bucket 5: the loop-1 East-bound ghost-A (origin 5/24) and
  *     the loop-2 dragging-East ghost-C (origin 5/24, filed by
  *     `wireTraversal` on the East traversal at the end of loop 2).
- *     Both were reset to tick 0 conscious by `setActiveTimeline(5)`
- *     when the chase traversal switched the active timeline back to 5.
+ *     Per F-014, when the chase traversal switches the active
+ *     timeline back to 5, the registry stamps the entering bucket's
+ *     tick clock to West's `destinationTick = 30` and fast-forwards
+ *     each ghost to `position(30 - startTick)`. Ghost-A and ghost-C
+ *     have door_traversal milestones at recording length 40, which
+ *     exceeds 30, so they stay alive and are fast-forwarded to
+ *     tickIndex 30 of their east-walk replay.
  *   - The active player walks up to one of the 5:00-origin ghosts in
  *     bucket 5 and applies the same side effects the host's punch
  *     resolver applies: `applyKnockout(ghost.consciousness)` flips it
