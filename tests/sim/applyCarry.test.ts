@@ -139,18 +139,6 @@ describe("applyCarryDrop: REQ-034 drop transition", () => {
     });
   });
 
-  it("preserves the unconscious mesh tilt by not touching the mesh (the body remains unconscious on drop)", () => {
-    // The drop is body-only by design: the dropped body is still
-    // unconscious so its mesh stays tilted from the prior knockout.
-    // This test pins the contract: the helper signature does not take
-    // a mesh, so it cannot accidentally clear the rotation.
-    const { body } = buildStubBody();
-    const carrier = { translation: () => ({ x: 0, y: 0.9, z: 0 }) };
-    // Verify by signature: the helper does not accept a mesh.
-    applyCarryDrop(carrier, body, 0.9);
-    // No assertion needed; this test pins the API surface.
-    expect(true).toBe(true);
-  });
 });
 
 describe("carryTransitionKind: REQ-034 state-transition classifier", () => {

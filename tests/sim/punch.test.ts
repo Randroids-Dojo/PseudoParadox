@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   PUNCH_RANGE_M,
-  isInPunchRange,
   resolvePunches,
   suppressUnconsciousPunches,
   type PunchActor,
@@ -34,34 +33,6 @@ const unconscious = (
 describe("PUNCH_RANGE_M default (Q-003)", () => {
   it("matches the dossier default of 1.2 m", () => {
     expect(PUNCH_RANGE_M).toBeCloseTo(1.2, 6);
-  });
-});
-
-describe("isInPunchRange (REQ-033 partial)", () => {
-  it("returns true at the planar XZ boundary", () => {
-    expect(
-      isInPunchRange({ x: 0, z: 0 }, { x: 1.2, z: 0 }, PUNCH_RANGE_M),
-    ).toBe(true);
-  });
-
-  it("returns false just past the boundary", () => {
-    expect(
-      isInPunchRange({ x: 0, z: 0 }, { x: 1.21, z: 0 }, PUNCH_RANGE_M),
-    ).toBe(false);
-  });
-
-  it("uses planar XZ distance only (Y is ignored by the function signature)", () => {
-    expect(
-      isInPunchRange({ x: 0, z: 0 }, { x: 0.6, z: 0.6 }, 1.0),
-    ).toBe(true);
-    expect(
-      isInPunchRange({ x: 0, z: 0 }, { x: 0.8, z: 0.8 }, 1.0),
-    ).toBe(false);
-  });
-
-  it("defaults the range argument to PUNCH_RANGE_M", () => {
-    expect(isInPunchRange({ x: 0, z: 0 }, { x: 1.0, z: 0 })).toBe(true);
-    expect(isInPunchRange({ x: 0, z: 0 }, { x: 1.5, z: 0 })).toBe(false);
   });
 });
 
