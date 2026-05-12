@@ -68,6 +68,46 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Unblock condition: F-002 lands the missing section files. Then either delete `GDD.md` or replace it with a stub that points at `docs/gdd/`.
 - PR / Dot reference (when picked up):
 
+### F-016: Onboarding controls and objective overlay
+
+- Priority: nice-to-have
+- Context: Surfaced by the 2026-05-12 fun-factor audit. A new player lands on a black background with a single warm-amber capsule in a grey room. There is no audio, no instruction text, no goal indicator (only "Pseudo Paradox prototype" in the top-left corner). The lit-vs-dark portal rule, the punch-past-self mechanic, and the "escape through North door at 12:00" win condition are all discovery-only. The PLAYTEST.md "First-time experience does not require external instructions" and "If the user does nothing, the screen still communicates what to do" items both fail today.
+- Blocker: none. The DOM-overlay pattern in `src/render/touchOverlay.ts` and `src/render/actionButtons.ts` is the existing precedent for a no-dep overlay.
+- Unblock condition: a slice that mounts a corner DOM overlay listing the key bindings (WASD / SPACE punch / F pickup / T throw / R reset) plus a one-line objective hint ("escape through a lit door"). The overlay should fade or hide after the first non-zero input is recorded so it does not occlude the play area mid-session, and it should respect the responsive layout so mobile (with the joystick + action buttons) is not double-noisy. Should NOT block or modal-overlay the canvas; it is an ambient hint, not a tutorial.
+- PR / Dot reference (when picked up):
+
+### F-017: Win screen on escape state
+
+- Priority: nice-to-have
+- Context: Surfaced by the 2026-05-12 fun-factor audit. When the player reaches `ActState === 'escaped'` (active player crossed the North door at 12:00 after the cinematic actors completed and the watermark hit final-knockout), the state is terminal but the build does nothing to acknowledge it. The simulation continues running, no UI signals the win, and the player must press R unprompted to restart. The PLAYTEST.md "A session has a clear in / play / out flow" item fails today.
+- Blocker: none. The existing `src/render/fadeOverlay.ts` already implements a full-screen DOM overlay precedent and is wired into the Act 3 cinematic. The `ActStateObserver` already produces the `'escaped'` watermark.
+- Unblock condition: a slice that, on the rising edge from non-escaped to escaped, mounts a fade-to-light overlay reading "You escaped." plus a "Play again (R)" prompt. The R key should still trigger the existing hard-reset path; the overlay simply gives the player the prompt. Should respect prefers-reduced-motion (if F-NNN reduce-motion ever ships) by collapsing the fade to an instant swap.
+- PR / Dot reference (when picked up):
+
+### F-018: Audio pass (minimum viable: punch, door, escape sting)
+
+- Priority: nice-to-have
+- Context: Surfaced by the 2026-05-12 fun-factor audit. Zero audio is wired anywhere in the build. Punch lands silently, doors traverse silently, the escape state arrives silently. Code comments in `src/sim/punch.ts:34` and `src/sim/applyKnockoutBody.ts:51` flag audio as "future scope." The PLAYTEST.md "Audio reinforces successful actions" item fails today; "Core action is satisfying when performed perfectly" is substantially weakened by the absence.
+- Blocker: none on the platform side. HTML5 `<audio>` is built into the browser, so no new dependency is required (RULE 3 stack-constraint check passes). Asset sourcing is a small content task: three short MP3 / OGG clips (punch land, door traverse, escape sting). Royalty-free libraries (Freesound, Zapsplat) or hand-recorded clips both work.
+- Unblock condition: a slice that adds a small `src/render/sfx.ts` (or similar) audio pool, three asset files committed under a new `public/sfx/` directory, and three wire-ins: rising edge of a punch knockout, rising edge of an active-player lit-portal traversal, rising edge of the escape state. Volume default ~30%; no settings UI yet (F-022 if added later for a mute toggle).
+- PR / Dot reference (when picked up):
+
+### F-019: Act-state HUD line
+
+- Priority: nice-to-have
+- Context: Surfaced by the 2026-05-12 fun-factor audit. The act-state watermark is computed every fixed step by the `ActStateObserver` (`src/sim/actState.ts`) and exposed on `window.__pseudoParadoxActState` (Q-020 default A) but is never surfaced to the player. The player can never tell what beat they're on; progress is inferred entirely from world state. The PLAYTEST.md "The user can tell, without reading the HUD, whether they are doing well" item arguably passes because the player CAN read world state, but giving them a real HUD line closes the discoverability gap.
+- Blocker: none. The DOM-overlay pattern already exists; the observer already produces the named beat each tick.
+- Unblock condition: a small bottom-left DOM overlay that reads the current `ActState` and renders the human-readable beat name ("Act 1: Spawn", "Act 2: Loop 1", "Act 3: Setup", ..., "Escaped"). Updates per fixed step. No animation needed; text content swap is enough. Should not interfere with the action-button stack on mobile.
+- PR / Dot reference (when picked up):
+
+### F-020: Knockout feedback polish (ease the tilt, add a small camera shake)
+
+- Priority: nice-to-have
+- Context: Surfaced by the 2026-05-12 fun-factor audit. The knockout response (`src/sim/applyKnockoutBody.ts`) sets the mesh's Z rotation to ±π/2 in a single tick. The result is an instantaneous flip with no anticipation, no follow-through, no impact emphasis. Combined with the absence of audio (F-018), the core action lands without texture or weight. PLAYTEST.md "Core action is satisfying when performed perfectly" and the audit's "Does the core action have texture?" item both fail today.
+- Blocker: none. The fixed-step loop already gives a deterministic place to interpolate; the existing scene mutation pattern can carry an animation-frame counter without a tween library.
+- Unblock condition: a slice that (1) eases the knockout tilt over ~12 ticks (200 ms at 60 Hz) with a quick anticipation crouch on tick 0 and a follow-through settle on the last few ticks; (2) optionally adds a single-tick camera shake (offset the camera lookAt by a small random vector then snap back) on the connecting tick. Must remain deterministic: the same input recording must produce the same animation frames so replay byte-identity holds.
+- PR / Dot reference (when picked up):
+
 ## Polish
 
 (none yet)
