@@ -306,3 +306,52 @@ describe("createTimelineRegistry: removeGhost (F-012)", () => {
     expect(remaining[0]).toBe(b);
   });
 });
+
+describe("createTimelineRegistry: rehomeGhost (F-007)", () => {
+  it("moves a ghost from its source bucket to the destination bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    registry.add(5, ghost);
+    expect(registry.ghostsFor(5)).toHaveLength(1);
+    expect(registry.ghostsFor(12)).toHaveLength(0);
+
+    const moved = registry.rehomeGhost(ghost, 12);
+    expect(moved).toBe(true);
+    expect(registry.ghostsFor(5)).toHaveLength(0);
+    expect(registry.ghostsFor(12)).toHaveLength(1);
+    expect(registry.ghostsFor(12)[0]).toBe(ghost);
+  });
+
+  it("returns false for a ghost not in any bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    const moved = registry.rehomeGhost(ghost, 12);
+    expect(moved).toBe(false);
+  });
+
+  it("is idempotent when destination matches the current bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    registry.add(5, ghost);
+    const moved = registry.rehomeGhost(ghost, 5);
+    expect(moved).toBe(true);
+    expect(registry.ghostsFor(5)).toHaveLength(1);
+  });
+
+  it("does NOT remove the mesh from the scene (rehome is bookkeeping only)", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    scene.add(ghost.mesh);
+    registry.add(5, ghost);
+    registry.rehomeGhost(ghost, 12);
+    expect(scene.children.includes(ghost.mesh)).toBe(true);
+  });
+});

@@ -23,7 +23,10 @@ import { createPortalTriggerSet } from "./sim/portalTrigger.ts";
 import { despawnGhostsAtLitPortals } from "./sim/ghostDespawn.ts";
 import { FIXED_STEP_SECONDS } from "./sim/simulationStep.ts";
 import { wireTraversal, type ActiveLifetime } from "./sim/portalTraversal.ts";
-import { createTimelineRegistry } from "./sim/timelineRegistry.ts";
+import {
+  createTimelineRegistry,
+  timelineIdFromNormalized,
+} from "./sim/timelineRegistry.ts";
 import {
   repaintDoorsForHour,
   snapClockToHour,
@@ -60,7 +63,10 @@ import {
 import {
   litStateForTimeline,
 } from "./sim/litStateForTimeline.ts";
-import { isLit as portalAuthoredLit } from "./sim/portal.ts";
+import {
+  isLit as portalAuthoredLit,
+  portalDestinationNormalized,
+} from "./sim/portal.ts";
 import {
   nextQualitativelyDifferentAction,
   type ThoughtPeekKind,
@@ -203,8 +209,31 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // closed-form decision). A body whose velocity falls below the settle
   // threshold for `IN_FLIGHT_SETTLE_TICKS` consecutive ticks drops out
   // of the registry; settled bodies do not re-traverse portals.
+  //
+  // F-007: on lit-portal traversal of a tracked body, the host
+  // rehomes the body's `GhostInstance` from source to destination
+  // bucket so the body is visible only in the destination timeline
+  // after first crossing. The `registry` reference below is created
+  // later in this function; the callback closure captures it lazily.
   const inFlightRegistry = createInFlightRegistry({
     triggers: portalTriggers.triggers,
+    onPortalCrossing: (bodyId, portal) => {
+      // Find the ghost by its instance id across every timeline
+      // bucket (it could live in any bucket depending on its source).
+      const destinationHour = timelineIdFromNormalized(
+        portalDestinationNormalized(portal),
+      );
+      const sourceTimeline = registry.activeTimeline;
+      const sourceBucket = registry.ghostsFor(sourceTimeline);
+      const ghost = sourceBucket.find((g) => g.instanceId === bodyId);
+      if (!ghost) return;
+      // Rehome: remove from the source bucket (via `removeGhost`, which
+      // also disposes the mesh and body), but we want to KEEP the
+      // body alive so it can settle at the destination. The narrower
+      // `rehomeGhost` method moves the bucket reference without any
+      // scene / world teardown.
+      registry.rehomeGhost(ghost, destinationHour);
+    },
   });
 
   // REQ-034: rising-edge detection for the pickup toggle. The recorder
@@ -495,6 +524,13 @@ export async function startApp(container: HTMLElement): Promise<void> {
         !previousThrowHeld;
       const facing = facingTracker.current;
       let thrownGhostId: number | null = null;
+      // F-007 / Q-028: bodyId for this throw event. `lifetime.recorder.length`
+      // is the tick that the throw input will be recorded at (the recorder
+      // appends post-resolve below), so it serves as the deterministic
+      // throwTick. Combined with the carrier's instanceId, the tuple is
+      // stable across recording replays and resolves to the same body
+      // across loops.
+      const throwBodyId = `${player.instanceId}:${lifetime.recorder.length}`;
       const carryAfterThrow = tryThrow({
         carry: carryAfterToggle,
         throwRisingEdge,
@@ -508,6 +544,8 @@ export async function startApp(container: HTMLElement): Promise<void> {
           }
           return null;
         },
+        isThrowAlreadyFired: () =>
+          inFlightRegistry.hasBodyForThrow(throwBodyId),
       });
       const nextCarry = carryAfterThrow;
       player.carry = nextCarry;
@@ -547,6 +585,7 @@ export async function startApp(container: HTMLElement): Promise<void> {
                 id: ghost.instanceId,
                 body: ghost.body,
                 mesh: ghost.mesh,
+                bodyId: throwBodyId,
               });
               break;
             }

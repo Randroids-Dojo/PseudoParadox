@@ -101,6 +101,18 @@ interface BodyInFlight {
   /** Stable id for the body (the carried instance's id). Used so the
    * host can resolve the body back to a mesh / instance for hard reset. */
   readonly id: number;
+  /**
+   * F-007 / Q-028: throw-event identity, `(throwerInstanceId, throwTick)`
+   * as a `"<thrower>:<tick>"` string. Derived from recorded inputs so
+   * the same bodyId resolves across replays of the same recording.
+   * The throw resolver in `src/sim/throw.ts` looks this up via the
+   * registry's `hasBodyForThrow` to decide whether to spawn a fresh
+   * body on replay. Optional so legacy callers (pre-F-007 tests) do
+   * not need to provide one; without it the registry can still track
+   * the body for portal-traversal detection, just not for replay
+   * deduplication.
+   */
+  readonly bodyId: string | undefined;
   /** Live Rapier body handle. */
   readonly body: InFlightBodyHandle;
   /** Optional Three.js mesh for hard-reset cleanup. */
@@ -158,6 +170,7 @@ const stepBodyDetector = (
   triggers: readonly PortalTrigger[],
   isLit: BodyLitGate,
   resolveSpawnPose: BodySpawnPoseResolver,
+  onPortalCrossing: OnBodyPortalCrossing | undefined,
 ): void => {
   const t = inFlight.body.translation();
   for (let i = 0; i < triggers.length; i += 1) {
@@ -192,6 +205,12 @@ const stepBodyDetector = (
         for (let j = 0; j < inFlight.overlapping.length; j += 1) {
           inFlight.overlapping[j] = false;
         }
+        // F-007: notify the host so it can rehome the body's
+        // bookkeeping from the source `TimelineRegistry` bucket to
+        // the destination's. The callback fires AFTER the translation
+        // teleport so the body's `body.translation()` reads the
+        // destination side already.
+        onPortalCrossing?.(inFlight.id, trigger.portal);
         // Stop iterating: the body has moved out of every trigger now,
         // so any further triggers would be false-inside-now anyway.
         return;
@@ -215,7 +234,21 @@ export interface InFlightRegistry {
     id: number;
     body: InFlightBodyHandle;
     mesh?: THREE.Object3D;
+    /**
+     * F-007 / Q-028: throw-event identity, e.g.
+     * `"${throwerInstanceId}:${throwTick}"`. Stored so the throw
+     * resolver can dedupe across replays via `hasBodyForThrow`.
+     * Optional for pre-F-007 callers and test fixtures.
+     */
+    bodyId?: string;
   }): void;
+  /**
+   * F-007 / Q-028: returns `true` when a tracked body with this
+   * `bodyId` is currently in the registry (either still in flight or
+   * recently settled but not yet unregistered). The throw resolver
+   * uses this to decide whether to spawn a fresh body on replay.
+   */
+  hasBodyForThrow(bodyId: string): boolean;
   /** Read-only snapshot of currently in-flight body ids. Useful for
    * tests and for the hard-reset path that needs to walk every flying
    * body before clearing. */
@@ -251,11 +284,33 @@ export interface HardResetBodyWorld {
   removeRigidBody: (body: RAPIER.RigidBody) => void;
 }
 
+/**
+ * Callback fired when a tracked body crosses a LIT portal trigger and
+ * teleports to the destination spawn pose. Host supplies this so the
+ * thrown body's bookkeeping (e.g. `TimelineRegistry` bucket placement)
+ * can rehome from source to destination on the same tick the body's
+ * translation crosses (F-007). The callback receives the body id and
+ * the portal whose lit trigger fired; the host derives the destination
+ * timeline from `portalDestinationNormalized(portal)`.
+ */
+export type OnBodyPortalCrossing = (
+  bodyId: number,
+  portal: Portal,
+) => void;
+
 export interface CreateInFlightRegistryOptions {
   /** Shared trigger list. The same `PortalTrigger[]` the active player's
    * detector uses; thrown bodies and the player both gate on the same
    * volumes. */
   triggers: readonly PortalTrigger[];
+  /**
+   * F-007: optional callback fired on every lit-portal traversal of a
+   * tracked body. Host wires this to rehome the body's `GhostInstance`
+   * from source to destination bucket. The structural body id passed
+   * is the carried-instance id (the same one supplied to `register`),
+   * which the host uses to look up the ghost in the source bucket.
+   */
+  onPortalCrossing?: OnBodyPortalCrossing;
 }
 
 /**
@@ -264,7 +319,7 @@ export interface CreateInFlightRegistryOptions {
 export function createInFlightRegistry(
   options: CreateInFlightRegistryOptions,
 ): InFlightRegistry {
-  const { triggers } = options;
+  const { triggers, onPortalCrossing } = options;
   const tracked: BodyInFlight[] = [];
 
   // The Rapier body handle stored in BodyInFlight must be the LIVE rapier
@@ -295,6 +350,7 @@ export function createInFlightRegistry(
       );
       const item: BodyInFlight = {
         id: entry.id,
+        bodyId: entry.bodyId,
         body: entry.body,
         mesh: entry.mesh,
         overlapping: triggers.map((trigger) =>
@@ -316,6 +372,9 @@ export function createInFlightRegistry(
     inFlight(): readonly number[] {
       return tracked.map((t) => t.id);
     },
+    hasBodyForThrow(bodyId: string): boolean {
+      return tracked.some((t) => t.bodyId === bodyId);
+    },
     step(
       isLit: BodyLitGate,
       resolveSpawnPose: BodySpawnPoseResolver = DEFAULT_BODY_SPAWN_POSE,
@@ -324,7 +383,13 @@ export function createInFlightRegistry(
       // future unregister does not skip entries.
       const snapshot = tracked.slice();
       for (const entry of snapshot) {
-        stepBodyDetector(entry, triggers, isLit, resolveSpawnPose);
+        stepBodyDetector(
+          entry,
+          triggers,
+          isLit,
+          resolveSpawnPose,
+          onPortalCrossing,
+        );
         // Settle check: if the body's velocity has been below the settle
         // threshold for `IN_FLIGHT_SETTLE_TICKS` consecutive ticks, drop
         // it from the registry. A settled body bumped into a portal by a

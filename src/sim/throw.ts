@@ -155,6 +155,18 @@ export interface TryThrowOptions {
   facing: Facing;
   /** Resolves a carried body handle from its id. */
   resolveBody: CarriedBodyResolver;
+  /**
+   * F-007 / Q-028: deduplicates a thrown body across replay loops.
+   * Caller computes a `bodyId` from `(throwerInstanceId, throwTick)`
+   * and supplies a predicate. When the predicate returns `true`
+   * (meaning a body for this throw event already exists somewhere in
+   * the world), `tryThrow` no-ops: no impulse, no carry transition,
+   * input carry returned unchanged. The recorded throw input still
+   * fires on every replay, but only the FIRST replay produces a
+   * persistent body. Optional so test fixtures and the initial
+   * (pre-rehome) call sites do not need to wire this.
+   */
+  isThrowAlreadyFired?: () => boolean;
 }
 
 /**
@@ -181,9 +193,15 @@ export interface TryThrowOptions {
  * detect the throw transition for any non-physics observers.
  */
 export function tryThrow(options: TryThrowOptions): CarryState {
-  const { carry, throwRisingEdge, facing, resolveBody } = options;
+  const { carry, throwRisingEdge, facing, resolveBody, isThrowAlreadyFired } =
+    options;
   if (!throwRisingEdge) return carry;
   if (carry.kind !== "carrying") return carry;
+  // F-007 / Q-028: silently consume the input on replay loops where
+  // a body for this throw event already exists. The first replay
+  // produces the canonical body; subsequent replays no-op so the
+  // destination timeline never accumulates duplicates.
+  if (isThrowAlreadyFired?.() === true) return carry;
   const body = resolveBody(carry.carriedId);
   if (body === null) return carry;
   applyThrow(body, facing);

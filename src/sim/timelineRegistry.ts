@@ -181,6 +181,21 @@ export interface TimelineRegistry {
     scene: THREE.Scene,
     world: RegistryWorldHandle,
   ) => boolean;
+  /**
+   * F-007: move a ghost from its current bucket to `destinationTimeline`
+   * WITHOUT touching the underlying Rapier body or mesh. Used by the
+   * in-flight registry's portal-crossing callback to rehome a thrown
+   * body's bookkeeping on lit-portal traversal so the destination
+   * timeline owns the settled body. Returns `true` if the ghost was
+   * found and moved, `false` if it was not in any bucket. Idempotent:
+   * if the ghost is already in `destinationTimeline`, returns `true`
+   * without further work. Hides / shows are NOT triggered here; the
+   * next `setActiveTimeline` call handles visibility.
+   */
+  rehomeGhost: (
+    ghost: GhostInstance,
+    destinationTimeline: TimelineId,
+  ) => boolean;
 }
 
 export interface CreateTimelineRegistryOptions {
@@ -419,6 +434,21 @@ export function createTimelineRegistry(
     return false;
   };
 
+  const rehomeGhost: TimelineRegistry["rehomeGhost"] = (
+    ghost,
+    destinationTimeline,
+  ) => {
+    for (const [timeline, bucket] of buckets.entries()) {
+      const idx = bucket.ghosts.indexOf(ghost);
+      if (idx === -1) continue;
+      if (timeline === destinationTimeline) return true;
+      bucket.ghosts.splice(idx, 1);
+      bucketFor(destinationTimeline).ghosts.push(ghost);
+      return true;
+    }
+    return false;
+  };
+
   return {
     get activeTimeline(): TimelineId {
       return activeTimeline;
@@ -429,6 +459,7 @@ export function createTimelineRegistry(
     activeGhosts,
     clearAllGhosts,
     removeGhost,
+    rehomeGhost,
     tickFor,
     advanceActiveTick,
   };

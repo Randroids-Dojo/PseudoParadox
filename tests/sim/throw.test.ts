@@ -198,4 +198,56 @@ describe("tryThrow: REQ-036 high-level transition", () => {
     expect(linvel.x).toBeGreaterThan(0);
     expect(linvel.y).toBeGreaterThan(0);
   });
+
+  it("F-007 / Q-028: no-ops when isThrowAlreadyFired returns true (replay dedupe)", () => {
+    const calls: BodyCall[] = [];
+    const body: ThrowBodyHandle = {
+      setBodyType: (kind, wakeUp) => {
+        calls.push({ type: "setBodyType", payload: { kind, wakeUp } });
+      },
+      setLinvel: (linvel, wakeUp) => {
+        calls.push({ type: "setLinvel", payload: { linvel, wakeUp } });
+      },
+      applyImpulse: (impulse, wakeUp) => {
+        calls.push({ type: "applyImpulse", payload: { impulse, wakeUp } });
+      },
+    };
+    let resolveBodyCalled = false;
+    const carry: CarryState = { kind: "carrying", carriedId: 7 };
+    const next = tryThrow({
+      carry,
+      throwRisingEdge: true,
+      facing: { x: 0, z: -1 },
+      resolveBody: () => {
+        resolveBodyCalled = true;
+        return body;
+      },
+      isThrowAlreadyFired: () => true,
+    });
+    // Carry stays at 'carrying' (no transition), no body calls, no
+    // resolver lookup. The dedupe gate is short-circuit so the body
+    // resolver is not even consulted.
+    expect(next).toEqual(carry);
+    expect(resolveBodyCalled).toBe(false);
+    expect(calls).toEqual([]);
+  });
+
+  it("F-007 / Q-028: fires normally when isThrowAlreadyFired returns false", () => {
+    const calls: BodyCall[] = [];
+    const body: ThrowBodyHandle = {
+      setBodyType: () => calls.push({ type: "setBodyType", payload: null }),
+      setLinvel: () => calls.push({ type: "setLinvel", payload: null }),
+      applyImpulse: () =>
+        calls.push({ type: "applyImpulse", payload: null }),
+    };
+    const next = tryThrow({
+      carry: { kind: "carrying", carriedId: 7 },
+      throwRisingEdge: true,
+      facing: { x: 0, z: -1 },
+      resolveBody: () => body,
+      isThrowAlreadyFired: () => false,
+    });
+    expect(next).toEqual({ kind: "idle" });
+    expect(calls.length).toBe(3);
+  });
 });

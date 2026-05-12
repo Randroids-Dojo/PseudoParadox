@@ -374,3 +374,78 @@ describe("InFlightRegistry: integration with a real Rapier body across multiple 
     expect(reg.inFlight()).toContain(7);
   });
 });
+
+describe("InFlightRegistry: F-007 / Q-028 bodyId + portal crossing callback", () => {
+  it("hasBodyForThrow returns true after register(bodyId), false before", () => {
+    const south = makePortal("south", 12, true);
+    const triggers = makeTriggers([south]);
+    const reg = createInFlightRegistry({ triggers });
+    const stub = buildStubBody({ x: 0, y: 1, z: 0 }, { x: 0, y: 4, z: 5 });
+    expect(reg.hasBodyForThrow("1:100")).toBe(false);
+    reg.register({ id: 7, body: stub.body, bodyId: "1:100" });
+    expect(reg.hasBodyForThrow("1:100")).toBe(true);
+    expect(reg.hasBodyForThrow("1:99")).toBe(false);
+  });
+
+  it("hasBodyForThrow remains false for bodies registered without a bodyId (back-compat)", () => {
+    const south = makePortal("south", 12, true);
+    const triggers = makeTriggers([south]);
+    const reg = createInFlightRegistry({ triggers });
+    const stub = buildStubBody({ x: 0, y: 1, z: 0 }, { x: 0, y: 4, z: 5 });
+    reg.register({ id: 7, body: stub.body });
+    // A registered body without a bodyId does not surface in the
+    // dedupe lookup at all; the empty-string and other ids miss.
+    expect(reg.hasBodyForThrow("")).toBe(false);
+    expect(reg.hasBodyForThrow("anything")).toBe(false);
+  });
+
+  it("onPortalCrossing fires on lit-portal traversal with the body id and the crossed portal", () => {
+    const south = makePortal("south", 12, true);
+    const triggers = makeTriggers([south]);
+    const crossings: { id: number; portal: Portal }[] = [];
+    const reg = createInFlightRegistry({
+      triggers,
+      onPortalCrossing: (id, portal) => {
+        crossings.push({ id, portal });
+      },
+    });
+
+    // Body just outside the south trigger volume; one step + velocity
+    // along +z drives it into the trigger and fires the lit-portal
+    // teleport. The callback should fire with the carried id (7) and
+    // the south portal object.
+    const stub = buildStubBody(
+      { x: 0, y: 1, z: HALF_DEPTH - 1 },
+      { x: 0, y: 0, z: 5 },
+    );
+    reg.register({ id: 7, body: stub.body, bodyId: "1:100" });
+    // Manually advance the body into the trigger before stepping
+    // (the stub does not integrate; we set position so the next
+    // step's pointInsideTrigger sees the body inside).
+    stub.setPos(0, 1, HALF_DEPTH - 0.2);
+    reg.step(litAll);
+    expect(crossings).toHaveLength(1);
+    expect(crossings[0].id).toBe(7);
+    expect(crossings[0].portal).toBe(south);
+  });
+
+  it("onPortalCrossing does NOT fire when the portal is dark", () => {
+    const south = makePortal("south", 12, false);
+    const triggers = makeTriggers([south]);
+    const crossings: { id: number; portal: Portal }[] = [];
+    const reg = createInFlightRegistry({
+      triggers,
+      onPortalCrossing: (id, portal) => {
+        crossings.push({ id, portal });
+      },
+    });
+    const stub = buildStubBody(
+      { x: 0, y: 1, z: HALF_DEPTH - 1 },
+      { x: 0, y: 0, z: 5 },
+    );
+    reg.register({ id: 7, body: stub.body, bodyId: "1:100" });
+    stub.setPos(0, 1, HALF_DEPTH - 0.2);
+    reg.step(litNone);
+    expect(crossings).toEqual([]);
+  });
+});
