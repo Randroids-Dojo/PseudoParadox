@@ -296,38 +296,6 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // until a future slice triggers it.
   const fadeOverlay = createFadeOverlay();
 
-  // REQ-009 runtime / REQ-013 / REQ-014 partial / REQ-001 / REQ-003: on a
-  // lit-portal `enter`, snapshot the lifetime's recording into a ghost from
-  // the lifetime's start position, teleport the active player to the
-  // destination spawn pose, re-stamp the player's origin tint, open a fresh
-  // lifetime at the destination time, and switch the registry's active
-  // timeline to the destination so per-timeline ghost visibility updates.
-  // Dark portals are filtered (REQ-010).
-  wireTraversal({
-    detector: portalTriggers,
-    player,
-    lifetime,
-    scene: sceneCtx.scene,
-    world,
-    registry,
-    // REQ-015 / F-006: on lit traversal, repaint the doors per the
-    // destination hour's lit state and snap the time-of-day clock so
-    // the room background and the door visuals match the new timeline.
-    // The same `litStateForTimeline` body that paints here also gates
-    // the runtime entry predicate inside `wireTraversal`, so the visual
-    // and behavior stay in lockstep including arrivals-derived rules
-    // (e.g. the Act 3 cinematic darkening the North door at 12:00
-    // until every actor completes).
-    onTimelineEnter(destinationHour) {
-      repaintDoorsForHour(
-        sceneCtx.portals,
-        destinationHour,
-        registry.ghostsFor(destinationHour),
-      );
-      snapClockToHour(timeOfDay, destinationHour);
-    },
-  });
-
   // F-017: win-screen on escape. The escape state in the dossier is
   // "active player crosses the lit North door at 12:00 after the
   // cinematic actors complete." The North door at 12:00 is dark by
@@ -338,6 +306,15 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // portal while the active timeline is 12 AND the door is lit; one
   // shot per session (re-mounting on every brush against the trigger
   // would be noise) until `hardReset` clears it.
+  //
+  // Registered BEFORE `wireTraversal` so the FIFO subscriber dispatch
+  // hands the event to this callback first, while `registry.activeTimeline`
+  // still reads the SOURCE timeline. Without the ordering, `wireTraversal`'s
+  // own subscriber would have already called `setActiveTimeline(destinationHour, ...)`
+  // by the time we ran and the source-timeline check would compare against
+  // a post-mutation value. Today the North-12 portal's `destinationHours`
+  // is itself 12 so the read is coincidentally correct, but the explicit
+  // ordering is the contract.
   let winScreenHandle: WinScreenHandle | undefined;
   const tearDownWinScreen = (): void => {
     winScreenHandle?.dispose();
@@ -368,6 +345,38 @@ export async function startApp(container: HTMLElement): Promise<void> {
         );
       },
     });
+  });
+
+  // REQ-009 runtime / REQ-013 / REQ-014 partial / REQ-001 / REQ-003: on a
+  // lit-portal `enter`, snapshot the lifetime's recording into a ghost from
+  // the lifetime's start position, teleport the active player to the
+  // destination spawn pose, re-stamp the player's origin tint, open a fresh
+  // lifetime at the destination time, and switch the registry's active
+  // timeline to the destination so per-timeline ghost visibility updates.
+  // Dark portals are filtered (REQ-010).
+  wireTraversal({
+    detector: portalTriggers,
+    player,
+    lifetime,
+    scene: sceneCtx.scene,
+    world,
+    registry,
+    // REQ-015 / F-006: on lit traversal, repaint the doors per the
+    // destination hour's lit state and snap the time-of-day clock so
+    // the room background and the door visuals match the new timeline.
+    // The same `litStateForTimeline` body that paints here also gates
+    // the runtime entry predicate inside `wireTraversal`, so the visual
+    // and behavior stay in lockstep including arrivals-derived rules
+    // (e.g. the Act 3 cinematic darkening the North door at 12:00
+    // until every actor completes).
+    onTimelineEnter(destinationHour) {
+      repaintDoorsForHour(
+        sceneCtx.portals,
+        destinationHour,
+        registry.ghostsFor(destinationHour),
+      );
+      snapClockToHour(timeOfDay, destinationHour);
+    },
   });
 
   // REQ-025: hard reset on `r` keydown. The pause-menu UI is out of scope
