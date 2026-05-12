@@ -144,8 +144,14 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // + two-finger drag on mobile. Single-finger touch stays the
   // joystick; this attaches AFTER `bindTouchControls` so pointer
   // events arrive at both handlers and the joystick keeps the first
-  // touch.
-  attachCameraGestures({ container, camera: sceneCtx.camera });
+  // touch. Gestures bind to the canvas (renderer.domElement), NOT
+  // the wider container, so right-clicking the action buttons or
+  // wheel-scrolling over the joystick overlay does not hijack the
+  // pan / zoom path.
+  attachCameraGestures({
+    container: renderer.domElement,
+    camera: sceneCtx.camera,
+  });
   // REQ-001 / REQ-002 / REQ-003 foundation: the active player owns a
   // `lifetime` whose `recorder` captures input each fixed step. On portal
   // traversal the lifetime is closed (its recording snapshotted onto a
