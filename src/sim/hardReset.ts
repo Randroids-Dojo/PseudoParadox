@@ -226,8 +226,16 @@ export function hardReset(options: HardResetOptions): void {
   snapClockToHour(timeOfDay, ACT_ONE_HOUR);
 
   // 6. Repaint every door's lit/dark visual to match the Act 1 timeline
-  // table (South lit, East lit, North dark, West dark per the GDD).
-  repaintDoorsForHour(portals, ACT_ONE_HOUR);
+  // (South lit, East lit, North dark, West dark per the GDD). After
+  // `clearAllGhosts` the bucket is empty so the arrivals body in
+  // `litStateForTimeline` is a no-op; passing `registry.ghostsFor(...)`
+  // anyway keeps the call shape consistent with the per-traversal repaint
+  // in `src/app.ts` (F-006 unification).
+  repaintDoorsForHour(
+    portals,
+    ACT_ONE_HOUR,
+    registry.ghostsFor(ACT_ONE_HOUR),
+  );
 
   // 7. Clear the portal-trigger overlap state so the next `step` call
   // after the reset does not fire a stale `exit` event for whatever

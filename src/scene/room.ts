@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { applyDoorLitState, createFourDoors } from "./door.ts";
+import { createFourDoors } from "./door.ts";
 import { createActOnePortals } from "../sim/portal.ts";
 import type { Portal } from "../sim/portal.ts";
 import { ACT_ONE_HOUR } from "../sim/actOneAnchor.ts";
-import { doorLitStateAtHour } from "../sim/doorStateAtTime.ts";
+import { repaintDoorsForHour } from "../sim/timelineRoom.ts";
 
 /**
  * Floor / wall slab thickness used for both the visual mesh and the
@@ -109,22 +109,18 @@ export function buildRoom(): RoomBuild {
   // Doors: one per wall, placed at the wall midpoint. Visual-only for now;
   // collisions and portal traversal land in later slices (REQ-001/REQ-005).
   // Each door is paired with a Portal carrying its fixed destination time
-  // (REQ-005). The lit/dark VISUAL state is sourced from
-  // `doorLitStateAtHour(ACT_ONE_HOUR)` (REQ-013/REQ-014): the canonical
-  // 5:00 table lights South and East and leaves North and West dark. The
-  // portal's own `isLit` flag still feeds the runtime traversal predicate;
-  // both views agree because `ACT_ONE_PORTAL_SPECS` and
-  // `DOOR_STATE_BY_HOUR[5]` both encode the same GDD truth. REQ-011 will
-  // collapse the two sources into one timeline-derived computation.
+  // (REQ-005). The lit/dark VISUAL state runs through
+  // `repaintDoorsForHour` (REQ-013/REQ-014, F-006): the same code path
+  // the per-traversal repaint and hard reset use. At boot no ghosts
+  // exist yet (the registry has not been built), so the default empty
+  // ghost list yields the seed answer for 5:00 (South lit, East lit,
+  // North dark, West dark).
   const doors = createFourDoors(width, depth);
   for (const door of doors) {
     group.add(door.mesh);
   }
   const portals = createActOnePortals(doors);
-  const litByDirection = doorLitStateAtHour(ACT_ONE_HOUR);
-  for (const door of doors) {
-    applyDoorLitState(door, litByDirection[door.direction]);
-  }
+  repaintDoorsForHour(portals, ACT_ONE_HOUR);
 
   return { group, portals };
 }
