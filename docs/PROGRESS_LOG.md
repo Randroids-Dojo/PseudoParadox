@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-11, F-009 Touch Action Buttons (Pickup / Throw / Punch / Reset)
+
+- Branch: `f009-touch-action-buttons`
+- PR: #59 (when opened)
+- Changed: Mobile-playability slice. The prior touch-joystick slice covered movement only; pickup / throw / punch / hard-reset still required a keyboard so the prototype was not fully playable on a phone. New `src/render/actionButtons.ts` exports `createActionButtons(container, keyState, options?)` which mounts four DOM buttons in a vertical stack on the bottom-right of the canvas (`ACTION_BUTTON_SIZE_PX = 64`, `ACTION_BUTTON_GAP_PX = 12`, positioned `ACTION_BUTTON_RIGHT_PX = 16` and `ACTION_BUTTON_BOTTOM_PX = 16` from the viewport edges). Buttons from bottom to top: Reset, Throw, Pick, Punch. Each Punch / Pick / Throw button is a TOGGLE-style press: `touchstart` / `mousedown` sets the corresponding `keyState` boolean to `true` AND flips `aria-pressed`; `touchend` / `touchcancel` / `mouseup` / `mouseleave` clears the flag and `aria-pressed`. Keyboard activation (Enter / Space) on focus preserved per the touch-controls accessibility rule (RULE 10). The Reset button is special: it dispatches a synthetic `KeyboardEvent("keydown", { code: "KeyR" })` to the configured key target (default `window`), and a matching `keyup` on release. The existing `r`-key reset listener in `src/app.ts` then fires once per press, keeping a single source of truth for hard reset. `src/app.ts` calls `createActionButtons(container, keyboard.state)` once at boot right after `createTouchOverlay`; the buttons live for the page lifetime so no dispose is wired (matches the touchOverlay pattern).
+- Verification: `npm run type-check` clean. `npm test` 604 passing (unchanged; DOM mounting is verified via the Vercel preview deploy rather than a vitest test because the project ships no jsdom / happy-dom devDep per RULE 3). `npm run build` succeeds. Em-dash and en-dash sweep clean. `git diff --check` clean. Manual smoke against the Vercel preview will verify the buttons render, the press / release flips fire, and the Reset button triggers the hard-reset sequence end-to-end.
+- Assumptions: the button label set ("Punch" / "Pick" / "Throw" / "Reset") is short enough to fit in a 64 px circle with a 13 px font (`Pick` is shorter than `Pickup` so the text fits without truncation). Button positioning is fixed (`position: fixed`) above the iOS safe area at 16 px from edges; future polish slices can fold in `env(safe-area-inset-*)` padding without changing the data flow. The Reset button fires once per pointer down rather than holding-to-confirm; the `keydown` synthetic event will fire repeatedly while the listener is registered, but the existing reset handler in `src/app.ts` is idempotent (calling `hardReset` on an already-reset world produces the same clean state). No new core deps added (RULE 3).
+- GDD coverage: no REQ rows changed (this is a polish slice covered by the touch-input convention, not a specific REQ row).
+- Followups: F-009 resolved by this slice.
+
 ## 2026-05-10, Cleanup Rounds 8-10: Build / Perf / Summary
 
 - Branch: `cleanup-8-9-build-perf`
