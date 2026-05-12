@@ -354,4 +354,62 @@ describe("createTimelineRegistry: rehomeGhost (F-007)", () => {
     registry.rehomeGhost(ghost, 12);
     expect(scene.children.includes(ghost.mesh)).toBe(true);
   });
+
+  it("hides the mesh when rehoming OUT of the active timeline", () => {
+    // F-007 visibility reconciliation: a ghost rehomed from the active
+    // bucket should be hidden so it does not paint in the wrong timeline.
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    registry.add(5, ghost);
+    expect(ghost.mesh.visible).toBe(true);
+    registry.rehomeGhost(ghost, 12);
+    expect(ghost.mesh.visible).toBe(false);
+  });
+
+  it("shows the mesh when rehoming INTO the active timeline", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    registry.add(12, ghost);
+    // bucket 12 is non-active; add hides it.
+    expect(ghost.mesh.visible).toBe(false);
+    registry.rehomeGhost(ghost, 5);
+    expect(ghost.mesh.visible).toBe(true);
+  });
+});
+
+describe("createTimelineRegistry: findGhostByInstanceId (F-007)", () => {
+  it("returns the ghost when present in any bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const a = createGhost({
+      recording: buildRecording([state({ forward: true })]),
+      originNormalized: 5 / 24,
+      instanceId: 11,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    const b = createGhost({
+      recording: buildRecording([state({ forward: true })]),
+      originNormalized: 12 / 24,
+      instanceId: 22,
+      scene,
+      world,
+      startPosition: { x: 1, z: 1 },
+    });
+    registry.add(5, a);
+    registry.add(12, b);
+    expect(registry.findGhostByInstanceId(11)).toBe(a);
+    expect(registry.findGhostByInstanceId(22)).toBe(b);
+  });
+
+  it("returns undefined when no bucket holds a ghost with that id", () => {
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    expect(registry.findGhostByInstanceId(999)).toBeUndefined();
+  });
 });

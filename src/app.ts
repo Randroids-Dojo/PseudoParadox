@@ -219,19 +219,18 @@ export async function startApp(container: HTMLElement): Promise<void> {
     triggers: portalTriggers.triggers,
     onPortalCrossing: (bodyId, portal) => {
       // Find the ghost by its instance id across every timeline
-      // bucket (it could live in any bucket depending on its source).
+      // bucket. A body may have already been rehomed by an earlier
+      // crossing (e.g. thrown 5 -> 12, then picked up and thrown
+      // back 12 -> 5), so searching only the active bucket would
+      // miss it. `findGhostByInstanceId` walks every bucket.
       const destinationHour = timelineIdFromNormalized(
         portalDestinationNormalized(portal),
       );
-      const sourceTimeline = registry.activeTimeline;
-      const sourceBucket = registry.ghostsFor(sourceTimeline);
-      const ghost = sourceBucket.find((g) => g.instanceId === bodyId);
+      const ghost = registry.findGhostByInstanceId(bodyId);
       if (!ghost) return;
-      // Rehome: remove from the source bucket (via `removeGhost`, which
-      // also disposes the mesh and body), but we want to KEEP the
-      // body alive so it can settle at the destination. The narrower
-      // `rehomeGhost` method moves the bucket reference without any
-      // scene / world teardown.
+      // Rehome moves the bucket reference without touching the mesh
+      // or Rapier body, and reconciles visibility based on the new
+      // bucket's relationship to the active timeline.
       registry.rehomeGhost(ghost, destinationHour);
     },
   });
