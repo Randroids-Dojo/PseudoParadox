@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   applyKnockout,
-  isConscious,
   INITIAL_CONSCIOUSNESS,
 } from "../../src/sim/knockoutState.ts";
 
@@ -27,12 +26,5 @@ describe("applyKnockout (REQ-033 partial)", () => {
     // Primitives cannot be mutated; this assertion is a smoke test that the
     // helper does not, e.g., reassign the binding via a side channel.
     expect(before).toBe("conscious");
-  });
-});
-
-describe("isConscious (REQ-033 partial)", () => {
-  it("returns true for 'conscious' and false for 'unconscious'", () => {
-    expect(isConscious("conscious")).toBe(true);
-    expect(isConscious("unconscious")).toBe(false);
   });
 });

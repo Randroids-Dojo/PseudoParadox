@@ -38,13 +38,3 @@ export const INITIAL_CONSCIOUSNESS: Consciousness = "conscious";
 export function applyKnockout(_state: Consciousness): Consciousness {
   return "unconscious";
 }
-
-/**
- * Pure predicate: an instance can act on its inputs (movement, punch) iff
- * it is conscious. An unconscious instance has its inputs suppressed before
- * the per-tick punch resolver runs (see `src/sim/punch.ts`). The active
- * player's movement is also gated by this predicate in `src/app.ts`.
- */
-export function isConscious(state: Consciousness): boolean {
-  return state === "conscious";
-}

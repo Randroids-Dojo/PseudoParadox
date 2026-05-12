@@ -66,23 +66,6 @@ export interface PunchResolution {
 }
 
 /**
- * Pure predicate: planar XZ distance between two positions is within the
- * supplied range. Used by `resolvePunches` and exposed as a small helper
- * so unit tests can pin the boundary behavior independently of the rest
- * of the resolver.
- */
-export function isInPunchRange(
-  a: { readonly x: number; readonly z: number },
-  b: { readonly x: number; readonly z: number },
-  range: number = PUNCH_RANGE_M,
-): boolean {
-  const dx = a.x - b.x;
-  const dz = a.z - b.z;
-  // Compare squared distances to avoid the sqrt; functionally equivalent.
-  return dx * dx + dz * dz <= range * range;
-}
-
-/**
  * Suppress the `punching` flag on every unconscious actor. The dossier
  * specifies that an unconscious attacker cannot punch even if its
  * recording still has the punch flag set at this tick; the canonical way
