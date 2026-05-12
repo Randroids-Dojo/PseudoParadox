@@ -131,11 +131,22 @@ export function createActionButtons(
     // press / release pair instead of intercepting; the keyboard
     // handler in `src/input/keyboard.ts` owns the Space binding when
     // the button is not focused.
-    btn.addEventListener("keydown", (e) => {
-      if (e.code === "Enter" || e.code === "Space") press(e);
+    // Block bubbling so a focused button's Space / Enter does not also
+    // fire the global keyboard handler (which binds Space to punch and
+    // would double-flip `keyState.punch`). Guard `press` on `!e.repeat`
+    // so a held key fires `press` once instead of every auto-repeat
+    // tick, keeping the toggle behavior aligned with touch press.
+    btn.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.code !== "Enter" && e.code !== "Space") return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!e.repeat) press(e);
     });
-    btn.addEventListener("keyup", (e) => {
-      if (e.code === "Enter" || e.code === "Space") release(e);
+    btn.addEventListener("keyup", (e: KeyboardEvent) => {
+      if (e.code !== "Enter" && e.code !== "Space") return;
+      e.preventDefault();
+      e.stopPropagation();
+      release(e);
     });
 
     return btn;
