@@ -33,6 +33,7 @@
  */
 
 import type { Consciousness } from "./knockoutState.ts";
+import type { Position2D } from "./position.ts";
 
 /**
  * Pickup range in meters (Q-006-adjacent, but the range value is the
@@ -72,7 +73,7 @@ export interface Carryable {
   /** Stable id used for tie-breaking on equidistant candidates. */
   readonly id: number;
   /** Planar XZ position at the moment of selection. */
-  readonly position: { readonly x: number; readonly z: number };
+  readonly position: Position2D;
   /** Pre-tick consciousness state. Only `'unconscious'` candidates are
    * eligible for pickup. */
   readonly consciousness: Consciousness;
@@ -119,7 +120,7 @@ export const INITIAL_CARRY_STATE: CarryState = { kind: "idle" };
  * single `Carryable` or `null`.
  */
 export function nearestCarryable(
-  carrier: { readonly id: number; readonly position: { readonly x: number; readonly z: number } },
+  carrier: { readonly id: number; readonly position: Position2D },
   candidates: readonly Carryable[],
   range: number = PICKUP_RANGE_M,
 ): Carryable | null {
@@ -158,7 +159,7 @@ export function nearestCarryable(
  */
 export function applyCarrySpeedScaling(
   state: CarryState,
-  velocity: { readonly x: number; readonly z: number },
+  velocity: Position2D,
 ): { x: number; z: number } {
   if (state.kind !== "carrying") {
     return { x: velocity.x, z: velocity.z };
@@ -190,7 +191,7 @@ export function applyCarrySpeedScaling(
 export function resolveCarryToggle(
   state: CarryState,
   pickupRisingEdge: boolean,
-  carrier: { readonly id: number; readonly position: { readonly x: number; readonly z: number } },
+  carrier: { readonly id: number; readonly position: Position2D },
   candidates: readonly Carryable[],
   range: number = PICKUP_RANGE_M,
 ): CarryState {

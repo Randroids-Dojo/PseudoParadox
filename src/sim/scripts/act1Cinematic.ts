@@ -57,20 +57,21 @@ import {
 } from "../ghostInstance.ts";
 import type { TimelineRegistry } from "../timelineRegistry.ts";
 import { applyKnockout } from "../knockoutState.ts";
+import type { Position2D } from "../position.ts";
 
 /**
  * Spawn pose for the left-side dragger. Just inside the North door, slightly
  * left of center on the X axis. The North door sits at z = -depth / 2 with
  * the room 10 units deep, so just inside is z = -3.5.
  */
-export const ACT1_LEFT_DRAGGER_SPAWN: { readonly x: number; readonly z: number } =
+export const ACT1_LEFT_DRAGGER_SPAWN: Position2D =
   Object.freeze({ x: -0.6, z: -3.5 });
 
 /**
  * Spawn pose for the right-side dragger. Mirror of the left dragger on the
  * other side of the body.
  */
-export const ACT1_RIGHT_DRAGGER_SPAWN: { readonly x: number; readonly z: number } =
+export const ACT1_RIGHT_DRAGGER_SPAWN: Position2D =
   Object.freeze({ x: 0.6, z: -3.5 });
 
 /**
@@ -78,7 +79,7 @@ export const ACT1_RIGHT_DRAGGER_SPAWN: { readonly x: number; readonly z: number 
  * just inside the North door so the cinematic reads "the body enters with
  * the actors."
  */
-export const ACT1_KNOCKOUT_BODY_SPAWN: { readonly x: number; readonly z: number } =
+export const ACT1_KNOCKOUT_BODY_SPAWN: Position2D =
   Object.freeze({ x: 0, z: -3.6 });
 
 /**

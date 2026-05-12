@@ -36,6 +36,8 @@
  *     velocity each tick, but that wiring lives in the host).
  */
 
+import type { Position2D } from "./position.ts";
+
 /** Planar (XZ) direction vector. Always unit length when produced by this
  * module's helpers; callers may pass non-unit input which the helpers
  * normalize. */
@@ -65,7 +67,7 @@ const ZERO_VELOCITY_EPSILON_SQ = 1e-8;
  * can leave the cached facing untouched on a stopped tick).
  */
 export function facingFromVelocity(
-  velocity: { readonly x: number; readonly z: number },
+  velocity: Position2D,
 ): Facing | null {
   const magSq = velocity.x * velocity.x + velocity.z * velocity.z;
   if (magSq < ZERO_VELOCITY_EPSILON_SQ) return null;
@@ -86,7 +88,7 @@ export interface FacingTracker {
    * overwrites the cache; zero input is a no-op. Total: any input shape
    * is safe.
    */
-  update(velocity: { readonly x: number; readonly z: number }): void;
+  update(velocity: Position2D): void;
   /**
    * Reset the cache to `DEFAULT_FACING`. Used by hard reset (REQ-025) so
    * a freshly-reset player faces north until they move again, even if

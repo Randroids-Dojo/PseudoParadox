@@ -24,6 +24,7 @@
  */
 
 import type { Consciousness } from "./knockoutState.ts";
+import type { Position2D } from "./position.ts";
 
 /**
  * Default punch range in meters (Q-003 default). Roughly the diameter of
@@ -44,7 +45,7 @@ export interface PunchActor {
    * as the key the resolver returns its (attacker, target) pairs by. */
   readonly id: number;
   /** Planar XZ position of the body's translation at the resolve tick. */
-  readonly position: { readonly x: number; readonly z: number };
+  readonly position: Position2D;
   /** Whether the actor pressed the punch input this tick. Callers MUST
    * pass `false` for any actor whose `consciousness` is `'unconscious'`;
    * `suppressUnconsciousPunches` is the canonical helper. */
