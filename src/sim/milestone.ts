@@ -26,6 +26,7 @@
  */
 
 import type { DoorDirection } from "../scene/door.ts";
+import type { Position2D } from "./position.ts";
 
 /**
  * Stable per-kind weights. The replay path-follower (PR3b) uses these for
@@ -44,14 +45,14 @@ export type Milestone =
   | {
       readonly kind: "wall_bump";
       readonly tick: number;
-      readonly position: { readonly x: number; readonly z: number };
+      readonly position: Position2D;
       readonly weight: typeof WALL_BUMP_WEIGHT;
       readonly wall: DoorDirection;
     }
   | {
       readonly kind: "door_traversal";
       readonly tick: number;
-      readonly position: { readonly x: number; readonly z: number };
+      readonly position: Position2D;
       readonly weight: typeof DOOR_TRAVERSAL_WEIGHT;
       readonly door: DoorDirection;
     };

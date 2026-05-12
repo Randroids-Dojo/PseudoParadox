@@ -44,6 +44,7 @@ import {
   type Milestone,
 } from "./milestone.ts";
 import { PLAYER_SPEED_MPS, type PlanarVelocity } from "../input/keyboard.ts";
+import type { Position2D } from "./position.ts";
 
 /**
  * Drift threshold in world units. If the ghost's body translation is
@@ -78,7 +79,7 @@ export interface ReplayState {
   /** Running expected position assuming no obstructions. Updated each
    * tick by adding `replayAtTick(recording, tickIndex) * dt`. Re-anchored
    * to the ghost's actual body position when a milestone is reached. */
-  readonly expectedPos: { readonly x: number; readonly z: number };
+  readonly expectedPos: Position2D;
   /** The mode used in the most recent `advanceReplay` call. Exposed for
    * tests and any future overlay debugging. */
   readonly lastMode: ReplayMode;

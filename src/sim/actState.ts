@@ -26,6 +26,7 @@
  *     hook. That lands with REQ-040's E2E completability slice.
  */
 
+import type { Position2D } from "./position.ts";
 import type { TimelineId } from "./timelineRegistry.ts";
 import { timelineIdFromNormalized } from "./timelineRegistry.ts";
 import type { CarryState } from "./carryState.ts";
@@ -146,7 +147,7 @@ export interface WestEntry {
  */
 export interface InstanceSnapshot {
   readonly id: InstanceId;
-  readonly position: { readonly x: number; readonly z: number };
+  readonly position: Position2D;
   readonly consciousness: Consciousness;
   /** Origin normalized time-of-day in [0, 1]; mirrors the ghost's tint. */
   readonly originNormalized: number;
@@ -157,7 +158,7 @@ export interface InstanceSnapshot {
  */
 export interface ActivePlayerSnapshot {
   readonly instanceId: InstanceId;
-  readonly position: { readonly x: number; readonly z: number };
+  readonly position: Position2D;
   readonly consciousness: Consciousness;
   readonly carry: CarryState;
 }
@@ -169,7 +170,7 @@ export interface ActivePlayerSnapshot {
  */
 export interface BucketGhostSnapshot {
   readonly id: InstanceId;
-  readonly position: { readonly x: number; readonly z: number };
+  readonly position: Position2D;
   readonly consciousness: Consciousness;
   /** Origin normalized time-of-day (the timeline this ghost was recorded in). */
   readonly originNormalized: number;
@@ -396,10 +397,7 @@ export function isEscaped(snapshot: ActStateSnapshot): boolean {
  * each compute their own variant; the slice-discipline rule waits for the
  * third repetition before extracting.
  */
-export function planarDistance(
-  a: { readonly x: number; readonly z: number },
-  b: { readonly x: number; readonly z: number },
-): number {
+export function planarDistance(a: Position2D, b: Position2D): number {
   const dx = a.x - b.x;
   const dz = a.z - b.z;
   return Math.sqrt(dx * dx + dz * dz);
