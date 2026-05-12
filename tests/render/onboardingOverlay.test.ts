@@ -17,7 +17,7 @@ describe("pickOnboardingContent (F-016)", () => {
     expect(lines).toEqual(["Goal: escape through a lit door."]);
   });
 
-  it("returns a frozen-shape readonly array (callers cannot mutate the shared content)", () => {
+  it("returns arrays with the expected relative shape (fine-pointer longer than coarse)", () => {
     const fine = pickOnboardingContent(false);
     const coarse = pickOnboardingContent(true);
     expect(Array.isArray(fine.lines)).toBe(true);

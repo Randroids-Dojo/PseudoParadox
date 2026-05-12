@@ -117,6 +117,14 @@ export function createOnboardingOverlay(
     transition: `opacity ${fadeMs}ms ease-out`,
     opacity: "1",
   } satisfies Partial<CSSStyleDeclaration>);
+  // Screen-reader semantics: `role="status"` + polite live region so the
+  // first-time hint is announced on mount without interrupting any focused
+  // control. `aria-atomic="true"` so the whole hint reads as one update
+  // rather than line-by-line; `aria-hidden="false"` is explicit so the
+  // hide path's flip to `"true"` is symmetric.
+  el.setAttribute("role", "status");
+  el.setAttribute("aria-live", "polite");
+  el.setAttribute("aria-atomic", "true");
   el.setAttribute("aria-hidden", "false");
   el.setAttribute("data-onboarding-overlay", "true");
   el.textContent = lines.join("\n");
