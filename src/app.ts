@@ -8,6 +8,7 @@ import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
 import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { bindTouchControls } from "./input/touch.ts";
 import { createTouchOverlay } from "./render/touchOverlay.ts";
+import { createActionButtons } from "./render/actionButtons.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
@@ -132,6 +133,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
   const touchOverlay = createTouchOverlay(container);
   const touch = bindTouchControls(window, keyboard.state);
   touch.onChange((js) => touchOverlay.update(js));
+  // F-009: DOM action buttons on the bottom-right. Each press flips
+  // the same `KeyState` boolean the keyboard handler would so the
+  // recorder snapshots identical state from touch and keyboard. The
+  // Reset button dispatches a synthetic `keydown KeyR` so the
+  // existing reset listener fires once per press.
+  createActionButtons(container, keyboard.state);
   // REQ-001 / REQ-002 / REQ-003 foundation: the active player owns a
   // `lifetime` whose `recorder` captures input each fixed step. On portal
   // traversal the lifetime is closed (its recording snapshotted onto a

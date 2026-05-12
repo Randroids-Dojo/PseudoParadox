@@ -72,7 +72,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Context: The touch-joystick slice shipped a single-stick movement-only input on mobile. Pickup (F), throw (T), punch (Space), and hard-reset (R) still require a keyboard. Without these the prototype is not fully playable on a phone.
 - Blocker: none. The DOM-overlay pattern in `src/render/touchOverlay.ts` already shows the joystick ring; a parallel `actionButtons.ts` module would mount four bottom-right action buttons that flip the same `KeyState` booleans the keyboard handler does.
 - Unblock condition: a slice that adds DOM buttons wired to the existing `KeyState.pickup / throw / punch` plus a synthetic `keydown KeyR` for hard reset. Should respect `aria-pressed` and not interfere with the joystick when the user touches them.
-- PR / Dot reference (when picked up):
+- Resolved: PR #59. New `src/render/actionButtons.ts` mounts four bottom-right buttons (Punch / Pick / Throw / Reset). Press / release events flip the same `KeyState` booleans the keyboard handler would, so the recorder snapshots identical state regardless of input source. The Reset button dispatches a synthetic `keydown KeyR` to fire the existing reset listener. Touch and mouse events both supported; keyboard activation (Enter / Space on focus) preserved; `aria-pressed` reflects state on the three KeyState buttons. Positioned on the bottom-right with a vertical stack; the joystick stays on the bottom-left (one thumb per corner).
 
 ### F-010: Camera pan / zoom / orbit gestures
 
