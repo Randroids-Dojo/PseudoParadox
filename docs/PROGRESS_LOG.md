@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-11, F-007 Dossier Amendment: Thrown-Body Persistence Across Loops
+
+- Branch: `f007-dossier-amendment`
+- PR: #62 (when opened)
+- Changed: Spec-only slice. F-007's blocker was a missing dossier amendment specifying what happens to a thrown body's persistence across timeline visits after the first throw. The GDD's section 7 said the body "is IN the 12:00 timeline as a body" but did not specify whether subsequent loops see it persist, duplicate, or vanish. New "Persistence across loops" subsection in `docs/gdd/30-combat-and-interaction.md` section 7 commits to: each thrown body carries a `bodyId = (throwerInstanceId, throwTick)` derived from the carrier's recorded inputs (deterministic across replays), the in-flight registry tracks bodies by id across timeline buckets, on lit-portal traversal the body is rehomed from source to destination bucket (the Rapier rigid body stays alive; only the bucket index updates), and on replay the throw resolver no-ops when a body with the same id already exists anywhere. UX consequence: no phantom-arc replay at the source timeline on loop-back; the body lives in the destination timeline only after first traversal. New Q-028 in `docs/OPEN_QUESTIONS.md` documents the four options (single-body via id; replay re-spawns; throw is one-shot; persists at both timelines) and resolves to Option A on birth per the user's design pass. F-007 status in `docs/FOLLOWUPS.md` flipped from "blocked" to "partial: dossier amendment landed; implementation pending."
+- Verification: dash sweep clean. No code touched; tests unchanged.
+- Assumptions: the design pass resolves to "one body per recorded throw event" (Option A). Option B (re-spawn with overlap) was rejected for chaotic destination state across multiple loops; Option C (recording skips the throw on replay) was rejected for violating REQ-002 frame-exact replay; Option D (body persists at both source and destination) was rejected for confusing dual-view UX. The `bodyId` tuple is derived from data that already survives recorder snapshotting (instanceId and throwTick are both recorded inputs), so cross-machine determinism is preserved.
+- GDD coverage: no REQ rows changed. Section 30 (combat-and-interaction) gains a "Persistence across loops" subsection plus a build-log entry.
+- Followups: F-007 implementation slice is now unblocked. Remaining open Nice To Have: F-008 (real-browser ship gates, blocked on dep approval), F-005 (CodeRabbit credits, billing).
+
 ## 2026-05-11, F-010 Camera Pan / Zoom Gestures
 
 - Branch: `f010-camera-gestures`

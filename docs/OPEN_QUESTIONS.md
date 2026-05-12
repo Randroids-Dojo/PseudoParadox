@@ -294,6 +294,18 @@ Keep `Q-NNN` IDs monotonically increasing. When a question resolves, leave the e
 - Status: resolved
 - Resolution: A. `Milestone` discriminated union shipped in PR3a with `kind: 'wall_bump' | 'door_traversal'`, `tick: number`, `position: { x: number; z: number }`, `weight: number`, plus a kind-specific `meta` (wall direction, door direction).
 
+### Q-028: Thrown-body persistence model across replay loops (F-007)
+
+- Context: REQ-036 thrown bodies do NOT spawn ghosts (`docs/gdd/30-combat-and-interaction.md` section 7 closed-form decision). On replay, the throw input fires again from the recorded `KeyState`, which would naively spawn a duplicate body. F-007's followup notes the implementation gap: today the body teleports across the portal but its bookkeeping stays in the source bucket, so a loop-back to the source snaps the body back via `setActiveTimeline`'s reset. The dossier never specified what happens to the body on subsequent loops: does the destination timeline see ONE settled body or N duplicates? Does the source timeline see the body absent or frozen mid-arc?
+- Options:
+  - A. **Replay no-ops if body already exists**: each thrown body gets a unique `bodyId = (throwerInstanceId, throwTick)`. On every replay of the throw input, the resolver looks up the id in the in-flight registry. If a body with that id exists anywhere (in-flight or settled), no-op. Otherwise spawn fresh. Single body per recorded throw event across all loops. UX: no phantom-arc replay at the source after first traversal.
+  - B. **Replay re-spawns every time, physics resolves overlap**: every replay spawns a fresh body that deterministically traces the same arc. At the destination the bodies stack at the same position; Rapier pushes them apart. UX: chaotic at the destination after multiple loops.
+  - C. **Throw is one-shot, recording ignores the throw on replay**: throw input is consumed on first occurrence; replays of the same recording skip the throw. Violates REQ-002 frame-exact replay strictly.
+  - D. **Body persists at both source and destination**: source bucket holds the body frozen at its portal-crossing position; destination bucket holds the settled body. Two views of one body. UX: confusing.
+- Recommended default: A. Matches the GDD's "the body is IN the 12:00 timeline as a body" intent. Determinism: the `bodyId` is derived from recorded inputs, so the same id resolves across machines. Simpler mental model than B or D; preserves frame-exact replay semantics better than C (the input still fires, the resolver just looks up state and decides).
+- Status: resolved
+- Resolution: A. Confirmed by user. Implementation lands in the F-007 slice: the `InFlightRegistry` gains a `bodyId -> handle` index across timeline buckets; lit-portal traversal rehomes the body from source to destination bucket; the throw resolver checks the registry before spawning. See `docs/gdd/30-combat-and-interaction.md` section 7 "Persistence across loops" subsection for the full spec.
+
 ### Q-010: Thought-bubble lookahead window length
 
 - Context: REQ-032 thought bubbles preview upcoming actions. Too short a window and the player has no time to react. Too long and the bubble shows actions far enough out that the player cannot mentally connect the icon to the eventual event.
