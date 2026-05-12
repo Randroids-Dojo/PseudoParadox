@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-11, F-010 Camera Pan / Zoom Gestures
+
+- Branch: `f010-camera-gestures`
+- PR: #61 (when opened)
+- Changed: F-010 polish. The dollhouse camera shipped fixed (`OrthographicCamera` with a 3/4 vantage and contain-fit frustum). This slice layers interactive zoom + pan on top per the user's design pass: zoom range `[0.5, 3]`, pan bound `+/- 5m` (room half-width), desktop pan via right-click drag (context menu suppressed on the canvas), mobile pan via two-finger drag. Wheel = zoom on desktop, pinch = zoom on mobile. Left-click drag stays free for future UI bindings (click-to-move, area selection). Single-finger touch still goes to the joystick (`src/input/touch.ts`); the camera handler only engages when 2 touch pointers are active. New `src/render/cameraGestures.ts` exports `attachCameraGestures({ container, camera })` plus four pure helpers: `applyZoomScale(prev, scale)` clamps to `[ZOOM_MIN, ZOOM_MAX]`; `applyPanDelta(prevX, prevZ, dx, dz)` clamps to `+/- PAN_LIMIT_M`; `screenDragToWorldPan(dxPx, dyPx, frustum, canvas, zoom)` converts a screen drag to an XZ world delta accounting for current zoom and frustum; constants for the design knobs. Camera state is reified as an internal `panOffsetX / panOffsetZ` that shifts both the camera's position and its look target each frame so the dollhouse angle is preserved during pan. Wired into `src/app.ts` via one line after `createActionButtons`.
+- Verification: `npm run type-check` clean. `npm test` 622 passing across 56 suites (was 607 / 55). `npm run build` succeeds. Em-dash and en-dash sweep clean. `git diff --check` clean. 15 new pure-helper tests in `tests/render/cameraGestures.test.ts`: zoom clamp at min/max, exponential wheel mapping at +-100 deltaY, pan additivity, per-axis clamping at the limit, drag-to-world conversion at zoom 1 and 2, sign convention (drag right -> world view scrolls right -> camera moves left), zero-canvas guard. DOM event wiring (the bulk of the module) is verified via the Vercel preview deploy since the project ships no jsdom devDep per RULE 3.
+- Assumptions: zoom + pan defaults match the user's design pass (Option A across all three knobs). Right-click drag was picked over left-click to preserve left-click for future UI; the context menu is suppressed only on the gesture-bound element (the canvas container), so right-click menus remain available on every other DOM element. Pan bounds at room half-width (5m) keep the player visible somewhere on screen even at max pan. The pure helpers avoid `-0` by using `0 - x` in `screenDragToWorldPan` so `Object.is`-strict equality tests do not surface signed-zero edge cases.
+- GDD coverage: no REQ rows changed. F-010 is a polish slice.
+- Followups: F-010 resolved by this slice. Remaining open Nice To Have: F-007 (rehome thrown body, needs dossier amendment), F-008 (real-browser ship gates, blocked on dep approval), F-005 (CodeRabbit credits, billing).
+
 ## 2026-05-11, F-006 Door-Paint Unification through litStateForTimeline
 
 - Branch: `f006-door-paint-unification`

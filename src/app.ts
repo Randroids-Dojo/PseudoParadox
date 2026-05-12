@@ -9,6 +9,7 @@ import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { bindTouchControls } from "./input/touch.ts";
 import { createTouchOverlay } from "./render/touchOverlay.ts";
 import { createActionButtons } from "./render/actionButtons.ts";
+import { attachCameraGestures } from "./render/cameraGestures.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
 import { InputRecorder } from "./sim/inputRecorder.ts";
@@ -139,6 +140,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // Reset button dispatches a synthetic `keydown KeyR` so the
   // existing reset listener fires once per press.
   createActionButtons(container, keyboard.state);
+  // F-010: pan + zoom gestures. Wheel + right-drag on desktop, pinch
+  // + two-finger drag on mobile. Single-finger touch stays the
+  // joystick; this attaches AFTER `bindTouchControls` so pointer
+  // events arrive at both handlers and the joystick keeps the first
+  // touch.
+  attachCameraGestures({ container, camera: sceneCtx.camera });
   // REQ-001 / REQ-002 / REQ-003 foundation: the active player owns a
   // `lifetime` whose `recorder` captures input each fixed step. On portal
   // traversal the lifetime is closed (its recording snapshotted onto a
