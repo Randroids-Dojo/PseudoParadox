@@ -9,6 +9,7 @@ import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
 import { bindTouchControls } from "./input/touch.ts";
 import { createTouchOverlay } from "./render/touchOverlay.ts";
 import { createActionButtons } from "./render/actionButtons.ts";
+import { createOnboardingOverlay } from "./render/onboardingOverlay.ts";
 import { attachCameraGestures } from "./render/cameraGestures.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
@@ -146,6 +147,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // Reset button dispatches a synthetic `keydown KeyR` so the
   // existing reset listener fires once per press.
   createActionButtons(container, keyboard.state);
+  // F-016: ambient onboarding hint. Top-right corner DOM overlay
+  // listing the controls (or just the goal on touch devices, where
+  // the action buttons already label themselves). Removes itself on
+  // the first keydown or pointerdown so the play area is unoccluded
+  // after the player engages. One-shot per page life.
+  createOnboardingOverlay(container);
   // F-010: pan + zoom gestures. Wheel + right-drag on desktop, pinch
   // + two-finger drag on mobile. Single-finger touch stays the
   // joystick; this attaches AFTER `bindTouchControls` so pointer
