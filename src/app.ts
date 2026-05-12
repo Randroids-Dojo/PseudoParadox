@@ -10,6 +10,7 @@ import { bindTouchControls } from "./input/touch.ts";
 import { createTouchOverlay } from "./render/touchOverlay.ts";
 import { createActionButtons } from "./render/actionButtons.ts";
 import { createOnboardingOverlay } from "./render/onboardingOverlay.ts";
+import { createWinScreen, type WinScreenHandle } from "./render/winScreen.ts";
 import { attachCameraGestures } from "./render/cameraGestures.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
@@ -327,6 +328,48 @@ export async function startApp(container: HTMLElement): Promise<void> {
     },
   });
 
+  // F-017: win-screen on escape. The escape state in the dossier is
+  // "active player crosses the lit North door at 12:00 after the
+  // cinematic actors complete." The North door at 12:00 is dark by
+  // default (seed `north: true` AND `blockedByArrivals` returns true
+  // while any cinematic ghost is mid-recording), so the lit gate
+  // alone guarantees the cinematic-complete precondition. We mount
+  // the overlay on the first `enter` event for a north-direction
+  // portal while the active timeline is 12 AND the door is lit; one
+  // shot per session (re-mounting on every brush against the trigger
+  // would be noise) until `hardReset` clears it.
+  let winScreenHandle: WinScreenHandle | undefined;
+  const tearDownWinScreen = (): void => {
+    winScreenHandle?.dispose();
+    winScreenHandle = undefined;
+  };
+  portalTriggers.onPortalOverlap((event) => {
+    if (event.kind !== "enter") return;
+    if (event.portal.direction !== "north") return;
+    if (registry.activeTimeline !== 12) return;
+    const state = litStateForTimeline(12, {
+      ghosts: registry.ghostsFor(12),
+    });
+    // Use the same `litStateForTimeline` body the runtime traversal
+    // gate uses so the win screen mounts iff the portal is actually
+    // crossable. `state` is null only for non-seeded timelines, but
+    // 12 is seeded so the runtime path falls into the seed branch.
+    if (!state?.north) return;
+    if (winScreenHandle) return;
+    winScreenHandle = createWinScreen(container, {
+      onReset: () => {
+        // Surface a synthetic R press so the existing reset handler
+        // (which clears the simulation) fires through one code path
+        // regardless of whether the player clicked the overlay or
+        // pressed R on the keyboard. The handler tears the overlay
+        // down on its own via `tearDownWinScreen`.
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", { code: "KeyR" }),
+        );
+      },
+    });
+  });
+
   // REQ-025: hard reset on `r` keydown. The pause-menu UI is out of scope
   // for this slice; a single key binding is enough to return the simulation
   // to a clean Act 1 state when the player gets stuck. The handler is bound
@@ -347,6 +390,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
       inFlightRegistry,
       facingTracker,
     });
+    // F-017: clear any active win screen so the post-reset simulation
+    // is unoccluded. The screen will re-mount the next time the player
+    // crosses the lit North door at 12:00.
+    tearDownWinScreen();
   };
   window.addEventListener("keydown", onResetKey as EventListener);
 
