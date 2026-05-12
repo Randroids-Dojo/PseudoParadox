@@ -79,6 +79,120 @@ describe("repaintDoorsForHour: REQ-015 6:00 timeline state", () => {
   });
 });
 
+describe("repaintDoorsForHour: F-006 arrivals-derived darkening", () => {
+  it("at 12:00 darkens the North door while a cinematic actor ghost is mid-recording", async () => {
+    // F-006: paint path goes through litStateForTimeline, so any
+    // ghost in bucket 12 with `tickIndex < recording.length` blocks
+    // the North door at 12:00. Build a ghost with a 5-frame recording
+    // and `tickIndex = 0` so the predicate fires.
+    const RAPIER = (await import("@dimforge/rapier3d-compat")).default;
+    await RAPIER.init();
+    const THREE = await import("three");
+    const { createGhost } = await import(
+      "../../src/sim/ghostInstance.ts"
+    );
+    const { InputRecorder } = await import(
+      "../../src/sim/inputRecorder.ts"
+    );
+
+    const scene = new THREE.Scene();
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    const recorder = new InputRecorder();
+    for (let i = 0; i < 5; i += 1) {
+      recorder.record(
+        {
+          forward: false,
+          back: false,
+          left: false,
+          right: false,
+          punch: false,
+          pickup: false,
+          throw: false,
+        },
+        12 / 24,
+      );
+    }
+    const ghost = createGhost({
+      recording: recorder.snapshot(),
+      originNormalized: 12 / 24,
+      instanceId: 1,
+      startTick: 0,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+
+    const portals: readonly Portal[] = [
+      makePortal("south", 12, false),
+      makePortal("east", 6, false),
+      makePortal("north", 12, true),
+      makePortal("west", 5, false),
+    ];
+
+    repaintDoorsForHour(portals, 12, [ghost]);
+    const byDirection = new Map<DoorDirection, Portal>();
+    for (const p of portals) byDirection.set(p.direction, p);
+    // North seed-lit at 12 but blocked by the in-flight cinematic
+    // ghost: paint must read DARK.
+    expect(colorHex(byDirection.get("north")!)).toBe(DOOR_DARK_COLOR_HEX);
+  });
+
+  it("at 12:00 lights the North door once every cinematic ghost completes", async () => {
+    const RAPIER = (await import("@dimforge/rapier3d-compat")).default;
+    await RAPIER.init();
+    const THREE = await import("three");
+    const { createGhost } = await import(
+      "../../src/sim/ghostInstance.ts"
+    );
+    const { InputRecorder } = await import(
+      "../../src/sim/inputRecorder.ts"
+    );
+
+    const scene = new THREE.Scene();
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    const recorder = new InputRecorder();
+    recorder.record(
+      {
+        forward: false,
+        back: false,
+        left: false,
+        right: false,
+        punch: false,
+        pickup: false,
+        throw: false,
+      },
+      12 / 24,
+    );
+    const ghost = createGhost({
+      recording: recorder.snapshot(),
+      originNormalized: 12 / 24,
+      instanceId: 1,
+      startTick: 0,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    // Advance past the end of the recording so the predicate reads
+    // `tickIndex >= recording.length` (no actor in flight).
+    ghost.advanceTick();
+    ghost.advanceTick();
+
+    const portals: readonly Portal[] = [makePortal("north", 12, true)];
+    repaintDoorsForHour(portals, 12, [ghost]);
+    expect(colorHex(portals[0])).toBe(DOOR_LIT_COLOR_HEX);
+  });
+
+  it("default empty ghost list still paints the seed (no-arrivals back-compat)", () => {
+    // Boot-time callers (room.ts) and tests omit the ghosts argument;
+    // the default `[]` means no arrivals override, so the painted state
+    // matches the seed.
+    const portals: readonly Portal[] = [makePortal("north", 12, true)];
+    repaintDoorsForHour(portals, 12);
+    // Seed has North lit at 12 (REQ-023 escape door).
+    expect(colorHex(portals[0])).toBe(DOOR_LIT_COLOR_HEX);
+  });
+});
+
 describe("snapClockToHour: REQ-015 clock snap on traversal", () => {
   it("snaps the clock so normalized() reads hour/24", () => {
     const clock = new TimeOfDay({

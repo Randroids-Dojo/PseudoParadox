@@ -104,7 +104,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Context: REQ-011 lands the seed-and-arrivals seam at the runtime gate (`isLitForCurrentTimeline` in `src/sim/portalTraversal.ts`) but leaves the visual paint path (`repaintDoorsForHour` in `src/sim/timelineRoom.ts`, the room-build paint in `src/scene/room.ts`) reading `doorLitStateAtHour(hour)` directly. The two paths agree today because the arrivals stub returns `false`. Once Acts 2-3 introduce a non-trivial arrivals rule (e.g. the West door at 5:00 lighting once a You-1 has arrived from 6:00), the paint path will need the same registry-aware computation or visual and behavior will drift.
 - Blocker: none. The unification is straightforward; deferred only because doing it now would be a no-op behavior change and slice discipline says wait for the third repetition.
 - Unblock condition: either a slice introduces a non-trivial arrivals rule (Act 2 / Act 3) and routes both call sites through `litStateForTimeline`, or a small refactor slice unifies the two ahead of that.
-- PR / Dot reference (when picked up):
+- Resolved: PR #60. `repaintDoorsForHour` now reads through `litStateForTimeline(hour, { ghosts })` instead of the seed-only `doorLitStateAtHour`. All three call sites updated: `src/app.ts`'s `onTimelineEnter` passes `registry.ghostsFor(destinationHour)`, `src/sim/hardReset.ts` passes `registry.ghostsFor(ACT_ONE_HOUR)`, and `src/scene/room.ts` at boot relies on the default empty `ghosts` array (no registry yet so no arrivals to override). The Act 3 cinematic now darkens the painted North door at 12:00 until every cinematic actor completes, matching the runtime traversal gate.
 
 ### F-005: CodeRabbit usage credits exhausted
 

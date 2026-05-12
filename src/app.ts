@@ -261,14 +261,20 @@ export async function startApp(container: HTMLElement): Promise<void> {
     scene: sceneCtx.scene,
     world,
     registry,
-    // REQ-015: on lit traversal, repaint the doors per the destination
-    // hour's lit/dark table and snap the time-of-day clock so the room
-    // background and the door visuals match the new timeline. The same
-    // `doorLitStateAtHour` table that paints here also gates the runtime
-    // entry predicate inside `wireTraversal`, so the visual and behavior
-    // stay in lockstep.
+    // REQ-015 / F-006: on lit traversal, repaint the doors per the
+    // destination hour's lit state and snap the time-of-day clock so
+    // the room background and the door visuals match the new timeline.
+    // The same `litStateForTimeline` body that paints here also gates
+    // the runtime entry predicate inside `wireTraversal`, so the visual
+    // and behavior stay in lockstep including arrivals-derived rules
+    // (e.g. the Act 3 cinematic darkening the North door at 12:00
+    // until every actor completes).
     onTimelineEnter(destinationHour) {
-      repaintDoorsForHour(sceneCtx.portals, destinationHour);
+      repaintDoorsForHour(
+        sceneCtx.portals,
+        destinationHour,
+        registry.ghostsFor(destinationHour),
+      );
       snapClockToHour(timeOfDay, destinationHour);
     },
   });

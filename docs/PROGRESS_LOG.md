@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-11, F-006 Door-Paint Unification through litStateForTimeline
+
+- Branch: `f006-door-paint-unification`
+- PR: #60 (when opened)
+- Changed: F-006 polish. The visual paint path (`repaintDoorsForHour` in `src/sim/timelineRoom.ts` and the initial room-build paint in `src/scene/room.ts`) used to read the seed `doorLitStateAtHour(hour)` directly, while the runtime traversal gate (`isLitForCurrentTimeline` in `src/sim/portalTraversal.ts`) routed through `litStateForTimeline` to pick up arrivals-derived rules (REQ-011: the Act 3 cinematic darkening the North door at 12:00 until every actor completes). The two paths agreed today only because the painted North-at-12 door was lit even mid-cinematic; the runtime gate correctly refused entry. F-006 unifies them. `repaintDoorsForHour(portals, hour, ghosts?)` now reads `litStateForTimeline(hour, { ghosts }) ?? doorLitStateAtHour(hour)`; `ghosts` defaults to `[]` so boot-time callers without a registry get the seed answer (which is correct because no recorded arrivals exist yet). Three call sites updated: `src/app.ts`'s `onTimelineEnter` passes `registry.ghostsFor(destinationHour)`; `src/sim/hardReset.ts` passes `registry.ghostsFor(ACT_ONE_HOUR)` (after `clearAllGhosts` this is empty so the call is a no-op semantically but keeps the call shape consistent); `src/scene/room.ts` now calls `repaintDoorsForHour(portals, ACT_ONE_HOUR)` after creating the four portals, dropping the inlined `doorLitStateAtHour` lookup and the `for (const door of doors)` paint loop. Tests added: three new cases in `tests/sim/timelineRoom.test.ts` cover the arrivals-derived darkening (North-at-12 dark while a cinematic ghost is mid-recording), the lit-once-completed path (advanceTick past recording length), and the default-empty-ghosts back-compat.
+- Verification: `npm run type-check` clean. `npm test` 607 passing across 55 suites (was 604 / 55). Em-dash and en-dash sweep clean. `git diff --check` clean. The Act 3 escape integration test (`tests/sim/act3Escape.test.ts`) was the one place this could regress; it still passes because that test reads `litStateForTimeline` directly for the gate assertion and `colorHex` is not part of its predicate.
+- Assumptions: the default empty `ghosts` argument is safe at boot because no ghosts have been filed yet; once `mountAct1Cinematic` fires, the next `repaintDoorsForHour` call comes via `onTimelineEnter` which always passes the live ghost list. The hardReset.ts pass is technically redundant (the bucket is empty after `clearAllGhosts`) but kept for call-shape consistency with the per-traversal path.
+- GDD coverage: no REQ rows changed. F-006 is a refactor that unifies an existing seam, not a new requirement.
+- Followups: F-006 resolved by this slice.
+
 ## 2026-05-11, F-009 Touch Action Buttons (Pickup / Throw / Punch / Reset)
 
 - Branch: `f009-touch-action-buttons`
