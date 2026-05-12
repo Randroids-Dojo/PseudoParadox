@@ -355,17 +355,25 @@ describe("createTimelineRegistry: rehomeGhost (F-007)", () => {
     expect(scene.children.includes(ghost.mesh)).toBe(true);
   });
 
-  it("hides the mesh when rehoming OUT of the active timeline", () => {
+  it("hides the mesh and clears the thought bubble when rehoming OUT of the active timeline", () => {
     // F-007 visibility reconciliation: a ghost rehomed from the active
     // bucket should be hidden so it does not paint in the wrong timeline.
+    // The thought bubble lives on its own group, so it must also be
+    // cleared (parity with hideAndStillGhost / REQ-032).
     const scene = new THREE.Scene();
     const world = buildWorld();
     const registry = createTimelineRegistry({ initialTimeline: 5 });
     const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
     registry.add(5, ghost);
     expect(ghost.mesh.visible).toBe(true);
+    // Stage a thought-bubble icon to verify it gets cleared on rehome.
+    ghost.thoughtBubble.setIcon("door");
+    expect(ghost.thoughtBubble.group.visible).toBe(true);
+    expect(ghost.thoughtBubble.currentKind).toBe("door");
     registry.rehomeGhost(ghost, 12);
     expect(ghost.mesh.visible).toBe(false);
+    expect(ghost.thoughtBubble.group.visible).toBe(false);
+    expect(ghost.thoughtBubble.currentKind).toBeNull();
   });
 
   it("shows the mesh when rehoming INTO the active timeline", () => {

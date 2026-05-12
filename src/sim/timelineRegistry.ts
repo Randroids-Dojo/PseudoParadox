@@ -465,6 +465,10 @@ export function createTimelineRegistry(
         ghost.mesh.visible = true;
       } else if (timeline === activeTimeline) {
         ghost.mesh.visible = false;
+        // REQ-032 parity with hideAndStillGhost: clear the thought
+        // bubble too, otherwise a previously-rendered preview lingers
+        // in the active scene after the ghost has moved out.
+        ghost.thoughtBubble.setIcon(null);
       }
       return true;
     }
