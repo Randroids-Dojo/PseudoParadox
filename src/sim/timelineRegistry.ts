@@ -181,6 +181,31 @@ export interface TimelineRegistry {
     scene: THREE.Scene,
     world: RegistryWorldHandle,
   ) => boolean;
+  /**
+   * F-007: move a ghost from its current bucket to `destinationTimeline`
+   * WITHOUT touching the underlying Rapier body or mesh. Used by the
+   * in-flight registry's portal-crossing callback to rehome a thrown
+   * body's bookkeeping on lit-portal traversal so the destination
+   * timeline owns the settled body. Returns `true` if the ghost was
+   * found and moved, `false` if it was not in any bucket. Idempotent:
+   * if the ghost is already in `destinationTimeline`, returns `true`
+   * without further work. Visibility IS reconciled: moving out of the
+   * active timeline hides the mesh; moving into the active timeline
+   * shows it.
+   */
+  rehomeGhost: (
+    ghost: GhostInstance,
+    destinationTimeline: TimelineId,
+  ) => boolean;
+  /**
+   * F-007: locate a ghost by its `instanceId` across every timeline
+   * bucket. Returns `undefined` if no bucket holds a ghost with that
+   * id. Used by the host's in-flight portal-crossing callback to
+   * resolve a body id (recorded on the carrier's lifetime) to a
+   * `GhostInstance` for `rehomeGhost`. The body could live in any
+   * bucket because it may have been rehomed by an earlier crossing.
+   */
+  findGhostByInstanceId: (instanceId: number) => GhostInstance | undefined;
 }
 
 export interface CreateTimelineRegistryOptions {
@@ -419,6 +444,47 @@ export function createTimelineRegistry(
     return false;
   };
 
+  const rehomeGhost: TimelineRegistry["rehomeGhost"] = (
+    ghost,
+    destinationTimeline,
+  ) => {
+    for (const [timeline, bucket] of buckets.entries()) {
+      const idx = bucket.ghosts.indexOf(ghost);
+      if (idx === -1) continue;
+      if (timeline === destinationTimeline) return true;
+      bucket.ghosts.splice(idx, 1);
+      bucketFor(destinationTimeline).ghosts.push(ghost);
+      // Reconcile visibility: if the rehome moved the ghost OUT of the
+      // active timeline, hide it; if INTO the active timeline, show it.
+      // Without this, a ghost rehomed from the active bucket (e.g. a
+      // thrown body that crosses a portal while the player is still in
+      // the source timeline) would stay visible in the source even
+      // though it now belongs elsewhere. Rapier body remains untouched
+      // either way (rehome is bookkeeping-only).
+      if (destinationTimeline === activeTimeline) {
+        ghost.mesh.visible = true;
+      } else if (timeline === activeTimeline) {
+        ghost.mesh.visible = false;
+        // REQ-032 parity with hideAndStillGhost: clear the thought
+        // bubble too, otherwise a previously-rendered preview lingers
+        // in the active scene after the ghost has moved out.
+        ghost.thoughtBubble.setIcon(null);
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const findGhostByInstanceId: TimelineRegistry["findGhostByInstanceId"] = (
+    instanceId,
+  ) => {
+    for (const bucket of buckets.values()) {
+      const found = bucket.ghosts.find((g) => g.instanceId === instanceId);
+      if (found) return found;
+    }
+    return undefined;
+  };
+
   return {
     get activeTimeline(): TimelineId {
       return activeTimeline;
@@ -429,6 +495,8 @@ export function createTimelineRegistry(
     activeGhosts,
     clearAllGhosts,
     removeGhost,
+    rehomeGhost,
+    findGhostByInstanceId,
     tickFor,
     advanceActiveTick,
   };

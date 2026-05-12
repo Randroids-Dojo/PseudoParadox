@@ -306,3 +306,118 @@ describe("createTimelineRegistry: removeGhost (F-012)", () => {
     expect(remaining[0]).toBe(b);
   });
 });
+
+describe("createTimelineRegistry: rehomeGhost (F-007)", () => {
+  it("moves a ghost from its source bucket to the destination bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    registry.add(5, ghost);
+    expect(registry.ghostsFor(5)).toHaveLength(1);
+    expect(registry.ghostsFor(12)).toHaveLength(0);
+
+    const moved = registry.rehomeGhost(ghost, 12);
+    expect(moved).toBe(true);
+    expect(registry.ghostsFor(5)).toHaveLength(0);
+    expect(registry.ghostsFor(12)).toHaveLength(1);
+    expect(registry.ghostsFor(12)[0]).toBe(ghost);
+  });
+
+  it("returns false for a ghost not in any bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    const moved = registry.rehomeGhost(ghost, 12);
+    expect(moved).toBe(false);
+  });
+
+  it("is idempotent when destination matches the current bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    registry.add(5, ghost);
+    const moved = registry.rehomeGhost(ghost, 5);
+    expect(moved).toBe(true);
+    expect(registry.ghostsFor(5)).toHaveLength(1);
+  });
+
+  it("does NOT remove the mesh from the scene (rehome is bookkeeping only)", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    scene.add(ghost.mesh);
+    registry.add(5, ghost);
+    registry.rehomeGhost(ghost, 12);
+    expect(scene.children.includes(ghost.mesh)).toBe(true);
+  });
+
+  it("hides the mesh and clears the thought bubble when rehoming OUT of the active timeline", () => {
+    // F-007 visibility reconciliation: a ghost rehomed from the active
+    // bucket should be hidden so it does not paint in the wrong timeline.
+    // The thought bubble lives on its own group, so it must also be
+    // cleared (parity with hideAndStillGhost / REQ-032).
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    registry.add(5, ghost);
+    expect(ghost.mesh.visible).toBe(true);
+    // Stage a thought-bubble icon to verify it gets cleared on rehome.
+    ghost.thoughtBubble.setIcon("door");
+    expect(ghost.thoughtBubble.group.visible).toBe(true);
+    expect(ghost.thoughtBubble.currentKind).toBe("door");
+    registry.rehomeGhost(ghost, 12);
+    expect(ghost.mesh.visible).toBe(false);
+    expect(ghost.thoughtBubble.group.visible).toBe(false);
+    expect(ghost.thoughtBubble.currentKind).toBeNull();
+  });
+
+  it("shows the mesh when rehoming INTO the active timeline", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const ghost = spawnTestGhost(scene, world, { x: 0, z: 0 });
+    registry.add(12, ghost);
+    // bucket 12 is non-active; add hides it.
+    expect(ghost.mesh.visible).toBe(false);
+    registry.rehomeGhost(ghost, 5);
+    expect(ghost.mesh.visible).toBe(true);
+  });
+});
+
+describe("createTimelineRegistry: findGhostByInstanceId (F-007)", () => {
+  it("returns the ghost when present in any bucket", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    const a = createGhost({
+      recording: buildRecording([state({ forward: true })]),
+      originNormalized: 5 / 24,
+      instanceId: 11,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+    const b = createGhost({
+      recording: buildRecording([state({ forward: true })]),
+      originNormalized: 12 / 24,
+      instanceId: 22,
+      scene,
+      world,
+      startPosition: { x: 1, z: 1 },
+    });
+    registry.add(5, a);
+    registry.add(12, b);
+    expect(registry.findGhostByInstanceId(11)).toBe(a);
+    expect(registry.findGhostByInstanceId(22)).toBe(b);
+  });
+
+  it("returns undefined when no bucket holds a ghost with that id", () => {
+    const registry = createTimelineRegistry({ initialTimeline: 5 });
+    expect(registry.findGhostByInstanceId(999)).toBeUndefined();
+  });
+});
