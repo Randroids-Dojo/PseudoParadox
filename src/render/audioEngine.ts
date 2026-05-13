@@ -107,6 +107,12 @@ function createEngine(context: AudioContext): AudioEngine {
   // fresh pair of pointerdown / keydown listeners, all racing on the
   // first gesture and leaving orphaned listeners behind.
   let gestureUnlockInstalled = false;
+  // Idempotency guard for `dispose()`. The interface contract says
+  // dispose is safe to call repeatedly; without this flag a second
+  // call would `disconnect()` already-detached nodes and call
+  // `context.close()` again, which the Web Audio spec rejects with
+  // `InvalidStateError` on an already-closed context.
+  let disposed = false;
 
   const installGestureUnlock = (): void => {
     if (gestureUnlockInstalled) return;
@@ -147,11 +153,20 @@ function createEngine(context: AudioContext): AudioEngine {
   };
 
   const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
     while (detachers.length) detachers.pop()?.();
     sfxBus.disconnect();
     musicBus.disconnect();
     master.disconnect();
-    void context.close();
+    // `AudioContext.close()` rejects with `InvalidStateError` on an
+    // already-closed context. Skip the call when state is already
+    // `"closed"` and swallow any race rejection so dispose is safe
+    // to call from teardown paths that cannot prove the context's
+    // current state.
+    if ((context.state as AudioContextState) !== "closed") {
+      void context.close().catch(() => undefined);
+    }
   };
 
   return { context, master, sfxBus, musicBus, ensureReady, dispose };
