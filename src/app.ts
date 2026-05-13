@@ -11,6 +11,9 @@ import { createTouchOverlay } from "./render/touchOverlay.ts";
 import { createActionButtons } from "./render/actionButtons.ts";
 import { createOnboardingOverlay } from "./render/onboardingOverlay.ts";
 import { createWinScreen, type WinScreenHandle } from "./render/winScreen.ts";
+import { getAudioEngine } from "./render/audioEngine.ts";
+import { playDoorSfx, playEscapeSfx, playPunchSfx } from "./render/sfx.ts";
+import { startAmbientDrone } from "./render/ambientDrone.ts";
 import { attachCameraGestures } from "./render/cameraGestures.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
@@ -154,6 +157,19 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // the first keydown or pointerdown so the play area is unoccluded
   // after the player engages. One-shot per page life.
   createOnboardingOverlay(container);
+  // F-018: procedural haunted audio. The engine is a singleton
+  // AudioContext + gesture-unlock + two output buses (sfx, music).
+  // No external assets and no new dependency. The browser autoplay
+  // gate keeps the context suspended until the first keydown /
+  // pointerdown; `ensureReady` installs that listener once. The
+  // ambient drone starts immediately but produces no sound until
+  // the context resumes, so the player hears it fade in on first
+  // interaction rather than blasting on page load.
+  const audioEngine = getAudioEngine();
+  if (audioEngine) {
+    void audioEngine.ensureReady();
+    startAmbientDrone(audioEngine);
+  }
   // F-010: pan + zoom gestures. Wheel + right-drag on desktop, pinch
   // + two-finger drag on mobile. Single-finger touch stays the
   // joystick; this attaches AFTER `bindTouchControls` so pointer
@@ -333,6 +349,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // 12 is seeded so the runtime path falls into the seed branch.
     if (!state?.north) return;
     if (winScreenHandle) return;
+    // F-018: slow ascending minor-triad sting on the rising edge
+    // into escape. Fires once, paired with the visual fade-in of
+    // the win screen so the audiovisual lands together.
+    if (audioEngine) playEscapeSfx(audioEngine);
     winScreenHandle = createWinScreen(container, {
       onReset: () => {
         // Surface a synthetic R press so the existing reset handler
@@ -376,6 +396,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
         registry.ghostsFor(destinationHour),
       );
       snapClockToHour(timeOfDay, destinationHour);
+      // F-018: door-traverse SFX. Fires on every lit traversal
+      // (including the South cinematic entry into 12:00 and the
+      // West loop-back to 5:00). The escape sting plays separately
+      // via the win-screen callback so the player hears door +
+      // escape stacked when they cross the final North door.
+      if (audioEngine) playDoorSfx(audioEngine);
     },
   });
 
@@ -492,6 +518,11 @@ export async function startApp(container: HTMLElement): Promise<void> {
       const sanitizedActors = suppressUnconsciousPunches(punchActors);
       const resolutions = resolvePunches(sanitizedActors, PUNCH_RANGE_M);
       if (resolutions.length > 0) {
+        // F-018: one punch SFX per tick of resolutions, not one per
+        // pair. Mutual punches in the same tick collapse into a
+        // single audible thud so the player hears a clean impact
+        // rather than a stereo doubling.
+        if (audioEngine) playPunchSfx(audioEngine);
         // REQ-033 finishing pass: each resolution flips the target's
         // consciousness AND applies the body response (bump impulse +
         // damping reduction + mesh tilt). The incoming direction is the
