@@ -350,7 +350,20 @@ export async function startApp(container: HTMLElement): Promise<void> {
       event.portal.direction === "north" &&
       registry.activeTimeline === 12
     ) {
-      activePlayerCrossedNorthAt12 = true;
+      // Gate on lit state, mirroring the win-screen callback below.
+      // Without the lit check, a player who brushed the dark North
+      // trigger mid-cinematic would pre-arm the flag, and the
+      // observer's `isEscaped` predicate (which only checks
+      // `allCinematicActorsCompleted` plus this flag) would advance
+      // erroneously the moment the cinematic finishes. Restricting
+      // the flag to lit-door enters keeps the observer's watermark
+      // honest.
+      const lit = litStateForTimeline(12, {
+        ghosts: registry.ghostsFor(12),
+      });
+      if (lit?.north) {
+        activePlayerCrossedNorthAt12 = true;
+      }
     }
   });
 
