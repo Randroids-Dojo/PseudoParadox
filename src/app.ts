@@ -552,6 +552,16 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // per fixed step. Ghosts filed from the current lifetime will
       // inherit the clock value at their filing moment as their startTick.
       registry.advanceActiveTick();
+      // F-020: advance pre-existing knockout-tilt animations BEFORE
+      // the punch resolution below. Order matters: a knockout that
+      // fires later in this tick calls `animator.start(mesh, target)`
+      // which immediately writes the tick-0 anticipation frame. If
+      // `advance()` ran AFTER `start()`, it would immediately bump
+      // the new entry to tick-1 and overwrite the tick-0 frame
+      // before the next render. Running `advance()` here keeps any
+      // entries newly registered this tick at tick-0 until the next
+      // fixed step.
+      knockoutAnimator.advance();
       // Sample input once per physics step so target velocity reacts at the
       // simulation rate, not the render rate. The mapping is pure; the only
       // mutation is on the rigid body itself. The same KeyState snapshot is
@@ -890,14 +900,6 @@ export async function startApp(container: HTMLElement): Promise<void> {
         sceneCtx.scene,
         world,
       );
-      // F-020: advance any active knockout-tilt animations by one
-      // fixed step. Order: AFTER the punch resolution above (so an
-      // animation registered this tick gets its tick-1 frame on the
-      // same tick if multiple resolutions happen, but in practice
-      // the punch resolver fires once per tick at most). The
-      // animator writes `mesh.rotation.z` for each pending mesh and
-      // removes finished entries.
-      knockoutAnimator.advance();
       // F-019: drive the act-state observer once per fixed step.
       // Order matters: the observer reads ghost positions / tick
       // indices that were just advanced by `world.step()` and

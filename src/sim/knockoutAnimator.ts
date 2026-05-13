@@ -92,8 +92,9 @@ export interface KnockoutAnimator {
    * Register a new animation for `mesh` toward `targetRotationZ`.
    * If the mesh is already animating, the existing entry is reset
    * (elapsedTicks back to 0, new target captured) rather than
-   * stacking. The first frame is rendered the next time `advance`
-   * is called.
+   * stacking. `start` immediately writes the tick-0 anticipation
+   * frame so the first rendered frame after registration shows
+   * the wind-up; subsequent frames are advanced by `advance`.
    */
   start: (mesh: THREE.Object3D, targetRotationZ: number) => void;
   /**
