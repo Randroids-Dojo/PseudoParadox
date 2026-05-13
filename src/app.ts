@@ -47,7 +47,11 @@ import {
   type PunchActor,
 } from "./sim/punch.ts";
 import { applyKnockout } from "./sim/knockoutState.ts";
-import { applyKnockoutBodyResponse } from "./sim/applyKnockoutBody.ts";
+import {
+  applyKnockoutBodyResponse,
+  KNOCKOUT_MESH_TILT_Z,
+} from "./sim/applyKnockoutBody.ts";
+import { createKnockoutAnimator } from "./sim/knockoutAnimator.ts";
 import { replayPunchAtTick } from "./sim/inputRecorder.ts";
 import {
   PLAYER_CAPSULE,
@@ -337,6 +341,17 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // `window.__pseudoParadoxActState` exposes the watermark for
   // future Playwright E2E gates (Q-020 default A).
   const actStateObserver = createActStateObserver();
+  // F-020: per-tick knockout mesh-tilt animator. The body response
+  // function still snaps `mesh.rotation.z` to the canonical pi/2 on
+  // a knockout (existing tests pin that contract), but immediately
+  // after the snap the host registers the mesh with this animator,
+  // which then overrides the rotation each fixed step for 12 ticks
+  // (200 ms at 60 Hz). The eased curve starts with a small reverse-
+  // tilt anticipation, climbs past the target with a damped sine
+  // overshoot, and settles at exactly the target on the final tick.
+  // Determinism: same recording -> same per-tick rotation, so replay
+  // byte-identity holds.
+  const knockoutAnimator = createKnockoutAnimator();
   const actStateHud = createActStateHud(container);
   let activePlayerCrossedNorthAt12 = false;
   portalTriggers.onPortalOverlap((event) => {
@@ -490,6 +505,11 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // step's `update()` call (which renders blank for `not-started`).
     actStateObserver.hardReset();
     activePlayerCrossedNorthAt12 = false;
+    // F-020: drop any in-flight knockout-tilt animations.
+    // `clearKnockoutBodyResponse` (called inside hardReset above)
+    // snaps each mesh.rotation.z back to 0; without this clear, the
+    // animator would re-apply an eased tilt on the next fixed step.
+    knockoutAnimator.clearAll();
   };
   window.addEventListener("keydown", onResetKey as EventListener);
 
@@ -606,12 +626,18 @@ export async function startApp(container: HTMLElement): Promise<void> {
           if (targetId === player.instanceId) {
             player.consciousness = applyKnockout(player.consciousness);
             applyKnockoutBodyResponse(player.body, player.mesh, direction);
+            // F-020: register the mesh with the eased-tilt animator.
+            // The animator writes the tick-0 anticipation value
+            // immediately, overriding the pi/2 snap above; subsequent
+            // fixed steps continue the ease.
+            knockoutAnimator.start(player.mesh, KNOCKOUT_MESH_TILT_Z);
             continue;
           }
           for (const ghost of activeGhostsList) {
             if (ghost.instanceId === targetId) {
               ghost.consciousness = applyKnockout(ghost.consciousness);
               applyKnockoutBodyResponse(ghost.body, ghost.mesh, direction);
+              knockoutAnimator.start(ghost.mesh, KNOCKOUT_MESH_TILT_Z);
               break;
             }
           }
@@ -864,6 +890,14 @@ export async function startApp(container: HTMLElement): Promise<void> {
         sceneCtx.scene,
         world,
       );
+      // F-020: advance any active knockout-tilt animations by one
+      // fixed step. Order: AFTER the punch resolution above (so an
+      // animation registered this tick gets its tick-1 frame on the
+      // same tick if multiple resolutions happen, but in practice
+      // the punch resolver fires once per tick at most). The
+      // animator writes `mesh.rotation.z` for each pending mesh and
+      // removes finished entries.
+      knockoutAnimator.advance();
       // F-019: drive the act-state observer once per fixed step.
       // Order matters: the observer reads ghost positions / tick
       // indices that were just advanced by `world.step()` and
