@@ -101,7 +101,16 @@ function createEngine(context: AudioContext): AudioEngine {
     }
   };
 
+  // Idempotency guard: callers may invoke `ensureReady()` multiple
+  // times before the user produces a gesture (e.g. host re-runs init
+  // on a hard reset). Without this flag, each call would install a
+  // fresh pair of pointerdown / keydown listeners, all racing on the
+  // first gesture and leaving orphaned listeners behind.
+  let gestureUnlockInstalled = false;
+
   const installGestureUnlock = (): void => {
+    if (gestureUnlockInstalled) return;
+    gestureUnlockInstalled = true;
     const onGesture = async (): Promise<void> => {
       const ok = await tryResume();
       if (ok) detach();
@@ -109,6 +118,7 @@ function createEngine(context: AudioContext): AudioEngine {
     const detach = (): void => {
       window.removeEventListener("pointerdown", onGesture);
       window.removeEventListener("keydown", onGesture);
+      gestureUnlockInstalled = false;
     };
     window.addEventListener("pointerdown", onGesture, { once: false });
     window.addEventListener("keydown", onGesture, { once: false });

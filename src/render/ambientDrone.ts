@@ -139,6 +139,13 @@ export function startAmbientDrone(engine: AudioEngine): AmbientDroneHandle {
 
   const playBell = (): void => {
     if (disposed) return;
+    // Skip if the context is suspended (tab hidden, autoplay gate
+    // still up). The setTimeout chain keeps rescheduling, so once
+    // the context resumes the next bell fires on the normal random
+    // cadence. Without this guard, suspended `currentTime` is
+    // frozen and multiple skipped bells would all capture the same
+    // time and cluster audibly on resume.
+    if ((context.state as AudioContextState) !== "running") return;
     const degree = Math.floor(Math.random() * PHRYGIAN_INTERVALS.length);
     const octaveRange = BELL_MAX_OCTAVE - BELL_MIN_OCTAVE + 1;
     const octave =
