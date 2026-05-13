@@ -14,6 +14,9 @@ import { createWinScreen, type WinScreenHandle } from "./render/winScreen.ts";
 import { getAudioEngine } from "./render/audioEngine.ts";
 import { playDoorSfx, playEscapeSfx, playPunchSfx } from "./render/sfx.ts";
 import { startAmbientDrone } from "./render/ambientDrone.ts";
+import { createActStateHud } from "./render/actStateHud.ts";
+import { createActStateObserver } from "./sim/actState.ts";
+import { buildActStateSnapshot } from "./sim/actStateSnapshot.ts";
 import { attachCameraGestures } from "./render/cameraGestures.ts";
 import { TimeOfDay } from "./sim/timeOfDay.ts";
 import { ACT_ONE_HOUR, ACT_ONE_NORMALIZED } from "./sim/actOneAnchor.ts";
@@ -312,6 +315,58 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // until a future slice triggers it.
   const fadeOverlay = createFadeOverlay();
 
+  // F-019: ActStateObserver wiring. The observer monotonically
+  // advances a watermark through the linear chain
+  // (`not-started -> act-1-spawn -> ... -> escaped`) based on a
+  // per-fixed-step snapshot of the world. Two host-owned inputs
+  // feed the snapshot via portal-overlap callbacks:
+  //
+  //   - West-portal entries (chase predicate input). We record every
+  //     active-player `enter` on the West trigger; ghost entries
+  //     would extend the chase beat to "two distinct instances
+  //     within CHASE_WINDOW_TICKS" but ghost positions are not
+  //     stepped through `portalTriggers` today, so the chase beat
+  //     can only fire if a second instance entry is fed in by a
+  //     future slice. Not a blocker for the HUD: the other eight
+  //     beats are unaffected.
+  //   - The `activePlayerCrossedNorthAt12` flag (escape predicate
+  //     input). Toggled true on north-direction `enter` events
+  //     while the source timeline is 12; reset by `hardReset`.
+  //
+  // The HUD reads the watermark each fixed step. The debug hook
+  // `window.__pseudoParadoxActState` exposes the watermark for
+  // future Playwright E2E gates (Q-020 default A).
+  const actStateObserver = createActStateObserver();
+  const actStateHud = createActStateHud(container);
+  let activePlayerCrossedNorthAt12 = false;
+  portalTriggers.onPortalOverlap((event) => {
+    if (event.kind !== "enter") return;
+    if (event.portal.direction === "west") {
+      actStateObserver.recordWestEntry({
+        instanceId: player.instanceId,
+        tick: event.tick,
+      });
+    } else if (
+      event.portal.direction === "north" &&
+      registry.activeTimeline === 12
+    ) {
+      // Gate on lit state, mirroring the win-screen callback below.
+      // Without the lit check, a player who brushed the dark North
+      // trigger mid-cinematic would pre-arm the flag, and the
+      // observer's `isEscaped` predicate (which only checks
+      // `allCinematicActorsCompleted` plus this flag) would advance
+      // erroneously the moment the cinematic finishes. Restricting
+      // the flag to lit-door enters keeps the observer's watermark
+      // honest.
+      const lit = litStateForTimeline(12, {
+        ghosts: registry.ghostsFor(12),
+      });
+      if (lit?.north) {
+        activePlayerCrossedNorthAt12 = true;
+      }
+    }
+  });
+
   // F-017: win-screen on escape. The escape state in the dossier is
   // "active player crosses the lit North door at 12:00 after the
   // cinematic actors complete." The North door at 12:00 is dark by
@@ -429,6 +484,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // is unoccluded. The screen will re-mount the next time the player
     // crosses the lit North door at 12:00.
     tearDownWinScreen();
+    // F-019: reset the act-state observer (watermark back to
+    // `not-started`, west-entries cleared) plus the host-owned
+    // north-12 flag. The HUD picks up the change on the next fixed
+    // step's `update()` call (which renders blank for `not-started`).
+    actStateObserver.hardReset();
+    activePlayerCrossedNorthAt12 = false;
   };
   window.addEventListener("keydown", onResetKey as EventListener);
 
@@ -803,9 +864,28 @@ export async function startApp(container: HTMLElement): Promise<void> {
         sceneCtx.scene,
         world,
       );
+      // F-019: drive the act-state observer once per fixed step.
+      // Order matters: the observer reads ghost positions / tick
+      // indices that were just advanced by `world.step()` and
+      // `ghost.advanceTick`, plus the active player's translation
+      // after the integrator wrote it. Running here (last in the
+      // fixed-step body) captures the post-tick state.
+      const actStateSnapshot = buildActStateSnapshot(registry, player, {
+        recentWestEntries: actStateObserver.recentWestEntries(),
+        activePlayerCrossedNorthAt12,
+      });
+      actStateObserver.update(actStateSnapshot);
       physicsAccumulatorMs -= fixedStepMs;
       steps += 1;
     }
+
+    // F-019: surface the watermark to the player. The observer is
+    // monotonic, so the HUD update is cheap (the helper short-
+    // circuits on no-change). `__pseudoParadoxActState` exposes the
+    // current beat for future real-browser gates (Q-020 default A).
+    actStateHud.update(actStateObserver.state);
+    (window as unknown as { __pseudoParadoxActState?: string }).__pseudoParadoxActState =
+      actStateObserver.state;
 
     player.syncMeshFromBody();
     for (const ghost of registry.activeGhosts()) {
