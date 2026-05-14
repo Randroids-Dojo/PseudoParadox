@@ -8,10 +8,10 @@
  *   2. A small DOM-bound tracker, `createKeyboardState`, that listens for
  *      keydown / keyup on `window` and updates a shared `KeyState`.
  *
- * Camera is fixed for the prototype, so movement is in world coordinates and
- * not relative to a heading. Future slices that introduce a camera that can
- * yaw will replace `inputToVelocity` with a heading-aware variant rather than
- * mutating this one.
+ * The prototype camera is fixed at a diagonal isometric angle, so the pure
+ * mapping rotates movement by the camera yaw before it reaches the player
+ * body. Scripted fixtures can pass `yawRad = 0` when they need the old
+ * world-axis authoring frame.
  */
 
 export interface KeyState {
@@ -74,16 +74,72 @@ export interface PlanarVelocity {
 export const PLAYER_SPEED_MPS = 4;
 
 /**
- * Converts a snapshot of key state into a planar velocity vector.
+ * Camera yaw used by `inputToVelocity` to rotate input-axis velocity
+ * into world-axis velocity, so "press W" moves the player toward the
+ * top of the screen regardless of how the room is rotated in view.
  *
- * Pressing forward decreases world Z (room "north" wall is at -depth/2 in
- * `room.ts`). Pressing right increases world X. Diagonals are normalized so
- * holding two keys does not exceed the configured speed. Pure function: same
- * input always yields the same output, no globals, no DOM.
+ * The prototype camera sits at the (+X, +Z) corner of the room and
+ * looks toward the origin (see `src/scene/scene.ts`). Its forward
+ * direction projected onto the XZ plane is `(-1, -1) / sqrt(2)`, which
+ * is the Three.js default forward (`-Z`) rotated by +pi/4 radians
+ * around the +Y axis. So a +pi/4 input yaw rotates the W -> (-Z)
+ * keymap into the world direction "deeper into the scene from the
+ * camera" (`(-1, -1) / sqrt(2)`), which is what the player reads as
+ * "up on screen."
+ *
+ * Pan from `cameraGestures.ts` shifts both `camera.position` and the
+ * lookAt by the same offset, so the camera's orientation (yaw,
+ * pitch) is constant. A future slice that adds orbit / rotation will
+ * need to recompute this from the camera each frame; today it is a
+ * fixed constant.
+ */
+export const CAMERA_INPUT_YAW_RAD = Math.PI / 4;
+
+/**
+ * Pure helper: rotate a planar XZ velocity around the +Y axis by
+ * `yawRad` radians. Used by `inputToVelocity` to apply the camera
+ * yaw, and exposed separately so tests can verify the rotation
+ * math without going through the key-state path.
+ *
+ * The rotation uses the right-handed Three.js convention so passing
+ * `Math.PI / 4` rotates `(0, -1)` (the default W keymap) into
+ * `(-1, -1) / sqrt(2)` (forward-and-left in world XZ).
+ */
+export function rotateVelocityByYaw(
+  velocity: PlanarVelocity,
+  yawRad: number,
+): PlanarVelocity {
+  if (yawRad === 0) return velocity;
+  const c = Math.cos(yawRad);
+  const s = Math.sin(yawRad);
+  return {
+    x: c * velocity.x + s * velocity.z,
+    z: -s * velocity.x + c * velocity.z,
+  };
+}
+
+/**
+ * Converts a snapshot of key state into a planar velocity vector in
+ * WORLD coordinates, with the camera yaw applied so "press W" moves
+ * the player toward the top of the screen rather than along world
+ * -Z.
+ *
+ * Raw key mapping (before yaw rotation): forward -> -Z, back -> +Z,
+ * left -> -X, right -> +X. Diagonals are normalized so holding two
+ * keys does not exceed `speed`.
+ *
+ * Yaw is applied at the end so the returned velocity is ready to
+ * pass to `body.setLinvel({ x, y, z })`. Pass `yawRad = 0` for the
+ * raw world-axis mapping (used by scripted-recording tests that
+ * pre-date the camera-relative input slice).
+ *
+ * Pure function: same input always yields the same output, no
+ * globals, no DOM.
  */
 export function inputToVelocity(
   state: KeyState,
   speed: number = PLAYER_SPEED_MPS,
+  yawRad: number = CAMERA_INPUT_YAW_RAD,
 ): PlanarVelocity {
   let x = 0;
   let z = 0;
@@ -97,10 +153,11 @@ export function inputToVelocity(
   }
 
   const magnitude = Math.hypot(x, z);
-  return {
+  const raw: PlanarVelocity = {
     x: (x / magnitude) * speed,
     z: (z / magnitude) * speed,
   };
+  return rotateVelocityByYaw(raw, yawRad);
 }
 
 interface KeyboardHandle {

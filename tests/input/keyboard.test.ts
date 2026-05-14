@@ -21,35 +21,38 @@ const state = (overrides: Partial<KeyState>): KeyState => ({
   ...overrides,
 });
 
-describe("inputToVelocity", () => {
+describe("inputToVelocity (raw key-to-axis mapping with yawRad = 0)", () => {
   it("returns zero velocity when no keys are pressed", () => {
-    expect(inputToVelocity(NEUTRAL)).toEqual({ x: 0, z: 0 });
+    expect(inputToVelocity(NEUTRAL, PLAYER_SPEED_MPS, 0)).toEqual({
+      x: 0,
+      z: 0,
+    });
   });
 
   it("maps forward to negative Z and back to positive Z at full speed", () => {
-    expect(inputToVelocity(state({ forward: true }))).toEqual({
-      x: 0,
-      z: -PLAYER_SPEED_MPS,
-    });
-    expect(inputToVelocity(state({ back: true }))).toEqual({
-      x: 0,
-      z: PLAYER_SPEED_MPS,
-    });
+    expect(
+      inputToVelocity(state({ forward: true }), PLAYER_SPEED_MPS, 0),
+    ).toEqual({ x: 0, z: -PLAYER_SPEED_MPS });
+    expect(
+      inputToVelocity(state({ back: true }), PLAYER_SPEED_MPS, 0),
+    ).toEqual({ x: 0, z: PLAYER_SPEED_MPS });
   });
 
   it("maps left to negative X and right to positive X at full speed", () => {
-    expect(inputToVelocity(state({ left: true }))).toEqual({
-      x: -PLAYER_SPEED_MPS,
-      z: 0,
-    });
-    expect(inputToVelocity(state({ right: true }))).toEqual({
-      x: PLAYER_SPEED_MPS,
-      z: 0,
-    });
+    expect(
+      inputToVelocity(state({ left: true }), PLAYER_SPEED_MPS, 0),
+    ).toEqual({ x: -PLAYER_SPEED_MPS, z: 0 });
+    expect(
+      inputToVelocity(state({ right: true }), PLAYER_SPEED_MPS, 0),
+    ).toEqual({ x: PLAYER_SPEED_MPS, z: 0 });
   });
 
   it("normalizes diagonal input so two keys do not exceed speed", () => {
-    const v = inputToVelocity(state({ forward: true, right: true }));
+    const v = inputToVelocity(
+      state({ forward: true, right: true }),
+      PLAYER_SPEED_MPS,
+      0,
+    );
     const magnitude = Math.hypot(v.x, v.z);
     expect(magnitude).toBeCloseTo(PLAYER_SPEED_MPS, 6);
     // Forward = -Z, right = +X. Diagonals split evenly across the two axes.
@@ -58,21 +61,95 @@ describe("inputToVelocity", () => {
   });
 
   it("cancels opposing keys to zero on the same axis", () => {
-    expect(inputToVelocity(state({ forward: true, back: true }))).toEqual({
-      x: 0,
-      z: 0,
-    });
-    expect(inputToVelocity(state({ left: true, right: true }))).toEqual({
-      x: 0,
-      z: 0,
-    });
+    expect(
+      inputToVelocity(
+        state({ forward: true, back: true }),
+        PLAYER_SPEED_MPS,
+        0,
+      ),
+    ).toEqual({ x: 0, z: 0 });
+    expect(
+      inputToVelocity(
+        state({ left: true, right: true }),
+        PLAYER_SPEED_MPS,
+        0,
+      ),
+    ).toEqual({ x: 0, z: 0 });
   });
 
   it("respects a custom speed argument", () => {
-    expect(inputToVelocity(state({ right: true }), 10)).toEqual({
+    expect(inputToVelocity(state({ right: true }), 10, 0)).toEqual({
       x: 10,
       z: 0,
     });
+  });
+});
+
+describe("inputToVelocity (camera-relative default yaw = pi/4)", () => {
+  // The default camera sits at the (+X, +Z) corner of the room
+  // looking toward the origin. The +pi/4 input yaw rotates the
+  // raw keymap so "press W" produces world velocity toward
+  // (-X, -Z) / sqrt(2), i.e., toward the top of the screen.
+  const TOL = 1e-6;
+
+  it("maps W (forward) toward world (-X, -Z) at full speed (screen-up)", () => {
+    const v = inputToVelocity(state({ forward: true }));
+    expect(v.x).toBeCloseTo(-PLAYER_SPEED_MPS / Math.SQRT2, 6);
+    expect(v.z).toBeCloseTo(-PLAYER_SPEED_MPS / Math.SQRT2, 6);
+  });
+
+  it("maps S (back) toward world (+X, +Z) at full speed (screen-down)", () => {
+    const v = inputToVelocity(state({ back: true }));
+    expect(v.x).toBeCloseTo(PLAYER_SPEED_MPS / Math.SQRT2, 6);
+    expect(v.z).toBeCloseTo(PLAYER_SPEED_MPS / Math.SQRT2, 6);
+  });
+
+  it("maps D (right) toward world (+X, -Z) at full speed (screen-right)", () => {
+    const v = inputToVelocity(state({ right: true }));
+    expect(v.x).toBeCloseTo(PLAYER_SPEED_MPS / Math.SQRT2, 6);
+    expect(v.z).toBeCloseTo(-PLAYER_SPEED_MPS / Math.SQRT2, 6);
+  });
+
+  it("maps A (left) toward world (-X, +Z) at full speed (screen-left)", () => {
+    const v = inputToVelocity(state({ left: true }));
+    expect(v.x).toBeCloseTo(-PLAYER_SPEED_MPS / Math.SQRT2, 6);
+    expect(v.z).toBeCloseTo(PLAYER_SPEED_MPS / Math.SQRT2, 6);
+  });
+
+  it("W + D (screen-up-right) maps to pure world -Z (north wall direction)", () => {
+    const v = inputToVelocity(state({ forward: true, right: true }));
+    expect(Math.abs(v.x)).toBeLessThan(TOL);
+    expect(v.z).toBeCloseTo(-PLAYER_SPEED_MPS, 4);
+  });
+
+  it("S + A (screen-down-left) maps to pure world +Z (south wall direction)", () => {
+    const v = inputToVelocity(state({ back: true, left: true }));
+    expect(Math.abs(v.x)).toBeLessThan(TOL);
+    expect(v.z).toBeCloseTo(PLAYER_SPEED_MPS, 4);
+  });
+
+  it("W + A (screen-up-left) maps to pure world -X (west wall direction)", () => {
+    const v = inputToVelocity(state({ forward: true, left: true }));
+    expect(v.x).toBeCloseTo(-PLAYER_SPEED_MPS, 4);
+    expect(Math.abs(v.z)).toBeLessThan(TOL);
+  });
+
+  it("S + D (screen-down-right) maps to pure world +X (east wall direction)", () => {
+    const v = inputToVelocity(state({ back: true, right: true }));
+    expect(v.x).toBeCloseTo(PLAYER_SPEED_MPS, 4);
+    expect(Math.abs(v.z)).toBeLessThan(TOL);
+  });
+
+  it("rotation preserves magnitude (no key combination exceeds speed)", () => {
+    for (const keys of [
+      state({ forward: true }),
+      state({ forward: true, right: true }),
+      state({ back: true, left: true }),
+      state({ right: true }),
+    ]) {
+      const v = inputToVelocity(keys);
+      expect(Math.hypot(v.x, v.z)).toBeCloseTo(PLAYER_SPEED_MPS, 4);
+    }
   });
 });
 
@@ -156,11 +233,13 @@ describe("REQ-026 keyboard binding regression", () => {
         const fake = buildFakeWindow();
         const handle = createKeyboardState(fake);
         fake.dispatch("keydown", down);
-        const v = inputToVelocity(handle.state);
+        // Test the raw key-to-axis mapping (yawRad = 0); the
+        // camera-relative rotation is tested separately above.
+        const v = inputToVelocity(handle.state, PLAYER_SPEED_MPS, 0);
         expect(v.x).toBeCloseTo(expected.x, 6);
         expect(v.z).toBeCloseTo(expected.z, 6);
         fake.dispatch("keyup", down);
-        const after = inputToVelocity(handle.state);
+        const after = inputToVelocity(handle.state, PLAYER_SPEED_MPS, 0);
         expect(after).toEqual({ x: 0, z: 0 });
         handle.dispose();
       }

@@ -174,6 +174,36 @@ describe("nextQualitativelyDifferentAction: door detection", () => {
     });
     expect(result).toBeNull();
   });
+
+  it("uses explicit yaw when predicting a door crossing", () => {
+    const frames: KeyState[] = Array.from(
+      { length: 60 },
+      () => state({ forward: true }),
+    );
+    const recording = buildRecording(frames);
+    const rawNorthTrigger = fakeTrigger(0, -1.0, 0.6, 0.3);
+    const cameraForwardTrigger = fakeTrigger(-1.0, -1.0, 0.3, 0.3);
+
+    const raw = nextQualitativelyDifferentAction({
+      recording,
+      currentTick: 0,
+      isCurrentlyUnconscious: false,
+      currentPosition: { x: 0, z: 0 },
+      triggers: [rawNorthTrigger],
+      yawRad: 0,
+    });
+    const cameraRelative = nextQualitativelyDifferentAction({
+      recording,
+      currentTick: 0,
+      isCurrentlyUnconscious: false,
+      currentPosition: { x: 0, z: 0 },
+      triggers: [cameraForwardTrigger],
+      yawRad: Math.PI / 4,
+    });
+
+    expect(raw).toBe("door");
+    expect(cameraRelative).toBe("door");
+  });
 });
 
 describe("nextQualitativelyDifferentAction: priority order", () => {

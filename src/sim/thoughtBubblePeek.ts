@@ -104,6 +104,8 @@ export interface ThoughtPeekOptions {
   triggers: readonly PortalTrigger[];
   /** Fixed-step timestep in seconds. Defaults to 1 / 60. */
   fixedStepSeconds?: number;
+  /** Camera yaw used to turn recorded keys into predicted world velocity. */
+  yawRad?: number;
 }
 
 const DEFAULT_FIXED_STEP_SECONDS = 1 / 60;
@@ -121,7 +123,7 @@ const DEFAULT_FIXED_STEP_SECONDS = 1 / 60;
  * Door-entry detection forward-integrates the recorded planar velocity
  * from `currentPosition`. Each tick of the window:
  *   1. Read the recorded `KeyState` at that tick (or zero past the end).
- *   2. Convert to a planar velocity via `inputToVelocity`.
+ *   2. Convert to a planar velocity via `inputToVelocity` and `yawRad`.
  *   3. Step the predicted position by `velocity * fixedStepSeconds`.
  *   4. Check `pointInsideTrigger` against every supplied portal trigger.
  *
@@ -143,6 +145,7 @@ export function nextQualitativelyDifferentAction(
     currentPosition,
     triggers,
     fixedStepSeconds = DEFAULT_FIXED_STEP_SECONDS,
+    yawRad = 0,
   } = options;
 
   // Sleep dominates regardless of recording content.
@@ -176,7 +179,7 @@ export function nextQualitativelyDifferentAction(
     if (keys.punch) sawFist = true;
 
     if (!sawDoor && triggers.length > 0) {
-      const velocity = inputToVelocity(keys);
+      const velocity = inputToVelocity(keys, undefined, yawRad);
       predictedX += velocity.x * fixedStepSeconds;
       predictedZ += velocity.z * fixedStepSeconds;
       for (const trigger of triggers) {

@@ -98,6 +98,12 @@ export interface GhostInstance {
    */
   readonly startTick: number;
   /**
+   * Camera input yaw applied when this ghost turns recorded keys into
+   * replay velocity. Scripted ghosts keep `0`; player-recorded ghosts use
+   * the production camera yaw so preview and replay agree.
+   */
+  readonly replayYawRad: number;
+  /**
    * Fast-forward the ghost to absolute tick `absoluteTick` within its
    * home timeline (F-014 Reading C). Virtually replays the recording
    * from tick 0 to `relativeTick = absoluteTick - startTick`, advancing
@@ -199,6 +205,16 @@ export interface CreateGhostOptions {
   /** World-space spawn position. The capsule center y is computed so the base
    * sits on y=0 regardless of the supplied y; only x and z are used. */
   startPosition: { x: number; z: number };
+  /**
+   * Camera input yaw applied to recorded velocities at replay time.
+   * Defaults to `0` (world-axis behavior) so scripted cinematic
+   * recordings and test fixtures keep their existing semantics. The
+   * production traversal handler (`src/sim/portalTraversal.ts`)
+   * passes `CAMERA_INPUT_YAW_RAD` explicitly so a real player's
+   * recording replays along the same rotated path the player walked
+   * (preserving the time-loop invariant).
+   */
+  yawRad?: number;
 }
 
 /**
@@ -218,6 +234,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     scene,
     world,
     startPosition,
+    yawRad = 0,
   } = options;
   const { radius, cylinderLength } = PLAYER_CAPSULE;
 
@@ -280,6 +297,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
       milestones.milestones,
       { x: t.x, z: t.z },
       FIXED_STEP_SECONDS,
+      yawRad,
     );
     const current = body.linvel();
     body.setLinvel(
@@ -324,6 +342,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
         milestones.milestones,
         { x: virtualX, z: virtualZ },
         FIXED_STEP_SECONDS,
+        yawRad,
       );
       virtualX += result.velocity.x * FIXED_STEP_SECONDS;
       virtualZ += result.velocity.z * FIXED_STEP_SECONDS;
@@ -367,6 +386,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
     recording,
     milestones,
     startTick,
+    replayYawRad: yawRad,
     thoughtBubble,
     get tickIndex(): number {
       return replayState.tickIndex;
