@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-14, F-002 Missing GDD Sections
+
+- Branch: `docs/f002-missing-gdd-sections`
+- PR: TBD
+- Changed: Docs-only consolidation of the missing GDD section files referenced by the current rules tree. `docs/gdd/09-mechanic-instance-replay.md` now specifies recorded-instance replay, interruption, unconscious playback, portal boundaries, and no-paradox rewrite limits. `docs/gdd/17-ui-failure-state.md` now specifies quiet dead ends, hard reset as the v1 recovery path, reset legibility while unconscious, and terminal escape behavior. `docs/gdd/README.md` now indexes the existing section files instead of carrying the starter placeholder. `docs/GDD_COVERAGE.json` gains atomic spec rows for replay session state, interruption, failure UI, and hard-reset recovery.
+- Verification: `docs/GDD_COVERAGE.json` parsed cleanly. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. `npm run type-check` passed.
+- Assumptions: this slice documents shipped contracts without changing runtime behavior. The failure-state section stays partial because the legacy pause-menu-only reset placement remains tracked by F-003.
+- GDD coverage: REQ-041 through REQ-049 added as spec rows, with implemented rows marked `done` and the pause-menu-dependent hard-reset presentation marked `partial`.
+- Followups: F-002 partially consumed by the two referenced missing files. F-003 remains open for pause menu reset placement.
+
 ## 2026-05-14, Camera-Relative Keyboard Movement
 
 - Branch: `camera-relative-input`

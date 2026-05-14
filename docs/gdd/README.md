@@ -23,7 +23,14 @@ Project pitch: Single-room time travel puzzle game where you escape by manipulat
 Add entries below as sections are drafted. Each entry: filename + one-line description. This index is the human-readable map; the machine-readable map is `docs/GDD_COVERAGE.json`.
 
 - `01-vision-and-pillars.md`: what Pseudo Paradox is and what it is not.
-- `<draft your first requirement file here>`
+- `02-time-travel-rules.md`: permanent timeline, portal, numbering, and no-paradox rules.
+- `03-story-acts-1-3.md`: playable Act 1 through Act 3 sequence and narrative beats.
+- `09-mechanic-instance-replay.md`: recorded-instance replay, physical interruption, and unconscious playback rules.
+- `17-ui-failure-state.md`: dead-end, hard-reset, and win-state recovery rules.
+- `23-prototype-scope.md`: shippable prototype boundaries.
+- `30-combat-and-interaction.md`: knockouts, pickup, drag, throw, and thought-bubble rules.
+- `40-act-progress-and-narrative-beats.md`: act-state gates and narrative beat predicates.
+- `99-out-of-scope.md`: explicit v1 scope fence.
 
 ## Out of scope
 
