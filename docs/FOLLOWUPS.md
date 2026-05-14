@@ -23,7 +23,37 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Blocks Release
 
-(none open)
+### F-023: Add player-facing audio and motion controls
+
+- Priority: blocks-release
+- Context: Surfaced by the 2026-05-14 second-gate audit. The build now has ambient audio, punch / door / escape cues, fade overlays, onboarding dismissal, win overlay fade, and knockout tilt animation, but there is no player-facing mute control and no global reduce-motion path. PLAYTEST.md requires audio adjustment and a motion-sensitive path before the second gate can close.
+- Blocker: none. The runtime already owns the Web Audio modules and DOM overlay helpers, and existing animation code can read a shared preference without adding dependencies.
+- Unblock condition: add a persistent in-game mute toggle that affects ambient and SFX output, add a reduce-motion toggle or honor `prefers-reduced-motion` consistently across fade overlays and knockout feedback, and cover the controls with unit tests plus a smoke check.
+- PR / Dot reference (when picked up): #80 filed this followup.
+
+### F-024: Add non-color door-state affordances
+
+- Priority: blocks-release
+- Context: Surfaced by the 2026-05-14 second-gate audit. Lit and dark door state is currently communicated primarily by color, emissive intensity, and room-time tinting. PLAYTEST.md requires color not to be the sole channel for critical information.
+- Blocker: none.
+- Unblock condition: add a shape, icon, label, animation state, or other non-color affordance that distinguishes lit traversable doors from dark blocked doors at isometric scale. Update door visual tests so the affordance changes with lit state.
+- PR / Dot reference (when picked up): #80 filed this followup.
+
+### F-025: Run and record a real 15-minute release playtest
+
+- Priority: blocks-release
+- Context: Surfaced by the 2026-05-14 second-gate audit. Several PLAYTEST.md checks cannot be honestly closed from code review alone: 5-minute repetition fatigue, 5-minute audio fatigue, lowest-target-hardware frame rate, 15-minute crash / hang / artifact risk, and text legibility on the smallest target screen.
+- Blocker: needs a real browser session on target hardware after F-023 and F-024 land, so the audit checks the final release surface rather than an intermediate build.
+- Unblock condition: run a 15-minute browser playtest against production or a production-equivalent preview, record hardware, browser, viewport sizes, route attempted, observed frame feel, audio fatigue, UI legibility, and any crashes or artifacts. Update PLAYTEST.md checkboxes with evidence and file followups for failures.
+- PR / Dot reference (when picked up): #80 filed this followup.
+
+### F-026: Decide and document gamepad scope
+
+- Priority: blocks-release
+- Context: Surfaced by the 2026-05-14 second-gate audit. PLAYTEST.md asks for keyboard / gamepad / touch parity, but the current prototype supports keyboard and touch only. The GDD does not currently require gamepad support, so this needs an explicit release decision rather than an accidental omission.
+- Blocker: none for the decision. Implementation can use the browser Gamepad API without a new dependency if gamepad support remains in scope.
+- Unblock condition: either add a GDD / playtest deferral that declares gamepad out of v1 scope, or implement gamepad bindings for movement, punch, pickup, throw, pause, and reset confirmation with tests.
+- PR / Dot reference (when picked up): #80 filed this followup.
 
 ## Nice To Have
 

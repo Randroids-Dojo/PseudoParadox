@@ -53,6 +53,49 @@ Append-only. Earlier audits are preserved.
 
 ## Audit log
 
+### Audit 2026-05-14
+
+Second-gate audit after all 56 GDD coverage rows reached `done` and after PR #79 landed the anonymous astronaut presentation. Method: qualitative review of shipped code paths, docs, production deploy status, and the release playtest checklist. This is not a substitute for the real 15-minute browser playtest now filed as F-025.
+
+**The first session**
+
+- *Does the first 90 seconds make the player want to keep playing?* Yes for a prototype. The onboarding overlay explains controls and objective, the first movement has immediate visual response, and the audio / knockout passes give the first successful action a clearer payoff.
+- *What is the first specific moment that surprises a new user?* Positive: the first loop that shows a past self in the room. The astronaut silhouette helps this read as a person rather than a debugging capsule.
+- *Where does a new user get stuck or confused?* The highest-risk spot is still lit versus dark door interpretation for color-impaired players. F-024 is filed to add a non-color affordance.
+
+**The core action**
+
+- *Does the core action feel good at every skill level?* Better than the 2026-05-12 audit: punch now has sound and animated body response, but a real-session fatigue check is still needed.
+- *Is there meaningful skill expression?* Yes in route planning, loop timing, carry placement, and deciding when to knock out or move a past self.
+- *Does the core action have texture?* Yes at minimum viable level after PR #70 and PR #72. Further camera shake or particles can remain polish unless real playtest data says otherwise.
+
+**Variety**
+
+- *Do the variations feel distinct, or do they feel like recolors?* The acts are now more distinct than before due to HUD labeling, audio, win flow, and astronaut readability, but they still happen in one room by design.
+- *Different option equals different experience?* Not applicable for v1. There are no modes, characters, or difficulty options.
+- *Is there a surprise still waiting after an hour?* The authored puzzle route has surprise through Act 3. There is no replayable random surprise, which is acceptable for this deterministic prototype.
+
+**Difficulty arc**
+
+- *Where is the difficulty too high?* Accessibility remains the main risk: critical door state depends too much on color and brightness. F-024 addresses it.
+- *Where is the difficulty too low?* Moment-to-moment execution remains forgiving, but that matches the logical puzzle pillar.
+- *Is there a clear "I want to keep going to get better" pull?* Yes for puzzle-curious players. The improvement loop is planning cleaner timelines, not mastering twitch input.
+
+**Stickiness**
+
+- *What brings a player back the next day?* Nothing persistent by design. Persistence and profile features are out of v1 scope.
+- *What makes a player tell a friend about this?* The visible past-self choreography and anonymous astronaut presentation make the "manipulate your own past selves" pitch easier to understand at a glance.
+- *Smallest change for retention?* Player-facing settings, especially mute and reduced motion, because they let more players stay in a session comfortably. Filed as F-023.
+
+**Polish you have been postponing**
+
+Four release-gate items remain:
+
+1. **Audio and motion controls**: add mute plus a reduce-motion path. Filed as F-023.
+2. **Non-color door state**: make lit / dark state readable without color. Filed as F-024.
+3. **Real 15-minute release playtest**: verify fatigue, frame feel, crash / artifact risk, and smallest-screen text. Filed as F-025.
+4. **Gamepad scope**: either implement bindings or document v1 deferral. Filed as F-026.
+
 ### Audit 2026-05-12
 
 First fun-factor audit. Run when `docs/GDD_COVERAGE.json` reached 100% done (all 40 rows shipped). The mechanics substrate (time-loop, ghost replay, knockout, carry, throw, portal traversal, act-state observer, Act 3 escape) is fully landed. This audit asks the next question: does any of it feel good to play?
