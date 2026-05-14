@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-14, F-021 Anonymous Astronaut Art Pass
 
 - Branch: `feature/astronaut-silhouette`
-- PR: pending
+- PR: `#79`
 - Changed: Replaces the plain capsule visual with an anonymous astronaut silhouette while preserving the physics capsule and tint contract. `src/scene/astronaut.ts` creates a tintable parent capsule with a dark face-free visor, arms, boots, and backpack child geometry. `createPlayer` and `createGhost` now use that mesh, so active and recorded instances share the same readable suit presentation.
 - Verification: coverage JSON parsed with 56 unique rows. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. Focused `npm test -- tests/scene/astronaut.test.ts tests/scene/player.test.ts tests/sim/ghostInstance.test.ts` passed, 32 tests across 3 files. `npm run type-check` passed. Full `npm test` passed, 709 tests across 64 files. `npm run build` passed with the existing Vite large-chunk warning. Local dev server smoke returned HTTP 200 at `http://127.0.0.1:5173/`.
 - Assumptions: a primitive-built suit is sufficient for the v1 flat graphic target because it satisfies anonymity, face-free presentation, tinting, and isometric readability without adding an asset pipeline or runtime dependency.
