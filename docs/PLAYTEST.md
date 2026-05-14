@@ -44,8 +44,8 @@ The minute-to-minute moment-to-moment quality.
 The length of time a user wants to play in one sitting.
 
 - [x] A session has a clear in / play / out flow. The user can stop cleanly. Verified by onboarding, pause reset confirmation, and win screen flow from PR #68, PR #78, and PR #69.
-- [x] Progress persists between sessions (saves, leaderboards, profile, settings). Deferred for v1: `docs/gdd/99-out-of-scope.md` keeps persistence, profiles, and leaderboards out of scope.
-- [x] Returning users get a "welcome back" signal (recent items, new options, last-played continuation). Deferred for v1 with the same persistence / profile out-of-scope decision.
+- [ ] Progress persists between sessions (saves, leaderboards, profile, settings). Deferred for v1: `docs/gdd/99-out-of-scope.md` keeps persistence, profiles, and leaderboards out of scope.
+- [ ] Returning users get a "welcome back" signal (recent items, new options, last-played continuation). Deferred for v1 with the same persistence / profile out-of-scope decision.
 
 ## Audio and feel
 
