@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-14T02:41:23-05:00",
+  "updatedAt": "2026-05-14T02:53:39-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -990,6 +990,124 @@
         "tests/sim/endToEndCompletability.test.ts"
       ],
       "followupRefs": []
+    },
+    {
+      "id": "REQ-050",
+      "requirement": "The game uses an orthographic, open-top dollhouse camera that keeps the single room legible.",
+      "gddRef": "docs/gdd/08-visual-and-art-direction.md#core-requirements",
+      "status": "done",
+      "note": "F-002 visual migration adds the canonical camera visual spec. The shipped scene uses an orthographic camera from a high 3/4 dollhouse vantage with a contain-fit frustum and no ceiling in the room mesh.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/scene/scene.ts",
+        "src/scene/room.ts"
+      ],
+      "testRefs": [
+        "tests/scene/room.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-051",
+      "requirement": "Camera orientation stays fixed, but bounded pan and zoom controls are allowed for inspection.",
+      "gddRef": "docs/gdd/08-visual-and-art-direction.md#core-requirements",
+      "status": "done",
+      "note": "F-002 visual migration reconciles the legacy fixed-camera wording with shipped F-010 behavior. Orientation remains fixed while `cameraGestures` supports bounded right-drag or two-finger pan and wheel or pinch zoom.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/render/cameraGestures.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/render/cameraGestures.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-052",
+      "requirement": "The playable space is one open rectangular room with four wall-mounted doors, one per cardinal wall, and no ceiling occluding the view.",
+      "gddRef": "docs/gdd/08-visual-and-art-direction.md#core-requirements",
+      "status": "done",
+      "note": "The current room is a single 10 x 10 meter open footprint with four cardinal wall doors and no ceiling. The visual section documents that the legacy slightly-rectangular target can be revisited only if it does not disturb portal timing or collision tests.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/scene/room.ts",
+        "src/scene/door.ts",
+        "src/sim/portalTrigger.ts"
+      ],
+      "testRefs": [
+        "tests/scene/room.test.ts",
+        "tests/scene/door.test.ts",
+        "tests/sim/portalTrigger.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-053",
+      "requirement": "Room, door, and instance colors use warm-to-cool time language so timeline origin and current time are readable.",
+      "gddRef": "docs/gdd/08-visual-and-art-direction.md#core-requirements",
+      "status": "done",
+      "note": "The shipped tint system stamps each instance from its origin time and uses the same warm-to-cool language for time-of-day color helpers and door paint. The visual GDD now documents tinting as a legibility layer, not just decoration.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/render/colorTint.ts",
+        "src/render/instanceTint.ts",
+        "src/sim/timeOfDay.ts",
+        "src/scene/door.ts",
+        "src/sim/timelineRoom.ts"
+      ],
+      "testRefs": [
+        "tests/render/colorTint.test.ts",
+        "tests/render/instanceTint.test.ts",
+        "tests/sim/timeOfDay.test.ts",
+        "tests/scene/doorVisualLit.test.ts",
+        "tests/sim/timelineRoom.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-054",
+      "requirement": "Player and past instances remain anonymous, face-free, and readable at isometric scale.",
+      "gddRef": "docs/gdd/08-visual-and-art-direction.md#core-requirements",
+      "status": "partial",
+      "note": "Prototype capsules satisfy anonymity, face-free presentation, tinting, and readable silhouette. They do not yet satisfy the long-term anonymous astronaut suit target from the legacy GDD.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/scene/player.ts",
+        "src/sim/ghostInstance.ts",
+        "src/render/instanceTint.ts"
+      ],
+      "testRefs": [
+        "tests/scene/player.test.ts",
+        "tests/sim/ghostInstance.test.ts",
+        "tests/render/instanceTint.test.ts"
+      ],
+      "followupRefs": [
+        "F-021"
+      ]
+    },
+    {
+      "id": "REQ-055",
+      "requirement": "The final visual style reads as flat, graphic, and lightly illustrated rather than physically realistic.",
+      "gddRef": "docs/gdd/08-visual-and-art-direction.md#core-requirements",
+      "status": "partial",
+      "note": "The prototype uses simple primitives, clear shapes, and flat material colors, which satisfies readability. A final illustrated flat-graphic asset pass remains open under F-021.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/scene/room.ts",
+        "src/scene/door.ts",
+        "src/scene/player.ts",
+        "src/render/thoughtBubble.ts"
+      ],
+      "testRefs": [
+        "tests/scene/room.test.ts",
+        "tests/scene/door.test.ts",
+        "tests/scene/player.test.ts",
+        "tests/render/thoughtBubble.test.ts"
+      ],
+      "followupRefs": [
+        "F-021"
+      ]
     }
   ]
 }
