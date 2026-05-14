@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-14, F-003 Hard Reset UX Spec
+
+- Branch: `docs/f003-hard-reset-ux`
+- PR: `#77`
+- Changed: Docs-only specification of the final hard-reset presentation. `docs/gdd/17-ui-failure-state.md` now says reset lives in the pause menu, opens from `Escape` and a touch pause button, requires an in-menu confirmation before clearing recorded timeline state, and remains available when the active player is unconscious. Runtime behavior is unchanged.
+- Verification: `docs/GDD_COVERAGE.json` parsed cleanly. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. `npm run type-check` passed.
+- Assumptions: current immediate `R` and touch reset paths remain interim prototype shortcuts until F-022 implements the pause menu. Once the menu ships, `R` should open the reset confirmation rather than clearing the run instantly.
+- GDD coverage: REQ-048 note refreshed to point at F-022, and REQ-056 added as partial for the pause-menu confirmation implementation gap. `docs/gdd/17-ui-failure-state.md` gained an F-003 build-log entry.
+- Followups: F-003 resolved by this spec. F-022 opened for implementing the pause-menu reset confirmation.
+
 ## 2026-05-14, F-004 Root GDD Stub
 
 - Branch: `docs/f004-gdd-stub`
