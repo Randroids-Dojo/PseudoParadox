@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-14, F-002 Visual Direction GDD Migration
 
 - Branch: `docs/f002-visual-art-direction`
-- PR: TBD
+- PR: `#75`
 - Changed: Docs-only migration of the remaining visual direction from the legacy root `GDD.md` into `docs/gdd/08-visual-and-art-direction.md`. The new section specifies the dollhouse camera, bounded pan and zoom gestures, single-room door geometry, anonymous character silhouette, flat graphic tone, and warm-to-cool time tinting. It also reconciles the older "camera never moves" sentence with the shipped F-010 behavior: camera orientation remains fixed, while bounded pan and zoom are allowed for inspection. `docs/gdd/README.md` now indexes the new file. `docs/GDD_COVERAGE.json` gains atomic visual-direction rows.
 - Verification: coverage reference validation passed for all 55 rows. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. `npm run type-check` passed.
 - Assumptions: this slice documents visual contracts only. It marks the character and final art-style targets as partial because the shipped capsule placeholder and primitive materials are readable but not the final anonymous astronaut / illustrated style.

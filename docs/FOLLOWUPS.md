@@ -52,7 +52,8 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Unblock condition: pick a GDD section (camera, art style, character design, room geometry, instance replay mechanic, UI failure state) and draft it as `docs/gdd/<NN>-<title>.md`. Add atomic coverage rows to `docs/GDD_COVERAGE.json` once the spec lands.
 - PR / Dot reference (when picked up): #74. Current slice drafts `09-mechanic-instance-replay.md` and `17-ui-failure-state.md`; remaining legacy-root-only visual sections can stay as future F-002 cleanup.
 - Partial: PR #74 authored the two missing referenced files, `09-mechanic-instance-replay.md` and `17-ui-failure-state.md`.
-- PR / Dot reference (second slice): TBD. Current slice drafts `08-visual-and-art-direction.md`, covering camera, art style, character design, room geometry, and time tinting.
+- PR / Dot reference (second slice): #75. Current slice drafts `08-visual-and-art-direction.md`, covering camera, art style, character design, room geometry, and time tinting.
+- Resolved: PR #75. Missing GDD sections from F-002 are now represented in the GDD tree: `09-mechanic-instance-replay.md`, `17-ui-failure-state.md`, `08-visual-and-art-direction.md`, and `30-combat-and-interaction.md`.
 
 ### F-003: Specify hard reset UX
 
@@ -69,6 +70,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: not all original GDD content has been migrated to tree files yet (camera, art, character, room, mechanics detail).
 - Unblock condition: F-002 lands the missing section files. Then either delete `GDD.md` or replace it with a stub that points at `docs/gdd/`.
 - PR / Dot reference (when picked up):
+- Unblocked: PR #75 resolves F-002's missing-section migration, so this cleanup can be picked up next.
 
 ### F-016: Onboarding controls and objective overlay
 
