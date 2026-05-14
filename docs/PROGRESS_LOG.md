@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-14, F-004 Root GDD Stub
 
 - Branch: `docs/f004-gdd-stub`
-- PR: TBD
+- PR: `#76`
 - Changed: Replaced the stale legacy root `GDD.md` monolith with a compatibility pointer to the canonical `docs/gdd/` tree, and updated `README.md` to send readers directly to `docs/gdd/`. Runtime behavior is unchanged.
 - Verification: root GDD link targets exist and `docs/GDD_COVERAGE.json` parses. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. `npm run type-check` passed.
 - Assumptions: keeping a stub is safer than removing the file because older links and contributor habits may still point at root `GDD.md`.

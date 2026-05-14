@@ -71,7 +71,8 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Unblock condition: F-002 lands the missing section files. Then either delete `GDD.md` or replace it with a stub that points at `docs/gdd/`.
 - PR / Dot reference (when picked up):
 - Unblocked: PR #75 resolves F-002's missing-section migration, so this cleanup can be picked up next.
-- PR / Dot reference (cleanup slice): TBD. Current slice replaces root `GDD.md` with a compatibility pointer to `docs/gdd/`.
+- PR / Dot reference (cleanup slice): #76. Current slice replaces root `GDD.md` with a compatibility pointer to `docs/gdd/`.
+- Resolved: PR #76.
 
 ### F-016: Onboarding controls and objective overlay
 
