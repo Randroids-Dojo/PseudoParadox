@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-14T03:15:54-05:00",
+  "updatedAt": "2026-05-14T03:25:03-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -1069,45 +1069,45 @@
       "id": "REQ-054",
       "requirement": "Player and past instances remain anonymous, face-free, and readable at isometric scale.",
       "gddRef": "docs/gdd/08-visual-and-art-direction.md#core-requirements",
-      "status": "partial",
-      "note": "Prototype capsules satisfy anonymity, face-free presentation, tinting, and readable silhouette. They do not yet satisfy the long-term anonymous astronaut suit target from the legacy GDD.",
+      "status": "done",
+      "note": "F-021 replaces the plain capsule presentation with a tintable anonymous astronaut suit for both active player and ghosts. The suit keeps the parent capsule for tint and collider alignment, then adds a dark face-free visor, arms, boots, and backpack child geometry for isometric readability.",
       "updatedAt": "2026-05-14",
       "implementationRefs": [
+        "src/scene/astronaut.ts",
         "src/scene/player.ts",
         "src/sim/ghostInstance.ts",
         "src/render/instanceTint.ts"
       ],
       "testRefs": [
+        "tests/scene/astronaut.test.ts",
         "tests/scene/player.test.ts",
         "tests/sim/ghostInstance.test.ts",
         "tests/render/instanceTint.test.ts"
       ],
-      "followupRefs": [
-        "F-021"
-      ]
+      "followupRefs": []
     },
     {
       "id": "REQ-055",
       "requirement": "The final visual style reads as flat, graphic, and lightly illustrated rather than physically realistic.",
       "gddRef": "docs/gdd/08-visual-and-art-direction.md#core-requirements",
-      "status": "partial",
-      "note": "The prototype uses simple primitives, clear shapes, and flat material colors, which satisfies readability. A final illustrated flat-graphic asset pass remains open under F-021.",
+      "status": "done",
+      "note": "F-021 deepens the primitive visual style into a flat graphic astronaut silhouette with no textures or realistic surface detail. Suit parts use simple geometry and high-contrast material blocks while preserving warm-to-cool parent tinting.",
       "updatedAt": "2026-05-14",
       "implementationRefs": [
+        "src/scene/astronaut.ts",
         "src/scene/room.ts",
         "src/scene/door.ts",
         "src/scene/player.ts",
         "src/render/thoughtBubble.ts"
       ],
       "testRefs": [
+        "tests/scene/astronaut.test.ts",
         "tests/scene/room.test.ts",
         "tests/scene/door.test.ts",
         "tests/scene/player.test.ts",
         "tests/render/thoughtBubble.test.ts"
       ],
-      "followupRefs": [
-        "F-021"
-      ]
+      "followupRefs": []
     },
     {
       "id": "REQ-056",

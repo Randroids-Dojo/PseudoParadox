@@ -1,6 +1,6 @@
 # Visual and Art Direction
 
-**Status:** partial
+**Status:** done
 
 This section is the canonical visual contract for the prototype camera, room, character presentation, and time tinting. It migrates the legacy root `GDD.md` visual direction into the GDD tree while accounting for shipped camera and rendering behavior.
 
@@ -66,7 +66,7 @@ The narrative requires the player not to know who they are, and the puzzle requi
 - Tintable by time of origin.
 - Readable at small isometric scale.
 
-The long-term art target is an anonymous astronaut suit. The shipped prototype uses tintable capsule bodies as a mechanical placeholder. That placeholder satisfies anonymity, silhouette, and tint readability, but does not yet satisfy the astronaut-suit art target.
+The shipped visual target is an anonymous astronaut suit built from simple, tintable Three.js primitives. The parent body keeps the original capsule silhouette and collider alignment, while child parts add a dark face-free visor, arms, boots, and a compact backpack. The suit remains strongly readable at isometric scale without giving the character an identity.
 
 ## Flat Graphic Tone
 
@@ -78,7 +78,7 @@ The desired style is flat graphic, close to a graphic novel or paper-doll stage 
 - Preserve high contrast between bodies, doors, and the floor.
 - Keep gameplay state readable before visual flourish.
 
-The current implementation uses simple Three.js primitives and flat material colors. That is acceptable for prototype readability, but it is not the final illustrated art style.
+The current implementation uses simple Three.js primitives, flat material colors, and high-contrast suit parts. It is intentionally closer to a paper-doll stage prop than a realistic space suit.
 
 ## Time Tinting
 
@@ -102,4 +102,5 @@ Tinting must remain secondary to legibility. If a tint makes a door state, body,
 
 ### Build log
 
+- 2026-05-14: F-021 anonymous astronaut pass. Replaced the plain capsule presentation with a tintable parent capsule plus child visor, arms, boots, and backpack geometry for both the active player and ghosts. Physics colliders and replay behavior are unchanged. Files: `src/scene/astronaut.ts`, `src/scene/player.ts`, `src/sim/ghostInstance.ts`, `tests/scene/astronaut.test.ts`, `tests/scene/player.test.ts`, `tests/sim/ghostInstance.test.ts`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR #79.
 - 2026-05-14: F-002 visual migration. Authored this section from the legacy root `GDD.md`, current camera gesture implementation, room geometry, player capsule, and time-tinting helpers. Runtime behavior is unchanged. Status is partial because the shipped capsule placeholder does not yet satisfy the long-term anonymous astronaut suit target, and the current primitive materials do not yet satisfy the final flat illustrated art target. Files: `docs/gdd/08-visual-and-art-direction.md`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR #75.
