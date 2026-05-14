@@ -26,6 +26,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyDoorLitState,
   createFourDoors,
+  DOOR_AFFORDANCE_NAMES,
   DOOR_DARK_COLOR_HEX,
   DOOR_LIT_COLOR_HEX,
   type DoorDirection,
@@ -50,6 +51,12 @@ const colorHex = (mesh: THREE.Mesh): number =>
 
 const emissiveIntensity = (mesh: THREE.Mesh): number =>
   (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity;
+
+const litAffordanceVisible = (mesh: THREE.Mesh): boolean =>
+  mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.lit)?.visible ?? false;
+
+const darkAffordanceVisible = (mesh: THREE.Mesh): boolean =>
+  mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.dark)?.visible ?? false;
 
 const doorMeshesByDirection = (
   group: THREE.Group,
@@ -81,8 +88,12 @@ describe("REQ-028: door visual lit/dark matches the predicate", () => {
       // Smoke: lit doors emissive > 0; dark doors emissive === 0.
       if (expectedLit) {
         expect(emissiveIntensity(mesh!)).toBeGreaterThan(0);
+        expect(litAffordanceVisible(mesh!)).toBe(true);
+        expect(darkAffordanceVisible(mesh!)).toBe(false);
       } else {
         expect(emissiveIntensity(mesh!)).toBe(0);
+        expect(litAffordanceVisible(mesh!)).toBe(false);
+        expect(darkAffordanceVisible(mesh!)).toBe(true);
       }
     }
   });
@@ -177,6 +188,8 @@ describe("REQ-028: door visual lit/dark matches the predicate", () => {
     }
     expect(colorHex(byDirection.get("east")!.mesh)).toBe(DOOR_DARK_COLOR_HEX);
     expect(emissiveIntensity(byDirection.get("east")!.mesh)).toBe(0);
+    expect(litAffordanceVisible(byDirection.get("east")!.mesh)).toBe(false);
+    expect(darkAffordanceVisible(byDirection.get("east")!.mesh)).toBe(true);
     // South stays lit; North and West stay dark.
     expect(colorHex(byDirection.get("south")!.mesh)).toBe(DOOR_LIT_COLOR_HEX);
     expect(colorHex(byDirection.get("north")!.mesh)).toBe(DOOR_DARK_COLOR_HEX);

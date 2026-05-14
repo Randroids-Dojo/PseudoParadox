@@ -35,6 +35,10 @@ export const DOOR_LIT_COLOR_HEX = 0xf2c987;
 export const DOOR_DARK_COLOR_HEX = 0x1a1612;
 export const DOOR_LIT_EMISSIVE_HEX = 0x6a3a14;
 export const DOOR_LIT_EMISSIVE_INTENSITY = 0.6;
+export const DOOR_AFFORDANCE_NAMES = {
+  lit: "door-affordance-lit",
+  dark: "door-affordance-dark",
+} as const;
 
 export interface Door {
   mesh: THREE.Mesh;
@@ -70,6 +74,7 @@ export function createDoor(
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `door-${direction}`;
+  addDoorAffordances(mesh);
 
   // The wall midpoints sit at +/- (roomWidth/2) on X for east/west and at
   // +/- (roomDepth/2) on Z for north/south. Doors face inward, so a north
@@ -101,6 +106,36 @@ export function createDoor(
   }
 
   return { mesh, direction };
+}
+
+function addDoorAffordances(mesh: THREE.Mesh): void {
+  const litMaterial = new THREE.MeshBasicMaterial({
+    color: 0xfff4d6,
+    depthWrite: false,
+  });
+  const darkMaterial = new THREE.MeshBasicMaterial({
+    color: 0xd7dde8,
+    depthWrite: false,
+  });
+
+  const litRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.26, 0.035, 8, 24),
+    litMaterial,
+  );
+  litRing.name = DOOR_AFFORDANCE_NAMES.lit;
+  litRing.position.set(0, DOOR_DIMENSIONS.height * 0.18, 0);
+  litRing.visible = false;
+  mesh.add(litRing);
+
+  const darkSlash = new THREE.Mesh(
+    new THREE.BoxGeometry(0.68, 0.08, 0.16),
+    darkMaterial,
+  );
+  darkSlash.name = DOOR_AFFORDANCE_NAMES.dark;
+  darkSlash.position.set(0, DOOR_DIMENSIONS.height * 0.18, 0);
+  darkSlash.rotation.z = -Math.PI / 4;
+  darkSlash.visible = false;
+  mesh.add(darkSlash);
 }
 
 /**
@@ -150,4 +185,8 @@ export function applyDoorLitState(door: Door, isLit: boolean): void {
     material.emissive.setHex(0x000000);
     material.emissiveIntensity = 0;
   }
+  const litAffordance = door.mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.lit);
+  const darkAffordance = door.mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.dark);
+  if (litAffordance) litAffordance.visible = isLit;
+  if (darkAffordance) darkAffordance.visible = !isLit;
 }
