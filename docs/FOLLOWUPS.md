@@ -39,7 +39,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: none.
 - Unblock condition: add a shape, icon, label, animation state, or other non-color affordance that distinguishes lit traversable doors from dark blocked doors at isometric scale. Update door visual tests so the affordance changes with lit state.
 - PR / Dot reference (when picked up): #80 filed this followup.
-- Resolved: PR pending. Doors now carry child affordance geometry: lit doors show a raised ring, and dark doors show a diagonal blocked bar. `applyDoorLitState` toggles the affordance visibility with the material state.
+- Resolved: PR #82. Doors now carry child affordance geometry: lit doors show a raised ring, and dark doors show a diagonal blocked bar. `applyDoorLitState` toggles the affordance visibility with the material state.
 
 ### F-025: Run and record a real 15-minute release playtest
 
