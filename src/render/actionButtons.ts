@@ -10,11 +10,10 @@
  * downstream recorder and replay paths read identical state regardless
  * of input source.
  *
- * Hard reset is special: there is no `KeyState.reset` field; the
- * reset is triggered by a `keydown KeyR` listener in `src/app.ts`.
- * The Reset button dispatches a synthetic `KeyboardEvent` so the same
- * listener fires, keeping a single source of truth for the reset
- * sequence.
+ * Hard reset is special: there is no `KeyState.reset` field. By
+ * default the Reset button dispatches a synthetic `KeyboardEvent`
+ * so the same listener as keyboard R fires. Production can override
+ * that with `onReset` to route touch reset through the pause menu.
  *
  * Design choices:
  * - Buttons are large (64 px square) for finger-friendly hit targets.
@@ -60,12 +59,14 @@ export interface ActionButtonsKeyTarget {
 export interface CreateActionButtonsOptions {
   /** Defaults to `window` if available; otherwise omitted (no-op reset). */
   keyTarget?: ActionButtonsKeyTarget;
+  /** Optional reset action. Overrides the synthetic KeyR fallback. */
+  onReset?: () => void;
 }
 
 /**
  * Mounts four touch action buttons onto `container`. Each `keyState`
- * boolean is flipped on press and release; the Reset button instead
- * dispatches a `keydown KeyR` event to `keyTarget`.
+ * boolean is flipped on press and release; the Reset button uses
+ * `onReset` when supplied, otherwise dispatches `keydown KeyR`.
  */
 export function createActionButtons(
   container: HTMLElement,
@@ -186,14 +187,17 @@ export function createActionButtons(
     },
     true,
   );
-  // Reset fires a `keydown KeyR` so the host's existing reset
-  // listener in `src/app.ts` triggers the hard reset. On release we
-  // dispatch a matching `keyup` to keep the synthetic key state
-  // symmetrical (no listener consumes the keyup today, but a future
-  // hold-to-confirm reset variant could).
+  // Reset routes through the host-provided reset request when present.
+  // The fallback fires `keydown KeyR` so older one-line callers still
+  // reach the same reset path. On release we dispatch a matching
+  // `keyup` only for the fallback path.
   const resetBtn = makeButton(
     "Reset",
     () => {
+      if (options.onReset) {
+        options.onReset();
+        return;
+      }
       keyTarget?.dispatchEvent(
         new KeyboardEvent("keydown", {
           code: "KeyR",
@@ -203,6 +207,7 @@ export function createActionButtons(
       );
     },
     () => {
+      if (options.onReset) return;
       keyTarget?.dispatchEvent(
         new KeyboardEvent("keyup", {
           code: "KeyR",

@@ -130,6 +130,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: none.
 - Unblock condition: a slice that implements a modal pause menu opened by `Escape` and touch pause controls, routes reset through the specified confirmation state, preserves keyboard button activation, blocks background pointer input while open, and updates tests for reset accessibility while unconscious.
 - PR / Dot reference (when picked up):
+- Resolved: PR pending. `src/render/pauseMenu.ts` implements the modal pause menu and reset confirmation. `src/app.ts` routes `Escape`, `R`, win-screen replay, and touch reset requests through the menu, freezes fixed-step simulation while the menu is open, and only calls `hardReset` from the confirmation action.
 
 ## Polish
 
