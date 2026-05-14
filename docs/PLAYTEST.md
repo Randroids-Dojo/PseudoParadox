@@ -51,7 +51,7 @@ The length of time a user wants to play in one sitting.
 
 - [ ] No audio loop is fatiguing after 5 minutes. Deferred to F-025 real 15-minute release playtest.
 - [x] Audio reinforces successful actions (positive cues) and warns of failure conditions (negative cues). Verified by punch, door, escape, and ambient audio from PR #70.
-- [ ] The user can mute / adjust audio without leaving the experience. Failing, tracked by F-023.
+- [x] The user can mute / adjust audio without leaving the experience. Verified by the player settings controls from F-023.
 
 ## Performance and reliability
 
@@ -64,7 +64,7 @@ The length of time a user wants to play in one sitting.
 - [ ] Text is readable at the smallest target screen size. Deferred to F-025 real 15-minute release playtest across the smallest target viewport.
 - [ ] Color is not the sole channel for any critical information. Failing for lit / dark door state, tracked by F-024.
 - [ ] Keyboard / gamepad / touch parity is maintained for all primary actions. Keyboard and touch parity are implemented. Gamepad scope is unresolved and tracked by F-026.
-- [ ] Motion-sensitive users have a "reduce motion" path. Failing, tracked by F-023.
+- [x] Motion-sensitive users have a "reduce motion" path. Verified by the player settings controls from F-023.
 
 ## Deferred
 

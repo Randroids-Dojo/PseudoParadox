@@ -19,6 +19,10 @@ import { createPauseMenu } from "./render/pauseMenu.ts";
 import { getAudioEngine } from "./render/audioEngine.ts";
 import { playDoorSfx, playEscapeSfx, playPunchSfx } from "./render/sfx.ts";
 import { startAmbientDrone } from "./render/ambientDrone.ts";
+import {
+  createPlayerSettingsControls,
+  type PlayerSettings,
+} from "./render/playerSettings.ts";
 import { createActStateHud } from "./render/actStateHud.ts";
 import { createActStateObserver } from "./sim/actState.ts";
 import { buildActStateSnapshot } from "./sim/actStateSnapshot.ts";
@@ -171,7 +175,25 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // ambient drone starts immediately but produces no sound until
   // the context resumes, so the player hears it fade in on first
   // interaction rather than blasting on page load.
+  let playerSettings: PlayerSettings = {
+    muted: false,
+    reduceMotion: false,
+  };
   const audioEngine = getAudioEngine();
+  let clearMotionAnimations = (): void => undefined;
+  const applyAudioSettings = (settings: PlayerSettings): void => {
+    if (!audioEngine) return;
+    audioEngine.master.gain.value = settings.muted ? 0 : 1;
+  };
+  const settingsControls = createPlayerSettingsControls(container, {
+    onChange: (settings) => {
+      playerSettings = settings;
+      applyAudioSettings(settings);
+      if (settings.reduceMotion) clearMotionAnimations();
+    },
+  });
+  playerSettings = settingsControls.settings;
+  applyAudioSettings(playerSettings);
   if (audioEngine) {
     void audioEngine.ensureReady();
     startAmbientDrone(audioEngine);
@@ -386,6 +408,9 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // Determinism: same recording -> same per-tick rotation, so replay
   // byte-identity holds.
   const knockoutAnimator = createKnockoutAnimator();
+  clearMotionAnimations = () => {
+    knockoutAnimator.clearAll();
+  };
   const actStateHud = createActStateHud(container);
   let activePlayerCrossedNorthAt12 = false;
   portalTriggers.onPortalOverlap((event) => {
@@ -458,6 +483,7 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // the win screen so the audiovisual lands together.
     if (audioEngine) playEscapeSfx(audioEngine);
     winScreenHandle = createWinScreen(container, {
+      prefersReducedMotion: playerSettings.reduceMotion,
       onReset: () => {
         pauseMenu.openResetConfirmation();
       },
@@ -679,14 +705,18 @@ export async function startApp(container: HTMLElement): Promise<void> {
             // The animator writes the tick-0 anticipation value
             // immediately, overriding the pi/2 snap above; subsequent
             // fixed steps continue the ease.
-            knockoutAnimator.start(player.mesh, KNOCKOUT_MESH_TILT_Z);
+            if (!playerSettings.reduceMotion) {
+              knockoutAnimator.start(player.mesh, KNOCKOUT_MESH_TILT_Z);
+            }
             continue;
           }
           for (const ghost of activeGhostsList) {
             if (ghost.instanceId === targetId) {
               ghost.consciousness = applyKnockout(ghost.consciousness);
               applyKnockoutBodyResponse(ghost.body, ghost.mesh, direction);
-              knockoutAnimator.start(ghost.mesh, KNOCKOUT_MESH_TILT_Z);
+              if (!playerSettings.reduceMotion) {
+                knockoutAnimator.start(ghost.mesh, KNOCKOUT_MESH_TILT_Z);
+              }
               break;
             }
           }

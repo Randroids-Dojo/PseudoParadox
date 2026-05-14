@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-14, F-023 Audio And Motion Controls
+
+- Branch: `feature/audio-motion-controls`
+- PR: `#81`
+- Changed: Adds a persistent player settings overlay with Mute and Reduce motion controls. Mute writes through the Web Audio master gain so ambient and SFX are silenced together. Reduce motion defaults from the platform preference, persists in local storage, disables win-screen fade, and skips the eased knockout animation while keeping the final knockout pose.
+- Verification: dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. Focused `npm test -- tests/render/playerSettings.test.ts tests/render/winScreen.test.ts tests/sim/knockoutAnimator.test.ts` passed, 26 tests across 3 files. `npm run type-check` passed. Full `npm test` passed, 717 tests across 65 files. `npm run build` passed with the existing Vite large-chunk warning. Local dev server smoke returned HTTP 200 at `http://127.0.0.1:5173/`.
+- Assumptions: a compact always-visible settings overlay is the simplest consistent v1 surface because pause-menu settings would hide mute and motion controls behind the same modal players may need to avoid.
+- GDD coverage: no coverage row changes. `docs/gdd/17-ui-failure-state.md` gains an F-023 build-log entry because this extends the player-facing recovery and comfort UI.
+- Followups: F-023 resolved by this slice.
+
 ## 2026-05-14, Second-Gate Playtest Audit
 
 - Branch: `docs/second-gate-audit`
