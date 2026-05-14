@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-14, F-002 Missing GDD Sections
 
 - Branch: `docs/f002-missing-gdd-sections`
-- PR: TBD
+- PR: `#74`
 - Changed: Docs-only consolidation of the missing GDD section files referenced by the current rules tree. `docs/gdd/09-mechanic-instance-replay.md` now specifies recorded-instance replay, interruption, unconscious playback, portal boundaries, and no-paradox rewrite limits. `docs/gdd/17-ui-failure-state.md` now specifies quiet dead ends, hard reset as the v1 recovery path, reset legibility while unconscious, and terminal escape behavior. `docs/gdd/README.md` now indexes the existing section files instead of carrying the starter placeholder. `docs/GDD_COVERAGE.json` gains atomic spec rows for replay session state, interruption, failure UI, and hard-reset recovery.
 - Verification: `docs/GDD_COVERAGE.json` parsed cleanly. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. `npm run type-check` passed.
 - Assumptions: this slice documents shipped contracts without changing runtime behavior. The failure-state section stays partial because the legacy pause-menu-only reset placement remains tracked by F-003.

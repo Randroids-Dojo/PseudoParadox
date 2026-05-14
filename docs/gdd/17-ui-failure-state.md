@@ -70,4 +70,4 @@ Escape is not a failure state. Once the player leaves through the final North do
 
 ### Build log
 
-- 2026-05-14: F-002 spec consolidation. Authored this missing section from the legacy root `GDD.md`, shipped hard-reset behavior, touch reset affordance, win screen behavior, and current out-of-scope rules. This is a docs-only slice; runtime behavior is unchanged. Status is partial because the legacy pause-menu-only reset placement remains open as F-003. Files: `docs/gdd/17-ui-failure-state.md`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR TBD.
+- 2026-05-14: F-002 spec consolidation. Authored this missing section from the legacy root `GDD.md`, shipped hard-reset behavior, touch reset affordance, win screen behavior, and current out-of-scope rules. This is a docs-only slice; runtime behavior is unchanged. Status is partial because the legacy pause-menu-only reset placement remains open as F-003. Files: `docs/gdd/17-ui-failure-state.md`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR #74.

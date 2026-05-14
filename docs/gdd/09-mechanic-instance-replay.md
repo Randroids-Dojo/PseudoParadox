@@ -71,4 +71,4 @@ The no-paradox contract only requires that recorded inputs persist. It does not 
 
 ### Build log
 
-- 2026-05-14: F-002 spec consolidation. Authored this missing section from the legacy root `GDD.md`, current replay implementation, `02-time-travel-rules.md`, and `30-combat-and-interaction.md`. This is a docs-only slice; runtime behavior is unchanged. Files: `docs/gdd/09-mechanic-instance-replay.md`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR TBD.
+- 2026-05-14: F-002 spec consolidation. Authored this missing section from the legacy root `GDD.md`, current replay implementation, `02-time-travel-rules.md`, and `30-combat-and-interaction.md`. This is a docs-only slice; runtime behavior is unchanged. Files: `docs/gdd/09-mechanic-instance-replay.md`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR #74.
