@@ -62,6 +62,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: pause menu does not yet exist.
 - Unblock condition: at least one playable build is shippable end-to-end so reset semantics can be reasoned about against real timeline state.
 - PR / Dot reference (when picked up):
+- Resolved: PR pending. The final hard-reset UX is specified in `docs/gdd/17-ui-failure-state.md`: reset lives in the pause menu, uses `Escape` plus a touch pause button as menu entry points, requires an in-menu confirmation before clearing the run, and stays available when the active player is unconscious. F-022 tracks implementation.
 
 ### F-004: Consolidate or remove legacy root GDD.md
 
@@ -120,6 +121,14 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Context: `docs/gdd/08-visual-and-art-direction.md` carries the long-term target of anonymous astronaut suits in a flat graphic style. The shipped prototype uses tintable capsule bodies and primitive materials, which are readable but not the final visual target.
 - Blocker: none.
 - Unblock condition: a visual asset pass that replaces or augments the capsule body with a face-free astronaut silhouette, keeps time tinting readable, and preserves isometric-scale legibility without adding new core runtime dependencies.
+- PR / Dot reference (when picked up):
+
+### F-022: Implement pause-menu reset confirmation
+
+- Priority: nice-to-have
+- Context: F-003 specifies the final hard-reset UX: reset lives in the pause menu and requires confirmation before clearing the current run. The runtime still exposes immediate reset through `R` and the touch reset button.
+- Blocker: none.
+- Unblock condition: a slice that implements a modal pause menu opened by `Escape` and touch pause controls, routes reset through the specified confirmation state, preserves keyboard button activation, blocks background pointer input while open, and updates tests for reset accessibility while unconscious.
 - PR / Dot reference (when picked up):
 
 ## Polish
