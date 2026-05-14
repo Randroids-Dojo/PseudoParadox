@@ -30,6 +30,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: none. The runtime already owns the Web Audio modules and DOM overlay helpers, and existing animation code can read a shared preference without adding dependencies.
 - Unblock condition: add a persistent in-game mute toggle that affects ambient and SFX output, add a reduce-motion toggle or honor `prefers-reduced-motion` consistently across fade overlays and knockout feedback, and cover the controls with unit tests plus a smoke check.
 - PR / Dot reference (when picked up): #80 filed this followup.
+- Resolved: PR pending. `src/render/playerSettings.ts` adds persistent Mute and Reduce motion controls. `src/app.ts` applies mute through the audio master gain, passes reduced motion into the win screen, and skips knockout easing while reduced motion is active.
 
 ### F-024: Add non-color door-state affordances
 
