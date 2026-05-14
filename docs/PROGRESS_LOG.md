@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-14, F-003 Hard Reset UX Spec
 
 - Branch: `docs/f003-hard-reset-ux`
-- PR: pending
+- PR: `#77`
 - Changed: Docs-only specification of the final hard-reset presentation. `docs/gdd/17-ui-failure-state.md` now says reset lives in the pause menu, opens from `Escape` and a touch pause button, requires an in-menu confirmation before clearing recorded timeline state, and remains available when the active player is unconscious. Runtime behavior is unchanged.
 - Verification: `docs/GDD_COVERAGE.json` parsed cleanly. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. `npm run type-check` passed.
 - Assumptions: current immediate `R` and touch reset paths remain interim prototype shortcuts until F-022 implements the pause menu. Once the menu ships, `R` should open the reset confirmation rather than clearing the run instantly.
