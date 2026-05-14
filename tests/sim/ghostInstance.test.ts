@@ -11,6 +11,7 @@ import {
   type KeyState,
 } from "../../src/input/keyboard.ts";
 import { interpolateWarmToCool } from "../../src/render/colorTint.ts";
+import { ASTRONAUT_PART_NAMES } from "../../src/scene/astronaut.ts";
 import {
   resolvePunches,
   suppressUnconsciousPunches,
@@ -189,6 +190,28 @@ describe("createGhost: tick-driven replay", () => {
     // negative-Z displacement is well below the analytic minimum but above
     // any noise floor.
     expect(endZ).toBeLessThan(startZ - 0.5);
+  });
+});
+
+describe("createGhost: visual silhouette (REQ-054)", () => {
+  it("uses the anonymous astronaut mesh while keeping the tintable parent", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const recording = buildRecording([NEUTRAL]);
+    const ghost = createGhost({
+      recording,
+      originNormalized: 0.5,
+      instanceId: 1,
+      scene,
+      world,
+      startPosition: { x: 0, z: 0 },
+    });
+
+    expect(ghost.mesh.userData.visualStyle).toBe("anonymous-astronaut");
+    expect(ghost.mesh.getObjectByName(ASTRONAUT_PART_NAMES.visor)).toBeDefined();
+    expect(
+      ghost.mesh.getObjectByName(ASTRONAUT_PART_NAMES.backpack),
+    ).toBeDefined();
   });
 });
 

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { applyInstanceTint } from "../render/instanceTint.ts";
+import { createAstronautMesh } from "./astronaut.ts";
 import { INITIAL_INSTANCE_ID, type InstanceId } from "../sim/instanceId.ts";
 import {
   INITIAL_CONSCIOUSNESS,
@@ -18,8 +19,8 @@ import {
  * Three.js uses a "capsule" defined by a sphere radius plus a cylindrical
  * length between the two hemisphere caps. Rapier's capsule collider takes
  * a half-height (the cylinder half-length, not including the caps) plus
- * the radius. Both descriptions are kept here so the visual mesh and the
- * physics body align.
+ * the radius. Both descriptions are kept here so the astronaut body and the
+ * physics collider align.
  */
 export const PLAYER_CAPSULE = {
   radius: 0.4,
@@ -96,7 +97,7 @@ export interface Player {
 
 export interface CreatePlayerOptions {
   /**
-   * Normalized time-of-day in [0, 1] used to tint the capsule via
+   * Normalized time-of-day in [0, 1] used to tint the astronaut body via
    * `applyInstanceTint`. Defaults to 0 (warm anchor) so callers that do not
    * yet have a `TimeOfDay` clock get a deterministic spawn color.
    */
@@ -104,9 +105,9 @@ export interface CreatePlayerOptions {
 }
 
 /**
- * Builds the player capsule: a Three.js mesh plus a Rapier dynamic rigid
- * body with a capsule collider. Both are placed at world origin (the room
- * center) with the capsule resting on the floor (y = 0).
+ * Builds the player astronaut mesh plus a Rapier dynamic rigid body with a
+ * capsule collider. Both are placed at world origin (the room center) with
+ * the collider resting on the floor (y = 0).
  *
  * The slice intentionally does not handle:
  *   - camera follow (camera is fixed for the prototype scope)
@@ -121,20 +122,10 @@ export function createPlayer(
   const { radius, cylinderLength } = PLAYER_CAPSULE;
   const originNormalized = options.originNormalized ?? 0;
 
-  const geometry = new THREE.CapsuleGeometry(radius, cylinderLength, 8, 16);
-  // The starting color is overwritten by `applyInstanceTint` below; the
-  // initial value is kept so a future material-property tweak (roughness,
-  // metalness) has a well-defined baseline to mutate from.
-  const material = new THREE.MeshStandardMaterial({
-    color: 0xc4d0e6,
-    roughness: 0.6,
-    metalness: 0.0,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = "player";
-  // REQ-030: stamp the capsule with the warm-to-cool tint at the instance's
-  // origin normalized time. For the active player this happens once at
-  // spawn; a future portal-traversal slice will re-stamp on travel.
+  const mesh = createAstronautMesh({ radius, cylinderLength, name: "player" });
+  // REQ-030: stamp the parent body with the warm-to-cool tint at the
+  // instance's origin normalized time. For the active player this happens
+  // once at spawn; a future portal-traversal slice will re-stamp on travel.
   applyInstanceTint(mesh, originNormalized);
   scene.add(mesh);
 
@@ -181,7 +172,7 @@ export function createPlayer(
   };
 
   // Place the mesh at the body's initial pose so the very first render frame
-  // does not show the capsule at the origin before the first physics step.
+  // does not show the astronaut at the origin before the first physics step.
   syncMeshFromBody();
 
   return {

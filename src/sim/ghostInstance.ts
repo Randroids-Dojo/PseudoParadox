@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { PLAYER_CAPSULE } from "../scene/player.ts";
+import { createAstronautMesh } from "../scene/astronaut.ts";
 import { applyInstanceTint } from "../render/instanceTint.ts";
 import { type InputRecording } from "./inputRecorder.ts";
 import {
@@ -25,9 +26,9 @@ import {
 } from "../render/thoughtBubble.ts";
 
 /**
- * Ghost-replay capsule (REQ-001 / REQ-002 deepening).
+ * Ghost replay body (REQ-001 / REQ-002 deepening).
  *
- * A ghost is a separate Three.js mesh + Rapier dynamic capsule whose planar
+ * A ghost is a separate Three.js mesh plus Rapier dynamic capsule whose planar
  * velocity each fixed simulation step is taken from a frozen `InputRecording`
  * via `replayAtTick`. The ghost owns its own tick counter that advances by
  * exactly one per call to `advanceTick`, so the host (`src/app.ts`) can drive
@@ -218,11 +219,11 @@ export interface CreateGhostOptions {
 }
 
 /**
- * Build a ghost-replay capsule. The mesh and body match the active player's
- * dimensions so a recorded path produces visually identical motion. The ghost
- * is dynamic (not kinematic) so it interacts with the same colliders the
- * active player does; that keeps the door-blocking behavior consistent with
- * REQ-002 ("worked around or physically redirected").
+ * Build a ghost replay astronaut mesh. Its capsule collider matches the active
+ * player's dimensions so a recorded path produces visually identical motion.
+ * The ghost is dynamic (not kinematic) so it interacts with the same colliders
+ * the active player does; that keeps the door-blocking behavior consistent
+ * with REQ-002 ("worked around or physically redirected").
  */
 export function createGhost(options: CreateGhostOptions): GhostInstance {
   const {
@@ -238,14 +239,7 @@ export function createGhost(options: CreateGhostOptions): GhostInstance {
   } = options;
   const { radius, cylinderLength } = PLAYER_CAPSULE;
 
-  const geometry = new THREE.CapsuleGeometry(radius, cylinderLength, 8, 16);
-  const material = new THREE.MeshStandardMaterial({
-    color: 0xc4d0e6,
-    roughness: 0.6,
-    metalness: 0.0,
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = "ghost";
+  const mesh = createAstronautMesh({ radius, cylinderLength, name: "ghost" });
   applyInstanceTint(mesh, originNormalized);
   scene.add(mesh);
 

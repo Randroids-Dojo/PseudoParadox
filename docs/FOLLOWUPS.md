@@ -122,6 +122,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: none.
 - Unblock condition: a visual asset pass that replaces or augments the capsule body with a face-free astronaut silhouette, keeps time tinting readable, and preserves isometric-scale legibility without adding new core runtime dependencies.
 - PR / Dot reference (when picked up):
+- Resolved: PR pending. `src/scene/astronaut.ts` adds a tintable anonymous astronaut mesh with a dark face-free visor, arms, boots, and backpack. `createPlayer` and `createGhost` use it without changing physics colliders or replay behavior.
 
 ### F-022: Implement pause-menu reset confirmation
 

@@ -3,6 +3,7 @@ import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { PLAYER_CAPSULE, createPlayer } from "../../src/scene/player.ts";
 import { interpolateWarmToCool } from "../../src/render/colorTint.ts";
+import { ASTRONAUT_PART_NAMES } from "../../src/scene/astronaut.ts";
 
 beforeAll(async () => {
   await RAPIER.init();
@@ -18,7 +19,7 @@ const expectColorClose = (a: THREE.Color, b: THREE.Color): void => {
 };
 
 describe("createPlayer originNormalized wiring (REQ-030)", () => {
-  it("stamps the capsule material with the warm-to-cool tint at the supplied origin", () => {
+  it("stamps the astronaut body with the warm-to-cool tint at the supplied origin", () => {
     const scene = new THREE.Scene();
     const world = buildWorld();
     const player = createPlayer(scene, world, { originNormalized: 0.3 });
@@ -57,6 +58,22 @@ describe("createPlayer instance generation seed (REQ-007)", () => {
     const world = buildWorld();
     const player = createPlayer(scene, world);
     expect(player.instanceId).toBe(1);
+  });
+});
+
+describe("createPlayer visual silhouette (REQ-054)", () => {
+  it("uses the anonymous astronaut mesh while keeping the tintable parent", () => {
+    const scene = new THREE.Scene();
+    const world = buildWorld();
+    const player = createPlayer(scene, world);
+
+    expect(player.mesh.userData.visualStyle).toBe("anonymous-astronaut");
+    expect(
+      player.mesh.getObjectByName(ASTRONAUT_PART_NAMES.visor),
+    ).toBeDefined();
+    expect(
+      player.mesh.getObjectByName(ASTRONAUT_PART_NAMES.backpack),
+    ).toBeDefined();
   });
 });
 
@@ -135,7 +152,7 @@ describe("REQ-026 spawn pose regression", () => {
     expect(t.y).toBeCloseTo(restY, 6);
 
     // Mesh follows the body's pose at construction so the very first render
-    // frame sees the capsule at the spawn pose.
+    // frame sees the astronaut at the spawn pose.
     expect(player.mesh.position.x).toBeCloseTo(0, 6);
     expect(player.mesh.position.y).toBeCloseTo(restY, 6);
     expect(player.mesh.position.z).toBeCloseTo(0, 6);
