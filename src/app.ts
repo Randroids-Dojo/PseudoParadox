@@ -943,6 +943,7 @@ export async function startApp(container: HTMLElement): Promise<void> {
         isCurrentlyUnconscious: ghost.consciousness === "unconscious",
         currentPosition: { x: t.x, z: t.z },
         triggers: portalTriggers.triggers,
+        yawRad: ghost.replayYawRad,
       });
       if (kind !== ghost.thoughtBubble.currentKind) {
         ghost.thoughtBubble.setIcon(kind);

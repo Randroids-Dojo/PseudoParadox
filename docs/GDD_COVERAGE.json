@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-10T23:00:00-05:00",
+  "updatedAt": "2026-05-14T02:10:00-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -511,15 +511,22 @@
       "requirement": "Player spawn is keyboard-controllable in the room at 5:00.",
       "gddRef": "docs/gdd/23-prototype-scope.md#success-criteria",
       "status": "done",
-      "updatedAt": "2026-05-09",
-      "note": "WASD plus arrow keyboard movement on a Rapier dynamic capsule lands. The 5:00 timeline anchor is now wired through REQ-013 (`ACT_ONE_NORMALIZED` from `src/sim/actOneAnchor.ts` flows through `src/app.ts`). Polish flip: `tests/input/keyboard.test.ts > REQ-026 keyboard binding regression` drives both binding sets through `createKeyboardState` (with a fake-window dispatcher to simulate keydown / keyup events) and asserts each cardinal produces the identical planar velocity through `inputToVelocity`. The matching spawn-pose regression in `tests/scene/player.test.ts > REQ-026 spawn pose regression` builds a fresh `createPlayer(scene, world)` and asserts the body translation is `(x, y, z) = (0, restY, 0)` plus the mesh follows the body at construction so the very first render frame sees the capsule at the spawn pose.",
+      "updatedAt": "2026-05-14",
+      "note": "WASD plus arrow keyboard movement on a Rapier dynamic capsule lands. The 5:00 timeline anchor is wired through REQ-013 (`ACT_ONE_NORMALIZED` from `src/sim/actOneAnchor.ts` flows through `src/app.ts`). 2026-05-14 polish: movement is camera-relative for the fixed isometric camera. `inputToVelocity` now rotates raw WASD / arrow axes by `CAMERA_INPUT_YAW_RAD = Math.PI / 4` by default, so W moves toward the top of the screen and diagonals line up with the room walls; raw world-axis behavior remains available via `yawRad = 0` for scripted fixtures. Player-recorded ghosts created by `wireTraversal` pass the production yaw into `createGhost`, while scripted cinematic ghosts keep the default `0`; `replayAtTick`, `advanceReplay`, `GhostInstance.fastForwardTo`, and thought-bubble lookahead all thread that yaw so replay, fast-forward, and previews agree with the path the player actually walked. Tests cover raw-axis compatibility, camera-relative cardinal and diagonal movement, WASD / arrow parity, explicit replay yaw, thought-bubble yaw prediction, and spawn pose.",
       "implementationRefs": [
         "src/input/keyboard.ts",
+        "src/sim/inputRecorder.ts",
+        "src/sim/replayController.ts",
+        "src/sim/ghostInstance.ts",
+        "src/sim/portalTraversal.ts",
+        "src/sim/thoughtBubblePeek.ts",
         "src/scene/player.ts",
         "src/app.ts"
       ],
       "testRefs": [
         "tests/input/keyboard.test.ts",
+        "tests/sim/inputRecorder.test.ts",
+        "tests/sim/thoughtBubblePeek.test.ts",
         "tests/scene/player.test.ts"
       ],
       "followupRefs": []

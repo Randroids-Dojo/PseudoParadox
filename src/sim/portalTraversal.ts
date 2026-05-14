@@ -7,6 +7,7 @@ import {
 import { InputRecorder } from "./inputRecorder.ts";
 import { MilestoneRecorder, DOOR_TRAVERSAL_WEIGHT } from "./milestone.ts";
 import { createGhost } from "./ghostInstance.ts";
+import { CAMERA_INPUT_YAW_RAD } from "../input/keyboard.ts";
 import type {
   OverlapEvent,
   PortalTriggerSet,
@@ -339,6 +340,13 @@ export function wireTraversal(options: WireTraversalOptions): TraversalHandle {
         scene,
         world,
         startPosition: { ...lifetime.startPosition },
+        // The active player's recording was produced under the camera
+        // input yaw; replay must apply the same rotation so the ghost
+        // walks the same world path the player walked (time-loop
+        // invariant). Scripted cinematic ghosts (`act1Cinematic.ts`)
+        // omit this option and default to `0` so their world-axis
+        // pre-canned recordings keep working.
+        yawRad: CAMERA_INPUT_YAW_RAD,
       });
       registry.add(sourceTimeline, ghost);
     }

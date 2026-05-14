@@ -127,6 +127,7 @@ export function advanceReplay(
   milestones: readonly Milestone[],
   currentBodyPos: { x: number; z: number },
   fixedStepSeconds: number,
+  yawRad?: number,
 ): ReplayResult {
   // 1. Skip stale low-weight milestones up to (but not past) the next
   //    door. Door budget is Infinity so the comparison stays false for
@@ -143,7 +144,7 @@ export function advanceReplay(
   }
 
   // 2. Recorded velocity at this tick plus running expected position.
-  const recordedVelocity = replayAtTick(recording, state.tickIndex);
+  const recordedVelocity = replayAtTick(recording, state.tickIndex, yawRad);
   const baseExpected = {
     x: state.expectedPos.x + recordedVelocity.x * fixedStepSeconds,
     z: state.expectedPos.z + recordedVelocity.z * fixedStepSeconds,

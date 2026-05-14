@@ -109,6 +109,16 @@ describe("replayAtTick", () => {
     expect(replayAtTick(snap, 2)).toEqual({ x: 0, z: -PLAYER_SPEED_MPS });
   });
 
+  it("applies an explicit yaw when replaying recorded movement", () => {
+    const r = new InputRecorder();
+    r.record(state({ forward: true }), 0);
+    const snap = r.snapshot();
+
+    const v = replayAtTick(snap, 0, Math.PI / 4);
+    expect(v.x).toBeCloseTo(-PLAYER_SPEED_MPS / Math.SQRT2, 6);
+    expect(v.z).toBeCloseTo(-PLAYER_SPEED_MPS / Math.SQRT2, 6);
+  });
+
   it("returns zero vector for ticks past the end of the recording", () => {
     const r = new InputRecorder();
     r.record(state({ right: true }), 0);

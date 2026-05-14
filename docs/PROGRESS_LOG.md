@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-14, Camera-Relative Keyboard Movement
+
+- Branch: `camera-relative-input`
+- PR: pending
+- Changed: Player keyboard movement now follows the fixed isometric camera instead of raw world axes. `src/input/keyboard.ts` adds `CAMERA_INPUT_YAW_RAD`, `rotateVelocityByYaw`, and a camera-relative default for `inputToVelocity`, so W moves toward the top of the screen and the cardinal diagonals line up with room walls. Ghost replay remains deterministic by storing each ghost's `replayYawRad`: player-recorded ghosts created through `wireTraversal` receive the production camera yaw, while scripted cinematic ghosts and test fixtures keep the raw world-axis default. `replayAtTick`, `advanceReplay`, `GhostInstance.fastForwardTo`, and `nextQualitativelyDifferentAction` all accept the yaw path so replay, fast-forward, and thought-bubble door prediction agree. Also cleans up the stale in-progress followup report by replacing F-018 / F-019 / F-020 pending-merge labels with PR #70 / #71 / #72.
+- Verification: dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'` (macOS `grep` lacks `-P`). `git diff --check` clean. `npm run type-check` passed. Focused tests passed: `npm test -- tests/input/keyboard.test.ts tests/sim/inputRecorder.test.ts tests/sim/thoughtBubblePeek.test.ts tests/sim/ghostInstance.test.ts tests/sim/act2Loop1.test.ts`. Full `npm test` passed: 696 tests across 62 files. `npm run build` passed with the existing Vite large-chunk warning.
+- Assumptions: the fixed camera yaw is stable because `cameraGestures.ts` pans by shifting both the camera and look target, so orientation does not change. A future orbit slice should compute yaw from the live camera instead of using `CAMERA_INPUT_YAW_RAD`.
+- GDD coverage: REQ-026 remains `done` and gains the camera-relative movement note plus new replay and thought-bubble test refs.
+- Followups: none opened.
+
 ## 2026-05-11, F-007 Implementation: Thrown-Body Rehome plus Replay Dedupe
 
 - Branch: `f007-implementation`

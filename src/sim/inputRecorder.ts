@@ -12,8 +12,9 @@
  * Scope this slice:
  *   - Per-tick capture of `KeyState` plus normalized time-of-day.
  *   - `snapshot()` returns a frozen, defensively copied recording.
- *   - `replayAtTick(recording, tick)` returns the recorded planar axes for a
- *     tick, or a zero vector if the tick is past the recording's end.
+ *   - `replayAtTick(recording, tick, yawRad?)` returns the recorded planar
+ *     axes for a tick, or a zero vector if the tick is past the recording's
+ *     end.
  *
  * NOT in scope this slice:
  *   - Replaying recorded input on a ghost capsule.
@@ -111,15 +112,20 @@ const ZERO_AXES: PlanarVelocity = Object.freeze({ x: 0, z: 0 });
  *
  * Tests pin the contract: mid-recording returns the exact recorded vector,
  * out-of-range returns zero. The mid-recording vector is derived through
- * `inputToVelocity` rather than stored, so any future tweak to the input
- * mapping (heading-aware movement, custom speed) replays consistently.
+ * `inputToVelocity` rather than stored. The optional `yawRad` lets production
+ * player recordings replay with the camera-relative movement frame while
+ * scripted world-axis recordings keep their authored path by default.
  */
-export function replayAtTick(recording: InputRecording, tick: number): PlanarVelocity {
+export function replayAtTick(
+  recording: InputRecording,
+  tick: number,
+  yawRad: number = 0,
+): PlanarVelocity {
   if (tick < 0 || tick >= recording.length) {
     return ZERO_AXES;
   }
   const frame = recording.frames[tick];
-  return inputToVelocity(frame.keys);
+  return inputToVelocity(frame.keys, undefined, yawRad);
 }
 
 /**
