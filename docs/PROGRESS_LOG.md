@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-14, Second-Gate Playtest Audit
+
+- Branch: `docs/second-gate-audit`
+- PR: pending
+- Changed: Re-runs the release playtest checklist and fun-factor audit after all 56 GDD coverage rows reached `done`. Marks verified checklist items with evidence, records v1 deferrals for persistence and deterministic random-variation checks, and files release-blocking followups for the remaining accessibility and real-session gaps.
+- Verification: coverage JSON parsed with 56 unique rows. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. `npm run type-check` passed.
+- Assumptions: qualitative review can close checklist items that are directly evidenced by shipped code and docs, but fatigue, smallest-screen readability, lowest-target-hardware frame rate, and 15-minute stability require a real browser playtest.
+- GDD coverage: no coverage row changes. The second-gate docs now drive the remaining release backlog.
+- Followups: opens F-023 audio and motion controls, F-024 non-color door-state affordances, F-025 real 15-minute release playtest, and F-026 gamepad scope decision.
+
 ## 2026-05-14, F-021 Anonymous Astronaut Art Pass
 
 - Branch: `feature/astronaut-silhouette`
