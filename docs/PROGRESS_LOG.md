@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-14, F-026 Gamepad Scope Decision
+
+- Branch: `docs/gamepad-scope`
+- PR: pending
+- Changed: Documents the v1 input-scope decision: keyboard and touch are the supported prototype input surfaces, while gamepad and controller input are deferred out of v1. `docs/PLAYTEST.md` now checks input parity for in-scope keyboard and touch controls and lists gamepad under explicit v1 deferrals. F-025 remains open because headless automation cannot honestly verify audio fatigue or lowest-target-hardware feel.
+- Verification: pending.
+- Assumptions: deferring gamepad is the smallest consistent v1 decision because the GDD never required controller support and keyboard plus touch already cover movement, punch, pickup, throw, pause, reset confirmation, and player settings.
+- GDD coverage: no coverage row changes. `docs/gdd/99-out-of-scope.md` gains an F-026 build-log entry.
+- Followups: F-026 resolved by this slice. F-025 remains the final blocks-release followup.
+
 ## 2026-05-14, F-024 Non-Color Door State Affordances
 
 - Branch: `feature/door-state-affordances`

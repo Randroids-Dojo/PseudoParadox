@@ -16,7 +16,8 @@ Items listed here can be revisited after the prototype ships. Each entry include
 - **Killing or permanent removal of instances.** Rationale: knockouts are the only allowed disabling mechanic. Killing breaks the recorded-replay rule.
 - **Save/load of in-progress timelines.** Rationale: a single prototype session is short. Hard reset is the only state operation in v1.
 - **Localization beyond English.** Rationale: the game is largely text-free by design (diegetic UI). Localization is trivial when needed.
-- **Mobile or touch input.** Rationale: web first, keyboard or gamepad. Touch can be added once the desktop control scheme is locked.
+- **Mobile-first product scope beyond implemented touch controls.** Rationale: touch controls now exist for the web prototype, but phone-specific layout polish, mobile-only QA, and native mobile packaging remain post-v1.
+- **Gamepad or controller input.** Rationale: keyboard and touch already cover the v1 web prototype's primary supported input surfaces. Gamepad adds a second focus, action mapping, and menu-navigation QA matrix that should wait until after the single-room puzzle is validated.
 - **Custom level editor.** Rationale: only one level exists. Editor is not justified.
 
 ## Revisit triggers
@@ -28,3 +29,5 @@ Each item above gets revisited when at least one of:
 3. A new design constraint forces the scope to expand (rare).
 
 ### Build log
+
+- 2026-05-14: F-026 gamepad scope decision. Gamepad and controller input are explicitly deferred out of v1, while keyboard and touch remain the supported input surfaces for the prototype release. Files: `docs/gdd/99-out-of-scope.md`, `docs/PLAYTEST.md`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR pending.
