@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-14, F-022 Pause Menu Reset Confirmation
 
 - Branch: `feature/pause-menu-reset`
-- PR: pending
+- PR: `#78`
 - Changed: Adds the final hard-reset surface. `src/render/pauseMenu.ts` mounts a modal pause menu with `Resume`, `Reset run`, and concrete reset confirmation copy. `src/app.ts` routes `Escape`, `R`, the win-screen replay action, and the touch Reset button through the menu, freezes fixed-step simulation while the menu is open, and calls `hardReset` only from `Reset to 5:00`. `src/render/actionButtons.ts` now accepts an `onReset` override so touch reset no longer clears the run instantly.
 - Verification: coverage JSON parsed with 56 unique rows. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. Focused `npm test -- tests/render/pauseMenu.test.ts` passed. Full `npm test` passed, 704 tests across 63 files. `npm run build` passed with the existing Vite large-chunk warning. Local dev server smoke returned HTTP 200 at `http://127.0.0.1:5173/`.
 - Assumptions: freezing the fixed-step simulation while the pause menu is open is the simplest consistent interpretation of "pause menu" and avoids recording menu-time input into the timeline.
