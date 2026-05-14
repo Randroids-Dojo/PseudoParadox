@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-14, F-024 Non-Color Door State Affordances
+
+- Branch: `feature/door-state-affordances`
+- PR: pending
+- Changed: Adds non-color door-state geometry to every door. Lit doors show a raised ring child mesh, while dark doors show a diagonal blocked-bar child mesh. `applyDoorLitState` now toggles both material color and affordance visibility so the same paint path drives behavior and accessibility.
+- Verification: dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. Focused `npm test -- tests/scene/door.test.ts tests/scene/doorVisualLit.test.ts tests/scene/room.test.ts tests/sim/timelineRoom.test.ts` passed, 29 tests across 4 files. `npm run type-check` passed. Full `npm test` passed, 718 tests across 65 files. `npm run build` passed with the existing Vite large-chunk warning. Local dev server smoke returned HTTP 200 at `http://127.0.0.1:5173/`.
+- Assumptions: shape-level affordances are sufficient for v1 because they make traversable versus blocked door state readable even without relying on hue or emissive intensity.
+- GDD coverage: no coverage row changes. `docs/gdd/08-visual-and-art-direction.md` gains an F-024 build-log entry.
+- Followups: F-024 resolved by this slice.
+
 ## 2026-05-14, F-023 Audio And Motion Controls
 
 - Branch: `feature/audio-motion-controls`

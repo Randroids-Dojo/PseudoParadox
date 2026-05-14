@@ -6,6 +6,7 @@ import {
   DOOR_LIT_COLOR_HEX,
   DOOR_LIT_EMISSIVE_HEX,
   DOOR_LIT_EMISSIVE_INTENSITY,
+  DOOR_AFFORDANCE_NAMES,
   applyDoorLitState,
   createDoor,
   createFourDoors,
@@ -86,6 +87,14 @@ describe("door", () => {
     ]);
   });
 
+  it("adds non-color lit and dark affordance geometry to each door", () => {
+    const { width, depth } = ROOM_DIMENSIONS;
+    const door = createDoor("north", width, depth);
+
+    expect(door.mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.lit)).toBeDefined();
+    expect(door.mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.dark)).toBeDefined();
+  });
+
   describe("applyDoorLitState", () => {
     const { width, depth } = ROOM_DIMENSIONS;
 
@@ -98,6 +107,12 @@ describe("door", () => {
       expect(material.emissiveIntensity).toBeCloseTo(
         DOOR_LIT_EMISSIVE_INTENSITY,
       );
+      expect(
+        door.mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.lit)?.visible,
+      ).toBe(true);
+      expect(
+        door.mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.dark)?.visible,
+      ).toBe(false);
     });
 
     it("stamps the dark color and clears emissive on a dark door", () => {
@@ -107,6 +122,12 @@ describe("door", () => {
       expect(material.color.getHex()).toBe(DOOR_DARK_COLOR_HEX);
       expect(material.emissive.getHex()).toBe(0x000000);
       expect(material.emissiveIntensity).toBe(0);
+      expect(
+        door.mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.lit)?.visible,
+      ).toBe(false);
+      expect(
+        door.mesh.getObjectByName(DOOR_AFFORDANCE_NAMES.dark)?.visible,
+      ).toBe(true);
     });
 
     it("can be re-stamped from dark to lit on the same door (REQ-011 prep)", () => {

@@ -62,7 +62,7 @@ The length of time a user wants to play in one sitting.
 ## Accessibility
 
 - [ ] Text is readable at the smallest target screen size. Deferred to F-025 real 15-minute release playtest across the smallest target viewport.
-- [ ] Color is not the sole channel for any critical information. Failing for lit / dark door state, tracked by F-024.
+- [x] Color is not the sole channel for any critical information. Verified by F-024 door affordance geometry: lit doors show a raised ring, and dark doors show a diagonal blocked bar.
 - [ ] Keyboard / gamepad / touch parity is maintained for all primary actions. Keyboard and touch parity are implemented. Gamepad scope is unresolved and tracked by F-026.
 - [x] Motion-sensitive users have a "reduce motion" path. Verified by the player settings controls from F-023.
 
