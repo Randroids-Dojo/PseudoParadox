@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-14, Second-Gate Playtest Audit
 
 - Branch: `docs/second-gate-audit`
-- PR: pending
+- PR: `#80`
 - Changed: Re-runs the release playtest checklist and fun-factor audit after all 56 GDD coverage rows reached `done`. Marks verified checklist items with evidence, records v1 deferrals for persistence and deterministic random-variation checks, and files release-blocking followups for the remaining accessibility and real-session gaps.
 - Verification: coverage JSON parsed with 56 unique rows. Dash sweep clean via `rg -n -P '[\x{2014}\x{2013}]' . -g '!node_modules/**' -g '!dist/**' -g '!.git/**'`. `git diff --check` clean. `npm run type-check` passed.
 - Assumptions: qualitative review can close checklist items that are directly evidenced by shipped code and docs, but fatigue, smallest-screen readability, lowest-target-hardware frame rate, and 15-minute stability require a real browser playtest.
