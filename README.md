@@ -6,4 +6,4 @@ You wake up on the floor of a spaceship with no memory of how you got there. Fou
 
 No paradoxes are possible. The confusion is the puzzle.
 
-See [GDD.md](GDD.md) for the full design document.
+See [docs/gdd/](docs/gdd/) for the full design document.
