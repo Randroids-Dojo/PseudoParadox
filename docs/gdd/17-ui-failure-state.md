@@ -1,6 +1,6 @@
 # UI Failure State
 
-**Status:** partial
+**Status:** done
 
 This section specifies how the prototype presents failure, dead ends, and recovery. Pseudo Paradox does not use paradox warnings, death screens, or auto-rewind. Failure is intentionally quiet: the player owns the timeline they created.
 
@@ -98,5 +98,6 @@ Escape is not a failure state. Once the player leaves through the final North do
 
 ### Build log
 
+- 2026-05-14: F-022 pause-menu reset implementation. Added the DOM pause menu, reset confirmation, `Escape` / `R` keyboard routing, touch reset routing through confirmation, and fixed-step pause while the menu is open. Files: `src/render/pauseMenu.ts`, `src/render/actionButtons.ts`, `src/app.ts`, `tests/render/pauseMenu.test.ts`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR #78.
 - 2026-05-14: F-003 hard-reset UX spec. Added the final pause-menu reset placement, keyboard and touch entry points, in-menu confirmation copy, and unconscious-player availability rules. Runtime behavior is unchanged in this docs-only slice; implementation remains tracked as F-022. Files: `docs/gdd/17-ui-failure-state.md`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR #77.
 - 2026-05-14: F-002 spec consolidation. Authored this missing section from the legacy root `GDD.md`, shipped hard-reset behavior, touch reset affordance, win screen behavior, and current out-of-scope rules. This is a docs-only slice; runtime behavior is unchanged. Status is partial because the legacy pause-menu-only reset placement remains open as F-003. Files: `docs/gdd/17-ui-failure-state.md`, `docs/GDD_COVERAGE.json`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR #74.

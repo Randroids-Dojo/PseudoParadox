@@ -5,12 +5,17 @@ import { buildScene } from "./scene/scene.ts";
 import { createRoomColliders } from "./scene/room.ts";
 import { createPlayer } from "./scene/player.ts";
 import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
-import { createKeyboardState, inputToVelocity } from "./input/keyboard.ts";
+import {
+  createKeyboardState,
+  inputToVelocity,
+  type KeyState,
+} from "./input/keyboard.ts";
 import { bindTouchControls } from "./input/touch.ts";
 import { createTouchOverlay } from "./render/touchOverlay.ts";
 import { createActionButtons } from "./render/actionButtons.ts";
 import { createOnboardingOverlay } from "./render/onboardingOverlay.ts";
 import { createWinScreen, type WinScreenHandle } from "./render/winScreen.ts";
+import { createPauseMenu } from "./render/pauseMenu.ts";
 import { getAudioEngine } from "./render/audioEngine.ts";
 import { playDoorSfx, playEscapeSfx, playPunchSfx } from "./render/sfx.ts";
 import { startAmbientDrone } from "./render/ambientDrone.ts";
@@ -152,12 +157,6 @@ export async function startApp(container: HTMLElement): Promise<void> {
   const touchOverlay = createTouchOverlay(container);
   const touch = bindTouchControls(window, keyboard.state);
   touch.onChange((js) => touchOverlay.update(js));
-  // F-009: DOM action buttons on the bottom-right. Each press flips
-  // the same `KeyState` boolean the keyboard handler would so the
-  // recorder snapshots identical state from touch and keyboard. The
-  // Reset button dispatches a synthetic `keydown KeyR` so the
-  // existing reset listener fires once per press.
-  createActionButtons(container, keyboard.state);
   // F-016: ambient onboarding hint. Top-right corner DOM overlay
   // listing the controls (or just the goal on touch devices, where
   // the action buttons already label themselves). Removes itself on
@@ -282,6 +281,41 @@ export async function startApp(container: HTMLElement): Promise<void> {
   // body along the player's facing.
   let previousThrowHeld = false;
   const carryRestingY = PLAYER_CAPSULE.cylinderLength / 2 + PLAYER_CAPSULE.radius;
+
+  const clearGameplayInput = (state: KeyState): void => {
+    state.forward = false;
+    state.back = false;
+    state.left = false;
+    state.right = false;
+    state.punch = false;
+    state.pickup = false;
+    state.throw = false;
+    previousPickupHeld = false;
+    previousThrowHeld = false;
+  };
+
+  // F-022: final hard-reset UX. Escape and touch reset requests open
+  // this modal, and the destructive `hardReset` call only runs from
+  // the confirmation button. The open-change hook clears live input
+  // booleans so menu keystrokes do not leak into the next gameplay
+  // tick when the menu closes.
+  const pauseMenu = createPauseMenu(container, {
+    onResetConfirmed: () => {
+      performHardReset();
+    },
+    onOpenChange: () => {
+      clearGameplayInput(keyboard.state);
+    },
+  });
+  // F-009 / F-022: DOM action buttons on the bottom-right. Punch,
+  // pickup, and throw still flip the same `KeyState` booleans the
+  // keyboard handler would. Reset now opens the pause-menu reset
+  // confirmation instead of clearing the run instantly.
+  createActionButtons(container, keyboard.state, {
+    onReset: () => {
+      pauseMenu.openResetConfirmation();
+    },
+  });
 
   // REQ-036: the player's facing direction is the last non-zero planar
   // velocity direction (Q-007 default). The tracker is updated each
@@ -425,14 +459,7 @@ export async function startApp(container: HTMLElement): Promise<void> {
     if (audioEngine) playEscapeSfx(audioEngine);
     winScreenHandle = createWinScreen(container, {
       onReset: () => {
-        // Surface a synthetic R press so the existing reset handler
-        // (which clears the simulation) fires through one code path
-        // regardless of whether the player clicked the overlay or
-        // pressed R on the keyboard. The handler tears the overlay
-        // down on its own via `tearDownWinScreen`.
-        window.dispatchEvent(
-          new KeyboardEvent("keydown", { code: "KeyR" }),
-        );
+        pauseMenu.openResetConfirmation();
       },
     });
   });
@@ -475,14 +502,7 @@ export async function startApp(container: HTMLElement): Promise<void> {
     },
   });
 
-  // REQ-025: hard reset on `r` keydown. The pause-menu UI is out of scope
-  // for this slice; a single key binding is enough to return the simulation
-  // to a clean Act 1 state when the player gets stuck. The handler is bound
-  // to `window` (the same target the keyboard movement listeners use) and
-  // is intentionally edge-triggered on `keydown` so holding `r` does not
-  // continuously re-reset the simulation.
-  const onResetKey = (event: KeyboardEvent): void => {
-    if (event.code !== "KeyR") return;
+  function performHardReset(): void {
     hardReset({
       player,
       lifetime,
@@ -510,8 +530,23 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // snaps each mesh.rotation.z back to 0; without this clear, the
     // animator would re-apply an eased tilt on the next fixed step.
     knockoutAnimator.clearAll();
+    clearGameplayInput(keyboard.state);
+  }
+
+  // F-022: keyboard access for the pause menu and reset confirmation.
+  // Escape opens or closes the pause menu. R opens the reset
+  // confirmation instead of clearing the run instantly.
+  const onPauseMenuKey = (event: KeyboardEvent): void => {
+    if (event.code === "Escape") {
+      event.preventDefault();
+      pauseMenu.handleEscape();
+      return;
+    }
+    if (event.code !== "KeyR") return;
+    event.preventDefault();
+    pauseMenu.openResetConfirmation();
   };
-  window.addEventListener("keydown", onResetKey as EventListener);
+  window.addEventListener("keydown", onPauseMenuKey as EventListener);
 
   // Track the most recent frame time so the physics integrator can use
   // a stable fixed step independent of the browser's vsync jitter. The
@@ -539,6 +574,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
       physicsAccumulatorMs + deltaMs,
       maxAccumulatorMs,
     );
+
+    if (pauseMenu.isOpen()) {
+      physicsAccumulatorMs = 0;
+    }
 
     let steps = 0;
     while (physicsAccumulatorMs >= fixedStepMs && steps < maxStepsPerFrame) {

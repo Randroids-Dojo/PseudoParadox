@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-14T03:07:22-05:00",
+  "updatedAt": "2026-05-14T03:15:54-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -957,20 +957,20 @@
       "id": "REQ-048",
       "requirement": "Reset remains available when the active player is unconscious or otherwise unable to continue.",
       "gddRef": "docs/gdd/17-ui-failure-state.md#core-requirements",
-      "status": "partial",
-      "note": "Keyboard hard reset and the touch reset button are available today, including while active movement is blocked by unconsciousness. F-003 now specifies the final pause-menu reset UX. Implementation remains tracked by F-022.",
+      "status": "done",
+      "note": "Reset remains available while the player is unconscious because `Escape`, `R`, and the touch reset button route through the pause-menu reset confirmation, and unconsciousness only suppresses gameplay actions. The menu freezes fixed-step simulation while open and the confirmation calls the existing hard-reset path.",
       "updatedAt": "2026-05-14",
       "implementationRefs": [
         "src/app.ts",
+        "src/render/pauseMenu.ts",
         "src/render/actionButtons.ts",
         "src/sim/hardReset.ts"
       ],
       "testRefs": [
+        "tests/render/pauseMenu.test.ts",
         "tests/sim/hardReset.test.ts"
       ],
-      "followupRefs": [
-        "F-022"
-      ]
+      "followupRefs": []
     },
     {
       "id": "REQ-049",
@@ -1113,20 +1113,20 @@
       "id": "REQ-056",
       "requirement": "The final hard-reset affordance lives in the pause menu and requires confirmation before clearing the current run.",
       "gddRef": "docs/gdd/17-ui-failure-state.md#core-requirements",
-      "status": "partial",
-      "note": "F-003 specifies the final UX: `Escape` and touch pause controls open a modal pause menu, `Reset run` opens a confirmation state, and the current immediate `R` and touch reset paths remain interim shortcuts until F-022 implements the menu.",
+      "status": "done",
+      "note": "F-022 implements the final UX: a DOM pause menu opens from `Escape` or the touch pause button, `R` and the touch reset action open the reset confirmation, and `Reset to 5:00` is the only path that calls `hardReset`.",
       "updatedAt": "2026-05-14",
       "implementationRefs": [
         "src/app.ts",
+        "src/render/pauseMenu.ts",
         "src/render/actionButtons.ts",
         "src/sim/hardReset.ts"
       ],
       "testRefs": [
+        "tests/render/pauseMenu.test.ts",
         "tests/sim/hardReset.test.ts"
       ],
-      "followupRefs": [
-        "F-022"
-      ]
+      "followupRefs": []
     }
   ]
 }
