@@ -51,6 +51,8 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: none.
 - Unblock condition: pick a GDD section (camera, art style, character design, room geometry, instance replay mechanic, UI failure state) and draft it as `docs/gdd/<NN>-<title>.md`. Add atomic coverage rows to `docs/GDD_COVERAGE.json` once the spec lands.
 - PR / Dot reference (when picked up): #74. Current slice drafts `09-mechanic-instance-replay.md` and `17-ui-failure-state.md`; remaining legacy-root-only visual sections can stay as future F-002 cleanup.
+- Partial: PR #74 authored the two missing referenced files, `09-mechanic-instance-replay.md` and `17-ui-failure-state.md`.
+- PR / Dot reference (second slice): TBD. Current slice drafts `08-visual-and-art-direction.md`, covering camera, art style, character design, room geometry, and time tinting.
 
 ### F-003: Specify hard reset UX
 
@@ -107,6 +109,14 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: none. The fixed-step loop already gives a deterministic place to interpolate; the existing scene mutation pattern can carry an animation-frame counter without a tween library.
 - Unblock condition: a slice that (1) eases the knockout tilt over ~12 ticks (200 ms at 60 Hz) with a quick anticipation crouch on tick 0 and a follow-through settle on the last few ticks; (2) optionally adds a single-tick camera shake (offset the camera lookAt by a small random vector then snap back) on the connecting tick. Must remain deterministic: the same input recording must produce the same animation frames so replay byte-identity holds.
 - Resolved: PR #72. New `src/sim/knockoutAnimator.ts` exports `createKnockoutAnimator()` plus the pure `knockoutTiltMultiplier(elapsedTicks)` helper. The curve has three phases: tick 0 holds an anticipation reverse-tilt (`KNOCKOUT_ANTICIPATION_FRACTION = -0.06`), ticks 1 through `KNOCKOUT_ANIMATION_TICKS - 1` follow an easeOutBack arc (`c1 = 1.70158`) that overshoots ~10% above the target around mid-animation, and the final tick snaps to exactly the target so the mesh ends at the canonical pose. The animator is purely additive: `applyKnockoutBodyResponse` still snaps `mesh.rotation.z = KNOCKOUT_MESH_TILT_Z` (all existing tests in `applyKnockoutBody.test.ts` continue to pin that contract); the host immediately calls `animator.start(mesh, target)` which writes the anticipation value, overriding the snap. Per fixed step the host calls `animator.advance()`; per `hardReset` it calls `animator.clearAll()` so the post-reset mesh is identity-rotated. Camera shake intentionally NOT included this slice: it would couple the camera path to the punch resolver and add complexity for a marginal feel improvement; left for a future polish PR if real playtest data demands it. Determinism: `knockoutTiltMultiplier` is a pure integer-tick function. 15 new unit tests cover the curve shape (anticipation at tick 0, exact target at the final tick, overshoot > 1 at some integer tick, first-quarter monotonicity), the animator handle (independent meshes, restart, clear, clearAll), and determinism (two animators with the same sequence produce identical rotations).
+
+### F-021: Replace prototype capsules with anonymous astronaut art pass
+
+- Priority: nice-to-have
+- Context: `docs/gdd/08-visual-and-art-direction.md` carries the long-term target of anonymous astronaut suits in a flat graphic style. The shipped prototype uses tintable capsule bodies and primitive materials, which are readable but not the final visual target.
+- Blocker: none.
+- Unblock condition: a visual asset pass that replaces or augments the capsule body with a face-free astronaut silhouette, keeps time tinting readable, and preserves isometric-scale legibility without adding new core runtime dependencies.
+- PR / Dot reference (when picked up):
 
 ## Polish
 
