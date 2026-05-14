@@ -48,6 +48,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: needs a real browser session on target hardware after F-023 and F-024 land, so the audit checks the final release surface rather than an intermediate build.
 - Unblock condition: run a 15-minute browser playtest against production or a production-equivalent preview, record hardware, browser, viewport sizes, route attempted, observed frame feel, audio fatigue, UI legibility, and any crashes or artifacts. Update PLAYTEST.md checkboxes with evidence and file followups for failures.
 - PR / Dot reference (when picked up): #80 filed this followup.
+- Still open: After PR #82, the production surface is ready for this pass. Headless automation cannot honestly verify audio fatigue or lowest-target-hardware feel, so this remains a human real-session release gate.
 
 ### F-026: Decide and document gamepad scope
 
@@ -56,6 +57,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: none for the decision. Implementation can use the browser Gamepad API without a new dependency if gamepad support remains in scope.
 - Unblock condition: either add a GDD / playtest deferral that declares gamepad out of v1 scope, or implement gamepad bindings for movement, punch, pickup, throw, pause, and reset confirmation with tests.
 - PR / Dot reference (when picked up): #80 filed this followup.
+- Resolved: PR #83. Gamepad and controller input are deferred out of v1 in `docs/gdd/99-out-of-scope.md`; `docs/PLAYTEST.md` now scopes input parity to the supported keyboard and touch surfaces.
 
 ## Nice To Have
 
