@@ -57,7 +57,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Blocker: none for the decision. Implementation can use the browser Gamepad API without a new dependency if gamepad support remains in scope.
 - Unblock condition: either add a GDD / playtest deferral that declares gamepad out of v1 scope, or implement gamepad bindings for movement, punch, pickup, throw, pause, and reset confirmation with tests.
 - PR / Dot reference (when picked up): #80 filed this followup.
-- Resolved: PR pending. Gamepad and controller input are deferred out of v1 in `docs/gdd/99-out-of-scope.md`; `docs/PLAYTEST.md` now scopes input parity to the supported keyboard and touch surfaces.
+- Resolved: PR #83. Gamepad and controller input are deferred out of v1 in `docs/gdd/99-out-of-scope.md`; `docs/PLAYTEST.md` now scopes input parity to the supported keyboard and touch surfaces.
 
 ## Nice To Have
 

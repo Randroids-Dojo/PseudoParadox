@@ -30,4 +30,4 @@ Each item above gets revisited when at least one of:
 
 ### Build log
 
-- 2026-05-14: F-026 gamepad scope decision. Gamepad and controller input are explicitly deferred out of v1, while keyboard and touch remain the supported input surfaces for the prototype release. Files: `docs/gdd/99-out-of-scope.md`, `docs/PLAYTEST.md`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR pending.
+- 2026-05-14: F-026 gamepad scope decision. Gamepad and controller input are explicitly deferred out of v1, while keyboard and touch remain the supported input surfaces for the prototype release. Files: `docs/gdd/99-out-of-scope.md`, `docs/PLAYTEST.md`, `docs/FOLLOWUPS.md`, `docs/PROGRESS_LOG.md`. PR #83.
