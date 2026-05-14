@@ -50,7 +50,7 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 - Context: `docs/gdd/02-time-travel-rules.md` references `09-mechanic-instance-replay.md` and `17-ui-failure-state.md`, neither of which has been authored. Visual and art direction (camera, art style, character, room geometry) and mechanics detail (knockout, pickup, drag, throw) also exist only in the legacy root `GDD.md` and need their own section files at the requirement granularity used by the coverage ledger.
 - Blocker: none.
 - Unblock condition: pick a GDD section (camera, art style, character design, room geometry, instance replay mechanic, UI failure state) and draft it as `docs/gdd/<NN>-<title>.md`. Add atomic coverage rows to `docs/GDD_COVERAGE.json` once the spec lands.
-- PR / Dot reference (when picked up):
+- PR / Dot reference (when picked up): #74. Current slice drafts `09-mechanic-instance-replay.md` and `17-ui-failure-state.md`; remaining legacy-root-only visual sections can stay as future F-002 cleanup.
 
 ### F-003: Specify hard reset UX
 

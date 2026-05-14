@@ -1,7 +1,7 @@
 {
   "_comment_1": "ATOMIC GRANULARITY ONLY. One row per requirement, not per chapter. A 14-day project should produce on the order of 100 rows. If your row count is implausibly low for project age, the loop will self-terminate before the product is good. This is the Flatline failure mode.",
   "_comment_2": "Allowed status values: not_started | partial | done | deprecated. Every row should carry implementationRefs and testRefs once status >= partial. followupRefs link to F-NNN entries in FOLLOWUPS.md. A row marked status=deprecated stays in the ledger for institutional memory but no implementation or tests are owed; add a note in the row explaining what removed it from scope (slice id, Q-NNN resolution, etc.).",
-  "updatedAt": "2026-05-14T02:10:00-05:00",
+  "updatedAt": "2026-05-14T02:41:23-05:00",
   "rows": [
     {
       "id": "REQ-001",
@@ -809,6 +809,187 @@
       "followupRefs": [
         "F-008"
       ]
+    },
+    {
+      "id": "REQ-041",
+      "requirement": "A replaying instance reads from a frozen recording, and runtime events cannot mutate the captured frames.",
+      "gddRef": "docs/gdd/09-mechanic-instance-replay.md#core-requirements",
+      "status": "done",
+      "note": "F-002 adds the missing canonical GDD section for instance replay. The behavior was already shipped by `InputRecorder.snapshot()` freezing the captured recording, by `GhostInstance` reading from that snapshot, and by no-paradox property tests that assert snapshot immutability after recording, registry filing, and ghost replay.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/sim/inputRecorder.ts",
+        "src/sim/ghostInstance.ts",
+        "src/sim/replayController.ts"
+      ],
+      "testRefs": [
+        "tests/sim/inputRecorder.test.ts",
+        "tests/sim/ghostInstance.test.ts",
+        "tests/sim/replayController.test.ts",
+        "tests/sim/noParadox.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-042",
+      "requirement": "Replay session state, including consciousness, position, velocity, visibility, and tick cursor, is separate from immutable recording data.",
+      "gddRef": "docs/gdd/09-mechanic-instance-replay.md#core-requirements",
+      "status": "done",
+      "note": "F-002 documents the existing replay session model: timeline entry resets visible ghosts to their tick-0 session pose, while hidden buckets preserve their filed recordings. Consciousness and body state can change during a visit without rewriting the source recording.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/sim/ghostInstance.ts",
+        "src/sim/timelineRegistry.ts",
+        "src/sim/knockoutState.ts"
+      ],
+      "testRefs": [
+        "tests/sim/ghostInstance.test.ts",
+        "tests/sim/timelineRegistry.test.ts",
+        "tests/sim/knockoutState.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-043",
+      "requirement": "A replaying instance can be physically interrupted in the current session without changing what the instance originally recorded.",
+      "gddRef": "docs/gdd/09-mechanic-instance-replay.md#core-requirements",
+      "status": "done",
+      "note": "F-002 consolidates the existing contract from combat and replay docs: ghosts can be knocked out, carried, dragged, thrown, and rehomed by physical systems, while their captured input stream remains the same.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/sim/punch.ts",
+        "src/sim/applyKnockoutBody.ts",
+        "src/sim/carryState.ts",
+        "src/sim/applyCarry.ts",
+        "src/sim/throw.ts",
+        "src/sim/bodyTraversal.ts",
+        "src/sim/timelineRegistry.ts"
+      ],
+      "testRefs": [
+        "tests/sim/punch.test.ts",
+        "tests/sim/applyKnockoutBody.test.ts",
+        "tests/sim/carryState.test.ts",
+        "tests/sim/applyCarry.test.ts",
+        "tests/sim/dragRegression.test.ts",
+        "tests/sim/throw.test.ts",
+        "tests/sim/bodyTraversal.test.ts",
+        "tests/sim/timelineRegistry.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-044",
+      "requirement": "No physical interruption can create a paradox rewrite of an already recorded action.",
+      "gddRef": "docs/gdd/09-mechanic-instance-replay.md#core-requirements",
+      "status": "done",
+      "note": "F-002 makes the no-rewrite replay rule explicit in its own GDD file. Existing no-paradox tests cover recording immutability, registry monotonicity, tick causality, and key stability after replay.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/sim/inputRecorder.ts",
+        "src/sim/timelineRegistry.ts",
+        "src/sim/ghostInstance.ts"
+      ],
+      "testRefs": [
+        "tests/sim/noParadox.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-045",
+      "requirement": "The UI does not present paradox warnings, because paradoxes are not representable in the ruleset.",
+      "gddRef": "docs/gdd/17-ui-failure-state.md#core-requirements",
+      "status": "done",
+      "note": "F-002 adds the missing failure-state GDD section. Current UI surfaces hard reset, act state, onboarding, and win state without paradox, causality-error, or timeline-instability warnings.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/render/onboardingOverlay.ts",
+        "src/render/actionButtons.ts",
+        "src/render/actStateHud.ts",
+        "src/render/winScreen.ts"
+      ],
+      "testRefs": [
+        "tests/render/onboardingOverlay.test.ts",
+        "tests/render/actStateHud.test.ts",
+        "tests/render/winScreen.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-046",
+      "requirement": "The game does not automatically rewind or repair a failed player plan.",
+      "gddRef": "docs/gdd/17-ui-failure-state.md#core-requirements",
+      "status": "done",
+      "note": "Failure recovery is deliberate. Runtime systems continue the physical arrangement until the player chooses hard reset or reaches escape; there is no undo stack, checkpoint rewind, or auto-repair path.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/app.ts",
+        "src/sim/hardReset.ts"
+      ],
+      "testRefs": [
+        "tests/sim/hardReset.test.ts",
+        "tests/sim/endToEndCompletability.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-047",
+      "requirement": "Hard reset restores the run to Act 1 state, clears ghosts and in-flight bodies, and resets player, recorder, facing, door paint, and act progress state.",
+      "gddRef": "docs/gdd/17-ui-failure-state.md#core-requirements",
+      "status": "done",
+      "note": "The shipped hard-reset path resets player state, lifetime recorder, ghost registry, carry state, consciousness, facing tracker, in-flight body registry, act observer, and room door paint. F-002 documents that contract in the failure-state section.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/sim/hardReset.ts",
+        "src/sim/timelineRegistry.ts",
+        "src/sim/bodyTraversal.ts",
+        "src/sim/facing.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/sim/hardReset.test.ts",
+        "tests/sim/timelineRegistry.test.ts",
+        "tests/sim/bodyTraversal.test.ts",
+        "tests/sim/facing.test.ts"
+      ],
+      "followupRefs": []
+    },
+    {
+      "id": "REQ-048",
+      "requirement": "Reset remains available when the active player is unconscious or otherwise unable to continue.",
+      "gddRef": "docs/gdd/17-ui-failure-state.md#core-requirements",
+      "status": "partial",
+      "note": "Keyboard hard reset and the touch reset button are available today, including while active movement is blocked by unconsciousness. The legacy root GDD asks for pause-menu-only hard reset placement, which remains tracked by F-003.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/app.ts",
+        "src/render/actionButtons.ts",
+        "src/sim/hardReset.ts"
+      ],
+      "testRefs": [
+        "tests/sim/hardReset.test.ts"
+      ],
+      "followupRefs": [
+        "F-003"
+      ]
+    },
+    {
+      "id": "REQ-049",
+      "requirement": "Escape is terminal success, and the win surface replaces failure recovery as the primary outcome once Act 3 resolves.",
+      "gddRef": "docs/gdd/17-ui-failure-state.md#core-requirements",
+      "status": "done",
+      "note": "The shipped win screen surfaces the escaped state after the Act 3 final North-door exit. F-002 documents that escape is not treated as a failure state.",
+      "updatedAt": "2026-05-14",
+      "implementationRefs": [
+        "src/render/winScreen.ts",
+        "src/sim/actState.ts",
+        "src/app.ts"
+      ],
+      "testRefs": [
+        "tests/render/winScreen.test.ts",
+        "tests/sim/act3Escape.test.ts",
+        "tests/sim/endToEndCompletability.test.ts"
+      ],
+      "followupRefs": []
     }
   ]
 }
