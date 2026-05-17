@@ -154,8 +154,16 @@ export function cloneCharacterModel(): CharacterModelClone | null {
   let oneShotName: string | null = null;
   let oneShotRemainingSeconds = 0;
 
-  const doPlay = (clipName: string, loopOnce: boolean): void => {
-    if (currentName === clipName) return;
+  const doPlay = (
+    clipName: string,
+    loopOnce: boolean,
+    forceRestart = false,
+  ): void => {
+    // `forceRestart` lets `triggerOneShot` re-trigger the same clip from
+    // tick zero. Without it, a second punch while the swing's end pose
+    // is clamped would extend the lockout but never replay the action,
+    // leaving the figure stuck at the swing's final frame.
+    if (!forceRestart && currentName === clipName) return;
     const next = clipMap.get(clipName);
     if (!next) return;
     next.action.reset().setEffectiveTimeScale(1).setEffectiveWeight(1);
@@ -187,7 +195,7 @@ export function cloneCharacterModel(): CharacterModelClone | null {
       if (!entry) return;
       oneShotName = clipName;
       oneShotRemainingSeconds = entry.duration;
-      doPlay(clipName, true);
+      doPlay(clipName, true, true);
     },
     current(): string | null {
       return currentName;

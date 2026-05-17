@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-17, F-027 State-Driven Animation Clips
 
 - Branch: `feature/character-state-animations`
-- PR: not opened
+- PR: `#85`
 - Changed: Resolves F-027 by extending the figurine's animation set beyond locomotion. `updateCharacterAnimation` in `src/scene/characterModel.ts` now takes a `{ consciousness, carrying }` state and picks a clip with priority `die` > `holding-both` > `walk` > `idle`. Yaw lerping is suppressed while unconscious so a knockout freezes the figure's facing. A new `CharacterAnimator.triggerOneShot` method plays a clip with `LoopOnce` and `clampWhenFinished`, locks out base-clip changes until the clip's duration elapses, and is exposed through a small `triggerPunchAnimation(character)` helper. `src/app.ts` calls that helper for every actor in `sanitizedActors` whose punch flag is set in the current tick (active player from `keyboard.state.punch`, ghosts via `replayPunchAtTick`), so a missed swing animates and ghost replays produce identical swings.
 - Verification: dash sweep clean. `npx tsc --noEmit` passed. `npx vitest run tests/scene/astronaut.test.ts tests/render/instanceTint.test.ts` passed, 12 tests. Local dev server smoke: pressing Space fires the punch swing and the figure returns to idle when the clip completes; locomotion and facing remain intact.
 - Assumptions: ghosts do not own carry state today, so the call passes `carrying: false` for every ghost. If recordings ever replay a pickup that flag will need to be threaded through. The `interact-right` clip is left unwired because the prototype has no interaction state distinct from punch / pickup / throw; additive walk-bottom-half blending while carrying is also left out, so the figurine glides during carry.
