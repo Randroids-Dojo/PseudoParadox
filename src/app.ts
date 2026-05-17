@@ -1015,8 +1015,12 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // current planar velocity. No-op for the procedural-capsule fallback
     // because nothing parks an animator on `mesh.userData` in that path.
     // The mixer is advanced with the real render delta so animation feels
-    // smooth even when the fixed-step physics loop runs fewer ticks.
-    const animDeltaSeconds = deltaMs / 1000;
+    // smooth even when the fixed-step physics loop runs fewer ticks. The
+    // delta is clamped to 100 ms so returning from a tab suspend (which
+    // can produce a multi-second `deltaMs`) does not skip the mixer past
+    // several walk cycles in one frame; the physics accumulator above
+    // applies the equivalent clamp through `maxAccumulatorMs`.
+    const animDeltaSeconds = Math.min(Math.max(deltaMs / 1000, 0), 0.1);
     updateCharacterAnimation(player, animDeltaSeconds);
     for (const ghost of registry.activeGhosts()) {
       updateCharacterAnimation(ghost, animDeltaSeconds);
