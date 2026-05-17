@@ -6,6 +6,7 @@ import { createRoomColliders } from "./scene/room.ts";
 import { createPlayer } from "./scene/player.ts";
 import {
   preloadCharacterModel,
+  triggerPunchAnimation,
   updateCharacterAnimation,
 } from "./scene/characterModel.ts";
 import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
@@ -687,6 +688,23 @@ export async function startApp(container: HTMLElement): Promise<void> {
         });
       }
       const sanitizedActors = suppressUnconsciousPunches(punchActors);
+      // Fire the swing animation on the attacker whenever a conscious
+      // actor's punch flag is set this tick, regardless of whether the
+      // resolver returns a landed hit. The visual swing should read on
+      // misses too. Ghosts get the same path through their replayed flag.
+      for (const actor of sanitizedActors) {
+        if (!actor.punching) continue;
+        if (actor.id === player.instanceId) {
+          triggerPunchAnimation(player);
+          continue;
+        }
+        for (const ghost of activeGhostsList) {
+          if (ghost.instanceId === actor.id) {
+            triggerPunchAnimation(ghost);
+            break;
+          }
+        }
+      }
       const resolutions = resolvePunches(sanitizedActors, PUNCH_RANGE_M);
       if (resolutions.length > 0) {
         // F-018: one punch SFX per tick of resolutions, not one per
@@ -1021,9 +1039,22 @@ export async function startApp(container: HTMLElement): Promise<void> {
     // several walk cycles in one frame; the physics accumulator above
     // applies the equivalent clamp through `maxAccumulatorMs`.
     const animDeltaSeconds = Math.min(Math.max(deltaMs / 1000, 0), 0.1);
-    updateCharacterAnimation(player, animDeltaSeconds);
+    updateCharacterAnimation(
+      player,
+      {
+        consciousness: player.consciousness,
+        carrying: player.carry.kind === "carrying",
+      },
+      animDeltaSeconds,
+    );
     for (const ghost of registry.activeGhosts()) {
-      updateCharacterAnimation(ghost, animDeltaSeconds);
+      // Ghosts do not own a carry state today; if recordings ever
+      // replay a pickup the carry flag will need to be threaded here.
+      updateCharacterAnimation(
+        ghost,
+        { consciousness: ghost.consciousness, carrying: false },
+        animDeltaSeconds,
+      );
     }
     // REQ-032: per-render-frame thought-bubble update. For each active
     // ghost, run the lookahead scan and feed the result to its bubble's
