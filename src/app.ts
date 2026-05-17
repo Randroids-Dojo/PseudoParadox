@@ -737,8 +737,13 @@ export async function startApp(container: HTMLElement): Promise<void> {
             // F-020: register the mesh with the eased-tilt animator.
             // The animator writes the tick-0 anticipation value
             // immediately, overriding the pi/2 snap above; subsequent
-            // fixed steps continue the ease.
-            if (!playerSettings.reduceMotion) {
+            // fixed steps continue the ease. Skipped when the figurine
+            // has its own skeletal `die` clip; the GLB animation handles
+            // the slump and the mesh tilt would double-apply.
+            if (
+              !playerSettings.reduceMotion &&
+              player.mesh.userData.characterAnimator === undefined
+            ) {
               knockoutAnimator.start(player.mesh, KNOCKOUT_MESH_TILT_Z);
             }
             continue;
@@ -747,7 +752,10 @@ export async function startApp(container: HTMLElement): Promise<void> {
             if (ghost.instanceId === targetId) {
               ghost.consciousness = applyKnockout(ghost.consciousness);
               applyKnockoutBodyResponse(ghost.body, ghost.mesh, direction);
-              if (!playerSettings.reduceMotion) {
+              if (
+                !playerSettings.reduceMotion &&
+                ghost.mesh.userData.characterAnimator === undefined
+              ) {
                 knockoutAnimator.start(ghost.mesh, KNOCKOUT_MESH_TILT_Z);
               }
               break;

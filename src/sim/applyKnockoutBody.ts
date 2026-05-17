@@ -180,7 +180,15 @@ export function applyKnockoutBodyResponse(
   const response = knockoutBodyResponse(direction);
   body.applyImpulse(response.impulse, true);
   body.setLinearDamping(UNCONSCIOUS_LINEAR_DAMPING);
-  mesh.rotation.z = response.meshRotationZ;
+  // Skip the 90-degree mesh-level tilt when the figurine has its own
+  // skeletal `die` clip (parked on `userData.characterAnimator` by
+  // `createAstronautMesh`). The GLB clip animates the slump for real;
+  // applying the tilt on top of it would double-rotate the body. The
+  // procedural-capsule fallback has no die clip, so the tilt still
+  // ships there.
+  if (mesh.userData.characterAnimator === undefined) {
+    mesh.rotation.z = response.meshRotationZ;
+  }
 }
 
 /**
