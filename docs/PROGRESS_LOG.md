@@ -19,7 +19,7 @@ Format for each slice:
 ## 2026-05-17, Skip Mesh Tilt When the Die Clip Owns the Slump
 
 - Branch: `feature/knockout-tilt-with-die-clip`
-- PR: not opened yet
+- PR: `#86`
 - Changed: Resolves the double-rotation surfaced by the new die clip. `applyKnockoutBodyResponse` in `src/sim/applyKnockoutBody.ts` now skips the 90 degree `mesh.rotation.z = pi/2` write when the mesh carries a `characterAnimator` in `userData` (the GLB figurine's skeletal die clip handles the slump). The matching `knockoutAnimator.start(mesh, KNOCKOUT_MESH_TILT_Z)` calls in `src/app.ts` are gated by the same predicate so the eased tilt does not write on top of the die animation either. The procedural-capsule fallback path is unchanged; it has no die clip, so both the tilt write and the eased animation still ship there.
 - Verification: dash sweep clean. `npx tsc --noEmit` passed. `npx vitest run tests/sim/applyKnockoutBody.test.ts` passed, 15 tests including a new regression that asserts the tilt is skipped when `userData.characterAnimator` is set and applied when it is absent. Visual verification on a live knockout deferred to PR review / playtest because triggering a knockout in the dev server requires building a ghost first.
 - Assumptions: the die clip's end pose reads as a knocked-out figure on its own. If the clip loops visibly (LoopRepeat applied by `doPlay` for non-one-shot calls) we may file a followup to clamp the die clip, but that is a separate slice from the tilt reconciliation.
