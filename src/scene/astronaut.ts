@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { cloneCharacterModel } from "./characterModel.ts";
 
 export const ASTRONAUT_PART_NAMES = {
   visor: "astronaut-visor",
@@ -38,6 +39,22 @@ function addPart(
 
 export function createAstronautMesh(options: AstronautMeshOptions): THREE.Mesh {
   const { radius, cylinderLength, name } = options;
+  const clone = cloneCharacterModel();
+  if (clone) {
+    // GLB path: the parent Mesh is an empty container (no draw call) that
+    // owns the per-instance tintable placeholder material. The visible
+    // figurine is a child group; `applyInstanceTint` recurses into it.
+    // The per-instance `AnimationMixer` is parked on `userData` so the host
+    // render loop can advance it and switch idle / walk by velocity.
+    const root = new THREE.Mesh(new THREE.BufferGeometry(), makeMaterial(0xffffff));
+    root.name = name;
+    root.userData.visualStyle = "kenney-mini-character";
+    root.userData.characterAnimator = clone.animator;
+    root.add(clone.object);
+    clone.animator.play("idle");
+    return root;
+  }
+
   const suitGeometry = new THREE.CapsuleGeometry(radius, cylinderLength, 8, 16);
   const suitMaterial = makeMaterial(0xc4d0e6);
   const root = new THREE.Mesh(suitGeometry, suitMaterial);

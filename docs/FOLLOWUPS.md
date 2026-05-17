@@ -61,6 +61,15 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Nice To Have
 
+### F-027: Wire Kenney Mini Characters animation clips
+
+- Priority: nice-to-have
+- Context: The 2026-05-17 character figure swap landed the Kenney Mini Characters GLB as the player and ghost mesh (`docs/gdd/08-visual-and-art-direction.md` build log). The pack ships 32 named animation clips (`idle`, `walk`, `sprint`, `jump`, `attack-melee-right`, `attack-kick-right`, `pick-up`, `holding-right`, `die`, etc.) but no `THREE.AnimationMixer` is wired today. The active player and ghosts render in the GLB's bind pose, which reads as static even while the body is moving.
+- Blocker: none.
+- Unblock condition: a slice that owns one `AnimationMixer` per cloned figure, picks a clip per locomotion / carry / knockout state (cross-fading between them), advances the mixer on every fixed step using the same `FIXED_STEP_SECONDS` ghost replay uses so a recording on one device animates identically on replay, and disposes mixers when the parent mesh leaves the scene. Cover with at least one test that asserts the active clip changes when the player's velocity / carry / consciousness state changes.
+- PR / Dot reference (when picked up):
+- Partial: 2026-05-17 same-day follow-up. Locomotion is now wired: every cloned figure gets a per-instance `AnimationMixer`, plays the GLB's `idle` clip on construction, and `updateCharacterAnimation` in `src/scene/characterModel.ts` cross-fades to `walk` whenever planar speed exceeds `WALK_ANIM_SPEED_THRESHOLD = 0.2`. The mixer is advanced with the render-frame delta in `src/app.ts`, not the fixed-step delta, so animation looks smooth even when physics steps are scarce. Carry / knockout / punch / interact clips are still NOT wired and remain in scope for a future slice. The same change also fixed a skinned-mesh cloning bug: `cloneCharacterModel` now uses `SkeletonUtils.clone` so each instance has its own skeleton and bones follow the parent mesh's position. Files: `src/scene/characterModel.ts`, `src/scene/astronaut.ts`, `src/app.ts`.
+
 ### F-008: Real-browser ship gates (Playwright E2E plus Lighthouse load-time plus 60fps frame budget)
 
 - Priority: nice-to-have
