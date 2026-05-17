@@ -125,6 +125,22 @@ describe("applyKnockoutBodyResponse: side-effects on body and mesh", () => {
     expect(mesh.rotation.z).toBeCloseTo(KNOCKOUT_MESH_TILT_Z, 12);
   });
 
+  it("skips the mesh tilt when the mesh carries a characterAnimator (GLB die clip owns the slump)", () => {
+    // F-027 figurine path: when a Kenney Mini Characters figure is in
+    // play, `createAstronautMesh` parks a `CharacterAnimator` on
+    // `mesh.userData`. The skeletal `die` clip animates the slump, so
+    // the host must NOT also apply the 90 degree mesh-level tilt or
+    // the body would visibly double-rotate.
+    const { body, calls } = buildStubBody();
+    const mesh = new THREE.Object3D();
+    mesh.userData.characterAnimator = { play() {}, current() { return null; }, triggerOneShot() {}, update() {} };
+
+    applyKnockoutBodyResponse(body, mesh, { x: 1, z: 0 });
+
+    expect(calls.length).toBe(2);
+    expect(mesh.rotation.z).toBe(0);
+  });
+
   it("applying twice double-scales the impulse on the body but leaves the tilt unchanged (caller-side idempotence is required)", () => {
     // The dossier specifies that the punch resolver filters unconscious
     // targets out, so this function is only invoked once per knockout
