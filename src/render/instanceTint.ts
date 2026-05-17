@@ -78,5 +78,22 @@ export function applyInstanceTint(
   }
   const tint = interpolateWarmToCool(originNormalized);
   material.color.copy(tint);
+  // GLB-based instances host the visible figurine as a child subtree. Each
+  // child mesh ships with the Kenney colormap texture and its own material;
+  // setting `.color` multiplies that texture by the tint, so a 5:00 spawn
+  // reads amber and a 12:00 spawn reads cool blue without the figurine
+  // going translucent (the texture's alpha stays untouched).
+  mesh.traverse((child) => {
+    if (child === mesh) return;
+    if (!(child instanceof THREE.Mesh)) return;
+    const childMaterial = child.material;
+    if (Array.isArray(childMaterial)) {
+      for (const m of childMaterial) {
+        if (isColorBearingMaterial(m)) m.color.copy(tint);
+      }
+    } else if (isColorBearingMaterial(childMaterial)) {
+      childMaterial.color.copy(tint);
+    }
+  });
   return tint;
 }

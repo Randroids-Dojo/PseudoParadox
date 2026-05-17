@@ -16,6 +16,36 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-17, Figure Faces Travel Direction
+
+- Branch: chat-driven slice (no branch yet)
+- PR: not opened
+- Changed: `updateCharacterAnimation` in `src/scene/characterModel.ts` now also lerps the parent mesh's `rotation.y` toward `Math.atan2(velocity.x, velocity.z)` whenever planar speed exceeds `WALK_ANIM_SPEED_THRESHOLD`. Turn rate is `TURN_SPEED_RAD_PER_SEC = 14` rad/sec, which lands the pivot before the player crosses the room but does not visibly snap. Idle holds the last-known facing instead of resetting to a default yaw.
+- Verification: dash sweep clean. `npx tsc --noEmit` passed. Local dev server smoke: WASD walking pivots the figure to face east, then north, then west across three keypresses; idle leaves the figure facing wherever it last walked.
+- Assumptions: facing is a purely visual concern. The physics body stays yaw-locked at zero, the sim does not read `mesh.rotation`, and the facing is recomputed each frame from `body.linvel()`, so ghost replay determinism is unaffected without recording a yaw track. The `14` rad/sec turn rate is hand-tuned; once carry slowdown and the joystick deflect-magnitude path are exercised together we may want to revisit.
+- GDD coverage: `docs/gdd/08-visual-and-art-direction.md` gains a 2026-05-17 build log entry.
+- Followups: none.
+
+## 2026-05-17, Skinned-Mesh Cloning Fix + Locomotion Animation
+
+- Branch: chat-driven slice (no branch yet)
+- PR: not opened
+- Changed: Fixed the static-figure bug surfaced minutes after the earlier figure-swap landed. Plain `Object3D.clone` does not rebind a `SkinnedMesh` to a cloned skeleton, so the clone's bones still pointed at the original (untransformed) skeleton root and the figurine stayed at world origin even while the parent mesh moved. `src/scene/characterModel.ts` now uses `SkeletonUtils.clone` (from `three/examples/jsm/utils/SkeletonUtils.js`) so each player and ghost gets its own skeleton and the body follows the rigid body. The same module now also builds a per-instance `AnimationMixer`, starts the `idle` clip on construction, and exposes `updateCharacterAnimation(character, deltaSeconds)` that cross-fades between `idle` and `walk` based on planar speed crossing `WALK_ANIM_SPEED_THRESHOLD = 0.2`. The render loop in `src/app.ts` calls that helper for the active player and every active ghost using the real frame delta so animation stays smooth even when physics steps are scarce. Carry / knockout / punch / interact clips are still bind-pose (F-027 partial).
+- Verification: dash sweep clean. `npx tsc --noEmit` passed. Focused `npx vitest run tests/scene/astronaut.test.ts tests/render/instanceTint.test.ts` passed, 12 tests. Local dev server smoke: WASD walks the figure across the room, the body follows the body collider, the limbs cycle through the walk clip while moving, and the figure settles into idle on key release. No console errors.
+- Assumptions: clip cross-fade is driven by render-delta because animations are purely visual and not load-bearing for replay determinism (physics is the deterministic substrate). The walk-speed threshold `0.2` is hand-tuned and may need a follow-up pass once carry-slowdown and joystick deflection are in play.
+- GDD coverage: `docs/gdd/08-visual-and-art-direction.md` gains a 2026-05-17 build log entry covering the skinned-mesh fix and locomotion animation. No coverage row flipped.
+- Followups: F-027 is now partial (locomotion done; carry / knockout / punch / interact clips still bind-pose).
+
+## 2026-05-17, Kenney Mini Characters Figure Swap
+
+- Branch: chat-driven slice (no branch yet)
+- PR: not opened
+- Changed: Replaces the procedural anonymous-astronaut mesh with a chunky kid's-playset figurine (Kenney Mini Characters `character-male-a.glb`, CC0). New `src/scene/characterModel.ts` preloads the GLB once at boot through `GLTFLoader` and exposes `cloneCharacterModel` for per-instance cloning with deep-cloned materials. `createAstronautMesh` clones the cached figurine when available and falls back to the procedural capsule otherwise, so Vitest in-process tests stay synchronous. `applyInstanceTint` now traverses child meshes so the warm-to-cool origin tint multiplies against the figurine's colormap. Physics colliders, capsule dimensions, replay behavior, and knockout response are unchanged.
+- Verification: dash sweep clean via `grep -rnP '[\x{2014}\x{2013}]'` on the touched files. `npx tsc --noEmit` passed. Focused `npx vitest run tests/scene/astronaut.test.ts tests/render/instanceTint.test.ts` passed, 12 tests. Local dev server smoke: figurine renders inside the room, no console errors, warm-to-cool tint shifts with the time clock. Animations not wired (see F-027).
+- Assumptions: the procedural capsule stays in the codebase as a synchronous fallback because (a) Vitest tests cannot reach the GLTFLoader without adding fetch / DOM infrastructure, and (b) an offline dev session should still render a recognizable body. `CHARACTER_MODEL_TRANSFORM = { scale: 2.5, yOffset: -0.9 }` is tuned by inspection against the existing 1.8 m capsule.
+- GDD coverage: `docs/gdd/08-visual-and-art-direction.md` gains a 2026-05-17 build log entry. No coverage row flipped.
+- Followups: F-027 (wire the 32 animation clips that ship with the Kenney pack).
+
 ## 2026-05-14, F-026 Gamepad Scope Decision
 
 - Branch: `docs/gamepad-scope`

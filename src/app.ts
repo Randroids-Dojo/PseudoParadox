@@ -4,6 +4,10 @@ import { interpolateWarmToCool } from "./render/colorTint.ts";
 import { buildScene } from "./scene/scene.ts";
 import { createRoomColliders } from "./scene/room.ts";
 import { createPlayer } from "./scene/player.ts";
+import {
+  preloadCharacterModel,
+  updateCharacterAnimation,
+} from "./scene/characterModel.ts";
 import { createFloorRing, updateFloorRing } from "./scene/floorRing.ts";
 import {
   createKeyboardState,
@@ -108,6 +112,17 @@ import { createFadeOverlay } from "./render/fadeOverlay.ts";
  */
 export async function startApp(container: HTMLElement): Promise<void> {
   await RAPIER.init();
+  // Preload the chunky Kenney Mini Characters figurine once so every
+  // synchronous `createAstronautMesh` call below (active player, ghost
+  // spawns, Act 1 cinematic actors) clones from the same cached scene
+  // instead of falling back to the procedural capsule. Failure to fetch
+  // (offline dev, 404) is non-fatal: the fallback procedural mesh keeps
+  // the prototype playable.
+  try {
+    await preloadCharacterModel();
+  } catch (err) {
+    console.warn("[character-model] preload failed, using fallback capsule", err);
+  }
 
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
 
@@ -995,6 +1010,16 @@ export async function startApp(container: HTMLElement): Promise<void> {
     player.syncMeshFromBody();
     for (const ghost of registry.activeGhosts()) {
       ghost.syncMeshFromBody();
+    }
+    // Drive the Kenney figurine's idle / walk animation off the body's
+    // current planar velocity. No-op for the procedural-capsule fallback
+    // because nothing parks an animator on `mesh.userData` in that path.
+    // The mixer is advanced with the real render delta so animation feels
+    // smooth even when the fixed-step physics loop runs fewer ticks.
+    const animDeltaSeconds = deltaMs / 1000;
+    updateCharacterAnimation(player, animDeltaSeconds);
+    for (const ghost of registry.activeGhosts()) {
+      updateCharacterAnimation(ghost, animDeltaSeconds);
     }
     // REQ-032: per-render-frame thought-bubble update. For each active
     // ghost, run the lookahead scan and feed the result to its bubble's
