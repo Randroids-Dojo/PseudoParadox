@@ -175,7 +175,12 @@ export function cloneCharacterModel(): CharacterModelClone | null {
       next.action.clampWhenFinished = false;
     }
     next.action.fadeIn(CLIP_FADE_SECONDS).play();
-    if (currentName !== null) {
+    // Skip the fade-out when we are restarting the same clip. `prev` and
+    // `next` resolve to the same `AnimationAction`, and calling fadeOut
+    // after fadeIn in the same frame collapses the action's weight to
+    // zero (the mixer applies whichever weight transition was scheduled
+    // last). Without this guard a re-fired punch would visibly vanish.
+    if (currentName !== null && currentName !== clipName) {
       const prev = clipMap.get(currentName);
       if (prev) prev.action.fadeOut(CLIP_FADE_SECONDS);
     }
@@ -184,10 +189,15 @@ export function cloneCharacterModel(): CharacterModelClone | null {
 
   const animator: CharacterAnimator = {
     play(clipName: string): void {
-      // One-shots own the clip until they elapse. Locking out base
-      // updates while a punch swing plays keeps the swing visible even
-      // if locomotion would otherwise fight for the slot every frame.
-      if (oneShotName !== null) return;
+      // One-shots own the clip until they elapse, with one exception:
+      // `die` (a knockout mid-swing) outranks the swing so the slump
+      // pose lands the same frame the resolver flips consciousness,
+      // not after the punch clip finishes clamping.
+      if (oneShotName !== null) {
+        if (clipName !== "die") return;
+        oneShotName = null;
+        oneShotRemainingSeconds = 0;
+      }
       doPlay(clipName, false);
     },
     triggerOneShot(clipName: string): void {
