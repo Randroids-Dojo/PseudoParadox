@@ -215,7 +215,11 @@ export function createAutoplayDriver(
 export function autoplayRequestedFromUrl(url: string): boolean {
   try {
     const parsed = new URL(url, "http://placeholder.local/");
-    return parsed.searchParams.get("debug") === "autoplay";
+    // `getAll` rather than `get` so a URL with multiple `debug` params
+    // (`?debug=clips&debug=autoplay`) still activates autoplay. `get`
+    // returns only the first value, which would silently drop the flag
+    // if it was not the first listed.
+    return parsed.searchParams.getAll("debug").includes("autoplay");
   } catch {
     return false;
   }

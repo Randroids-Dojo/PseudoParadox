@@ -38,6 +38,15 @@ describe("autoplayRequestedFromUrl", () => {
     expect(autoplayRequestedFromUrl("https://example.com/?debug=clips")).toBe(false);
     expect(autoplayRequestedFromUrl("not a url at all")).toBe(false);
   });
+
+  it("finds autoplay even when other debug values appear first", () => {
+    // `URLSearchParams.get` returns only the first value, which would
+    // miss the autoplay flag here. The implementation uses `getAll`
+    // so every `debug` value gets scanned.
+    expect(
+      autoplayRequestedFromUrl("https://example.com/?debug=clips&debug=autoplay"),
+    ).toBe(true);
+  });
 });
 
 describe("createAutoplayDriver", () => {
