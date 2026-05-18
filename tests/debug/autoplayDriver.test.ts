@@ -7,6 +7,16 @@ import {
   type AutoplayStep,
 } from "../../src/debug/autoplayDriver.ts";
 
+const clearAllSpy: AutoplayStep["apply"] = (s) => {
+  s.forward = false;
+  s.back = false;
+  s.left = false;
+  s.right = false;
+  s.punch = false;
+  s.pickup = false;
+  s.throw = false;
+};
+
 const makeState = (): KeyState => ({
   forward: false,
   back: false,
@@ -68,6 +78,19 @@ describe("createAutoplayDriver", () => {
     // After one full loop plus a single extra advance, the most-recently-
     // applied step is the first step of the second loop iteration.
     expect(driver.currentLabel()).toBe(AUTOPLAY_SCRIPT[0].label);
+  });
+
+  it("throws on an empty script", () => {
+    const keyboard = { state: makeState() };
+    expect(() => createAutoplayDriver(keyboard, [])).toThrow(/at least one step/);
+  });
+
+  it("throws on a step with non-positive ticks", () => {
+    const keyboard = { state: makeState() };
+    const bad: AutoplayStep[] = [
+      { label: "no-op", ticks: 0, apply: clearAllSpy },
+    ];
+    expect(() => createAutoplayDriver(keyboard, bad)).toThrow(/no-op/);
   });
 
   it("walks through every step in order and applies its inputs", () => {

@@ -164,6 +164,21 @@ export function createAutoplayDriver(
   keyboard: { state: KeyState },
   script: AutoplayStep[] = AUTOPLAY_SCRIPT,
 ): AutoplayHandle {
+  // Validate the script up-front: the loop math (`tick % totalTicks`
+  // and the cumulative-cursor scan) assumes a non-empty script with
+  // positive integer durations. Catching a bad script at construction
+  // time fails loudly instead of silently division-by-zero or stalling
+  // in an infinite step lookup.
+  if (script.length === 0) {
+    throw new Error("Autoplay script must contain at least one step.");
+  }
+  for (const step of script) {
+    if (!Number.isInteger(step.ticks) || step.ticks <= 0) {
+      throw new Error(
+        `Autoplay step "${step.label}" must use an integer tick count >= 1.`,
+      );
+    }
+  }
   const totalTicks = script.reduce((sum, step) => sum + step.ticks, 0);
   let tick = 0;
 
