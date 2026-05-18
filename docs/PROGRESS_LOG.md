@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-17, `?debug=autoplay` Scripted KeyState Driver
+
+- Branch: `feature/debug-autoplay`
+- PR: `#87`
+- Changed: Adds a development-only autoplay mode triggered by the `?debug=autoplay` URL query. `src/debug/autoplayDriver.ts` defines a loopable `AUTOPLAY_SCRIPT` of step records, each with a label, a duration in fixed steps, and an `apply(state)` mutator that writes the live `KeyState`. `src/app.ts` instantiates the driver when the URL flag is present, calls `advance` at the top of every fixed step (before `recorder.record`), and logs a console line on activation. The driver clobbers real keyboard input by design so a captured recording in autoplay is byte-for-byte equivalent to a human pressing the same keys; the recorder, ghost replay, and every downstream resolver see the same `KeyState` shape they would see from a real player.
+- Verification: dash sweep clean. `npx tsc --noEmit` passed. `npx vitest run tests/debug/autoplayDriver.test.ts` passed, 6 tests covering URL parsing, channel clearing between steps, the looping invariant, and per-step ordering. Local dev server smoke at `?debug=autoplay`: figure responds without console errors, walk / idle / punch / facing all visibly cycle through the script.
+- Assumptions: the script is hand-tuned for the spawn pose at room center with the SW / SE doors lit; door traversal is best-effort and may need follow-up tuning as room geometry or speed defaults change. Keep the driver gated by URL only (not a settings UI), because activating it mid-session would silently strip control from a real player.
+- GDD coverage: no change. Development tool, not a player-facing feature.
+- Followups: none. Followup tuning to actually traverse a door and produce the ghost knockout choreography can ride on this infrastructure in a separate slice.
+
 ## 2026-05-17, Skip Mesh Tilt When the Die Clip Owns the Slump
 
 - Branch: `feature/knockout-tilt-with-die-clip`

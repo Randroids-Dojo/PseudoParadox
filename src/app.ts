@@ -99,6 +99,11 @@ import {
 } from "./sim/thoughtBubblePeek.ts";
 import { mountAct1Cinematic } from "./sim/scripts/act1Cinematic.ts";
 import { createFadeOverlay } from "./render/fadeOverlay.ts";
+import {
+  autoplayRequestedFromUrl,
+  createAutoplayDriver,
+  type AutoplayHandle,
+} from "./debug/autoplayDriver.ts";
 
 /**
  * Boots the Pseudo Paradox prototype.
@@ -168,6 +173,20 @@ export async function startApp(container: HTMLElement): Promise<void> {
   sceneCtx.scene.add(floorRing);
   updateFloorRing(floorRing, player.body);
   const keyboard = createKeyboardState(window);
+  // `?debug=autoplay`: a scripted KeyState driver that overwrites
+  // keyboard input every fixed step. The script loops forever so I
+  // can audit walk / punch / pickup / throw / facing in production
+  // without having to physically hold the keys. Real human input is
+  // ignored while this is active because the driver clobbers
+  // `keyboard.state` at the top of every step.
+  const autoplayDriver: AutoplayHandle | null = autoplayRequestedFromUrl(
+    window.location.href,
+  )
+    ? createAutoplayDriver(keyboard)
+    : null;
+  if (autoplayDriver !== null) {
+    console.log("[autoplay] driver active, real keyboard input suppressed");
+  }
   // Touch joystick: float-where-you-tap stick that writes deflection into
   // the same forward/back/left/right booleans the keyboard fills. The
   // physics, recorder, and replay paths all read from `keyboard.state`, so
@@ -643,6 +662,14 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // entries newly registered this tick at tick-0 until the next
       // fixed step.
       knockoutAnimator.advance();
+      // `?debug=autoplay`: overwrite `keyboard.state` with the script's
+      // current step before the recorder samples it. The recorder, the
+      // ghost-replay path, and every downstream resolver see the same
+      // KeyState shape they would see from a real player, so a recording
+      // captured in autoplay mode replays identically off it.
+      if (autoplayDriver !== null) {
+        autoplayDriver.advance();
+      }
       // Sample input once per physics step so target velocity reacts at the
       // simulation rate, not the render rate. The mapping is pure; the only
       // mutation is on the rigid body itself. The same KeyState snapshot is
