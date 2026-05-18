@@ -61,6 +61,14 @@ Keep `F-NNN` IDs monotonically increasing. When a followup ships, leave the entr
 
 ## Nice To Have
 
+### F-028: Tune the `?debug=autoplay` script to traverse + produce ghost choreography
+
+- Priority: nice-to-have
+- Context: PR #87 shipped the scripted KeyState driver and PR #88 added debug logging / `window.__autoplay`. The script reliably walks the figure and cycles through clips, but the hand-tuned SW / NE / SE walk durations do not land the figure on the south or east lit door's trigger consistently, so the autoplay never traverses, no ghost spawns, and the carry / die-clip choreography I wanted to visually audit never fires. Driving this from outside the browser is blocked by Chrome's `requestAnimationFrame` throttling on hidden tabs.
+- Blocker: needs an attended dev session to iterate on the script with the tab visible, reading `window.__autoplay` to confirm position and tuning the walk durations / directions until the figure clears a lit door's trigger.
+- Unblock condition: a session that brings the autoplay tab to the foreground, tunes the walk-sw / walk-ne / walk-se phases against the observed `(x, z)` positions, confirms the south or east door is traversed and a ghost spawns, then continues the script through a ghost punch + pickup + throw cycle. Update tests if the new script changes the first applied step's labels.
+- PR / Dot reference (when picked up):
+
 ### F-027: Wire Kenney Mini Characters animation clips
 
 - Priority: nice-to-have

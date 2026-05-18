@@ -16,6 +16,16 @@ Format for each slice:
 - Followups: any new `F-NNN` entries created. Link to them.
 ```
 
+## 2026-05-17, Autoplay Debug Hooks
+
+- Branch: `feature/autoplay-debug-hooks`
+- PR: `#88`
+- Changed: Adds two debug surfaces for the autoplay driver shipped in #87. Inside the fixed-step loop, every 60 ticks logs the current `tick`, `label`, `(x, z)` body position, and act-state watermark to console. After the render-frame HUD update, exposes the same fields on `window.__autoplay` for one-shot DevTools / Puppeteer probes. Both are strictly gated on the autoplay flag so a real player's tab never carries the debug fields. Also files a followup for the script-tuning + visual-audit work that remains blocked by Chrome's rAF throttling on hidden tabs.
+- Verification: dash sweep clean. `npx tsc --noEmit` passed. Local dev server smoke at `?debug=autoplay`: figure cycles through the script as before, console emits one structured `[autoplay] tick=... pos=...` line per second. Tab-hidden behavior confirmed: rAF stops, fixed-step loop pauses, debug logging pauses with it (no spurious output to chase).
+- Assumptions: the debug log cadence of one per second is fine for an attended dev session and not noisy enough to harm the console buffer. The `window.__autoplay` shape is a development-only contract, not a public API; no test pins it.
+- GDD coverage: no change. Debug infrastructure.
+- Followups: F-028 added: tune the autoplay script so it actually traverses the SW lit door and produces the ghost knockout choreography end-to-end. Blocked on hands-on iteration since browser headless rAF throttling prevents driving it cleanly from outside.
+
 ## 2026-05-17, `?debug=autoplay` Scripted KeyState Driver
 
 - Branch: `feature/debug-autoplay`

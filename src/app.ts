@@ -669,6 +669,17 @@ export async function startApp(container: HTMLElement): Promise<void> {
       // captured in autoplay mode replays identically off it.
       if (autoplayDriver !== null) {
         autoplayDriver.advance();
+        // Periodic stdout for headless smoke tests where the render loop
+        // is gated by document visibility. The fixed-step loop runs off
+        // requestAnimationFrame too, so this only fires when the tab is
+        // foregrounded. Once per second of fixed steps keeps the log
+        // legible.
+        if (autoplayDriver.tickIndex() % 60 === 0) {
+          const t = player.body.translation();
+          console.log(
+            `[autoplay] tick=${autoplayDriver.tickIndex()} label=${autoplayDriver.currentLabel()} pos=(${t.x.toFixed(2)}, ${t.z.toFixed(2)}) act=${actStateObserver.state}`,
+          );
+        }
       }
       // Sample input once per physics step so target velocity reacts at the
       // simulation rate, not the render rate. The mapping is pure; the only
@@ -1059,6 +1070,21 @@ export async function startApp(container: HTMLElement): Promise<void> {
     actStateHud.update(actStateObserver.state);
     (window as unknown as { __pseudoParadoxActState?: string }).__pseudoParadoxActState =
       actStateObserver.state;
+    if (autoplayDriver !== null) {
+      // Surface enough debug state for an external smoke test to read
+      // back the figure's current position and the autoplay phase
+      // label. Gated on autoplay so a real player's tab never carries
+      // these debug fields.
+      const t = player.body.translation();
+      (window as unknown as {
+        __autoplay?: { x: number; z: number; label: string; tick: number };
+      }).__autoplay = {
+        x: t.x,
+        z: t.z,
+        label: autoplayDriver.currentLabel(),
+        tick: autoplayDriver.tickIndex(),
+      };
+    }
 
     player.syncMeshFromBody();
     for (const ghost of registry.activeGhosts()) {
